@@ -1,25 +1,25 @@
 # Backend 占位说明
 
-本目录预留给 Python 后端工程。
+本目录现已升级为最小可运行的 Python 后端骨架。
 
-## 计划技术栈
+## 当前已落地能力
 
-- FastAPI
-- SQLAlchemy 2
-- Alembic
-- Pydantic Settings
-- httpx
-- SQLite
+- FastAPI 应用入口
+- 环境变量配置读取
+- 统一日志与异常返回
+- `GET /health` 健康检查
+- SQLite 会话工厂
+- Alembic 初始化迁移脚本
+- 基础测试 `tests/test_health.py`
 
-## 目录职责
+## 运行方式
 
-后续正式搭建时，本目录将至少包含以下内容：
-
-- `app/`：应用入口、路由、配置、数据库、客户端与业务模块。
-- `migrations/`：Alembic 迁移脚本。
-- `tests/`：后端单元测试与接口测试。
-- `.env.example`：环境变量样例，不放真实密钥。
-- `requirements.txt` 或等价依赖清单。
+1. 在 `xivdaily` conda 环境安装依赖：
+   `conda run -n xivdaily pip install -r backend/requirements.txt`
+2. 在 `backend/` 目录执行迁移：
+   `conda run -n xivdaily alembic upgrade head`
+3. 启动服务：
+   `conda run -n xivdaily uvicorn app.main:app --host 127.0.0.1 --port 8000`
 
 ## 开发约束
 
