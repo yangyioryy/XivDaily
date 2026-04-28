@@ -9,6 +9,8 @@
 - 统一日志与异常返回
 - `GET /health` 健康检查
 - `GET /papers` 论文检索，支持分类、关键词、时间窗口、分页、本地过滤与缓存
+- `GET /summaries/trends` AI 趋势摘要，未配置模型时自动降级
+- `POST /translations` 单篇摘要翻译，未配置模型时自动返回降级文案
 - SQLite 会话工厂
 - Alembic 初始化迁移脚本
 - 基础测试 `tests/test_health.py`
@@ -23,6 +25,8 @@
    `conda run -n xivdaily uvicorn app.main:app --host 127.0.0.1 --port 8000`
 4. 查询论文：
    `http://127.0.0.1:8000/papers?category=cs.CV&days=3&page=1&pageSize=10`
+5. 请求趋势摘要：
+   `http://127.0.0.1:8000/summaries/trends?category=cs.CV&days=3`
 
 ## 开发约束
 
