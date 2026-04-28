@@ -1,0 +1,452 @@
+openapi: 3.1.0
+info:
+  title: XivDaily API Draft
+  version: 0.1.0
+  description: >
+    XivDaily 首版接口草案。此文档用于冻结前后端契约，字段解释以中文说明为准。
+servers:
+  - url: http://127.0.0.1:8000
+    description: 本机开发环境
+tags:
+  - name: Health
+  - name: Papers
+  - name: Summaries
+  - name: Translations
+  - name: Favorites
+  - name: Preferences
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: 健康检查
+      operationId: getHealth
+      responses:
+        "200":
+          description: 服务健康
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /papers:
+    get:
+      tags: [Papers]
+      summary: 查询论文列表
+      operationId: listPapers
+      parameters:
+        - in: query
+          name: keyword
+          schema:
+            type: string
+          description: 关键词，可为空
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: arXiv 分类，如 cs.CV
+        - in: query
+          name: days
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 30
+          description: 回溯天数
+        - in: query
+          name: page
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: 页码，从 1 开始
+        - in: query
+          name: pageSize
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+          description: 每页数量
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaperListResponse"
+  /summaries/trends:
+    get:
+      tags: [Summaries]
+      summary: 生成当前时间窗口趋势摘要
+      operationId: getTrendSummary
+      parameters:
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: 聚焦领域
+        - in: query
+          name: days
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 30
+          description: 回溯天数
+      responses:
+        "200":
+          description: 生成成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrendSummary"
+  /translations:
+    post:
+      tags: [Translations]
+      summary: 翻译单篇论文摘要
+      operationId: createTranslationTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranslationRequest"
+      responses:
+        "200":
+          description: 翻译成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranslationTask"
+  /favorites/{paperId}/sync-zotero:
+    post:
+      tags: [Favorites]
+      summary: 同步单篇收藏到 Zotero
+      operationId: syncFavoriteToZotero
+      parameters:
+        - in: path
+          name: paperId
+          required: true
+          schema:
+            type: string
+          description: 论文唯一标识
+      responses:
+        "200":
+          description: 同步状态已返回
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncRecord"
+  /exports/bibtex:
+    post:
+      tags: [Favorites]
+      summary: 批量导出 BibTeX
+      operationId: exportFavoritesBibtex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BibtexExportRequest"
+      responses:
+        "200":
+          description: 导出成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BibtexExportResponse"
+  /preferences/bootstrap:
+    get:
+      tags: [Preferences]
+      summary: 获取客户端启动配置
+      operationId: getBootstrapPreferences
+      responses:
+        "200":
+          description: 配置返回成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPreference"
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, environment, version]
+      properties:
+        status:
+          type: string
+          description: 服务状态，正常时固定为 ok
+        environment:
+          type: string
+          description: 当前运行环境
+        version:
+          type: string
+          description: 当前服务版本
+    Paper:
+      type: object
+      required:
+        [id, title, authors, summary, publishedAt, updatedAt, categories, primaryCategory, sourceUrl, pdfUrl, favoriteState, zoteroSyncState]
+      properties:
+        id:
+          type: string
+          description: 论文唯一标识，默认使用 arXiv id
+        title:
+          type: string
+          description: 论文标题
+        authors:
+          type: array
+          items:
+            type: string
+          description: 作者列表
+        summary:
+          type: string
+          description: 原始摘要
+        translatedSummary:
+          type: string
+          nullable: true
+          description: 最新一次翻译结果，没有则为空
+        publishedAt:
+          type: string
+          format: date-time
+          description: 首次发布时间
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最近更新时间
+        categories:
+          type: array
+          items:
+            type: string
+          description: 所属全部分类
+        primaryCategory:
+          type: string
+          description: 主分类
+        sourceUrl:
+          type: string
+          format: uri
+          description: arXiv 页面链接
+        pdfUrl:
+          type: string
+          format: uri
+          description: PDF 链接
+        favoriteState:
+          type: boolean
+          description: 当前是否已收藏
+        zoteroSyncState:
+          $ref: "#/components/schemas/ZoteroSyncState"
+    PaperQuery:
+      type: object
+      required: [days, page, pageSize]
+      properties:
+        keyword:
+          type: string
+          nullable: true
+          description: 搜索关键词
+        category:
+          type: string
+          nullable: true
+          description: 过滤分类
+        days:
+          type: integer
+          description: 回溯天数
+        page:
+          type: integer
+          description: 页码
+        pageSize:
+          type: integer
+          description: 每页数量
+    PaperListResponse:
+      type: object
+      required: [query, items, page, pageSize, total, hasMore]
+      properties:
+        query:
+          $ref: "#/components/schemas/PaperQuery"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Paper"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+          description: 当前过滤结果总数估计
+        hasMore:
+          type: boolean
+          description: 是否还有下一页
+    TrendSummaryItem:
+      type: object
+      required: [rank, trendTitle, summary, representativePaperIds]
+      properties:
+        rank:
+          type: integer
+          description: 趋势排序位次
+        trendTitle:
+          type: string
+          description: 趋势标题
+        summary:
+          type: string
+          description: 趋势简述
+        representativePaperIds:
+          type: array
+          items:
+            type: string
+          description: 代表论文 id 列表
+    TrendSummary:
+      type: object
+      required: [category, days, generatedAt, intro, items, dismissible]
+      properties:
+        category:
+          type: string
+          nullable: true
+          description: 当前摘要对应分类
+        days:
+          type: integer
+          description: 当前摘要对应时间窗口
+        generatedAt:
+          type: string
+          format: date-time
+          description: 摘要生成时间
+        intro:
+          type: string
+          description: 总结开场文案
+        items:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            $ref: "#/components/schemas/TrendSummaryItem"
+        dismissible:
+          type: boolean
+          description: 客户端是否允许关闭卡片
+    FavoritePaper:
+      type: object
+      required: [paperId, savedAt, zoteroSyncState]
+      properties:
+        paperId:
+          type: string
+          description: 对应 Paper.id
+        savedAt:
+          type: string
+          format: date-time
+          description: 收藏时间
+        note:
+          type: string
+          nullable: true
+          description: 本地备注
+        zoteroSyncState:
+          $ref: "#/components/schemas/ZoteroSyncState"
+    SyncRecord:
+      type: object
+      required: [paperId, status, syncedAt]
+      properties:
+        paperId:
+          type: string
+          description: 对应论文 id
+        status:
+          $ref: "#/components/schemas/ZoteroSyncState"
+        syncedAt:
+          type: string
+          format: date-time
+          description: 最后一次同步时间
+        zoteroItemKey:
+          type: string
+          nullable: true
+          description: Zotero 条目 key
+        message:
+          type: string
+          nullable: true
+          description: 失败或补充说明
+    UserPreference:
+      type: object
+      required:
+        [defaultCategories, defaultDays, themeMode, language, zoteroConfigured, llmConfigured]
+      properties:
+        defaultCategories:
+          type: array
+          items:
+            type: string
+          description: 默认关注领域
+        defaultDays:
+          type: integer
+          description: 默认时间窗口
+        themeMode:
+          type: string
+          enum: [system, light, dark]
+          description: 主题模式
+        language:
+          type: string
+          description: 当前语言
+        nickname:
+          type: string
+          nullable: true
+          description: 用户昵称
+        avatarUrl:
+          type: string
+          nullable: true
+          description: 用户头像链接
+        zoteroConfigured:
+          type: boolean
+          description: 是否完成 Zotero 配置
+        llmConfigured:
+          type: boolean
+          description: 是否完成大模型配置
+    TranslationRequest:
+      type: object
+      required: [paperId, sourceSummary]
+      properties:
+        paperId:
+          type: string
+          description: 对应 Paper.id
+        sourceSummary:
+          type: string
+          description: 原始摘要
+        targetLanguage:
+          type: string
+          default: zh-CN
+          description: 目标语言
+    TranslationTask:
+      type: object
+      required: [paperId, status, translatedSummary, requestedAt]
+      properties:
+        paperId:
+          type: string
+          description: 对应 Paper.id
+        status:
+          type: string
+          enum: [success, degraded, failed]
+          description: 翻译任务状态
+        translatedSummary:
+          type: string
+          description: 翻译结果或降级文案
+        requestedAt:
+          type: string
+          format: date-time
+          description: 发起时间
+        warning:
+          type: string
+          nullable: true
+          description: 降级提示或失败原因
+    BibtexExportRequest:
+      type: object
+      required: [paperIds]
+      properties:
+        paperIds:
+          type: array
+          items:
+            type: string
+          description: 待导出的论文 id 集合
+    BibtexExportResponse:
+      type: object
+      required: [content, exportedCount]
+      properties:
+        content:
+          type: string
+          description: BibTeX 纯文本内容
+        exportedCount:
+          type: integer
+          description: 实际导出数量
+    ZoteroSyncState:
+      type: string
+      enum: [not_synced, synced, failed]
+      description: Zotero 三态同步状态
