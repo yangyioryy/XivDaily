@@ -1,0 +1,29 @@
+# 本地 IDE 与系统文件
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/shelf/
+.DS_Store
+Thumbs.db
+
+# 本机敏感输入
+openai开发密钥.txt
+密码.txt
+*.secret
+*.local
+
+# Python 后端
+backend/.venv/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/__pycache__/
+backend/**/*.pyc
+backend/.env
+backend/.env.*
+
+# Android 客户端
+android/.gradle/
+android/local.properties
+android/**/build/
+android/.idea/
+

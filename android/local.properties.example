@@ -1,0 +1,2 @@
+# 仅作本地样例，真实 local.properties 不应提交
+sdk.dir=C\\:\\Android\\Sdk
