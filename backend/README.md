@@ -11,6 +11,9 @@
 - `GET /papers` 论文检索，支持分类、关键词、时间窗口、分页、本地过滤与缓存
 - `GET /summaries/trends` AI 趋势摘要，未配置模型时自动降级
 - `POST /translations` 单篇摘要翻译，未配置模型时自动返回降级文案
+- `GET /zotero/config/status` Zotero 配置校验
+- `POST /zotero/sync/{paper_id}` 单篇同步，成功后幂等
+- `POST /zotero/exports/bibtex` 批量导出 BibTeX
 - SQLite 会话工厂
 - Alembic 初始化迁移脚本
 - 基础测试 `tests/test_health.py`
@@ -27,6 +30,8 @@
    `http://127.0.0.1:8000/papers?category=cs.CV&days=3&page=1&pageSize=10`
 5. 请求趋势摘要：
    `http://127.0.0.1:8000/summaries/trends?category=cs.CV&days=3`
+6. 检查 Zotero 配置：
+   `http://127.0.0.1:8000/zotero/config/status`
 
 ## 开发约束
 
