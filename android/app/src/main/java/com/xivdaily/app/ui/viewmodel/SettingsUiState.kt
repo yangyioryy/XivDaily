@@ -5,5 +5,7 @@ data class SettingsUiState(
     val defaultDays: Int = 3,
     val themeMode: String = "system",
     val nickname: String = "",
+    val zoteroConfigured: Boolean = false,
+    val llmConfigured: Boolean = false,
 )
 
