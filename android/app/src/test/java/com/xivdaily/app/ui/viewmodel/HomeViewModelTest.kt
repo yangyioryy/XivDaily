@@ -82,7 +82,7 @@ class HomeViewModelTest {
             val paper = viewModel.uiState.value.papers.single()
 
             viewModel.dismissPaperFromFeed(paper)
-            advanceUntilIdle()
+            runCurrent()
 
             assertTrue(viewModel.uiState.value.papers.isEmpty())
             assertTrue(repository.deletedFavoriteIds.isEmpty())
@@ -103,7 +103,7 @@ class HomeViewModelTest {
             val paper = viewModel.uiState.value.papers.single()
 
             viewModel.toggleFavorite(paper)
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals("已加入收藏库", viewModel.uiState.value.actionMessage?.text)
             assertEquals(listOf(paper.id), repository.savedFavoriteIds)
