@@ -119,6 +119,7 @@ fun AppNavGraph(settingsViewModel: SettingsViewModel) {
                 HomeScreen(
                     uiState = uiState,
                     onKeywordChange = homeViewModel::updateKeyword,
+                    onKeywordSubmit = homeViewModel::submitKeyword,
                     onCategorySelect = homeViewModel::selectCategory,
                     onDaysSelect = homeViewModel::selectDays,
                     onDismissPaper = homeViewModel::dismissPaperFromFeed,

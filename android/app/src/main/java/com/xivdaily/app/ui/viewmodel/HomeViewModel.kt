@@ -40,7 +40,11 @@ class HomeViewModel(
     }
 
     fun updateKeyword(keyword: String) {
-        _uiState.update { it.copy(searchKeyword = keyword) }
+        _uiState.update { it.copy(searchKeywordDraft = keyword) }
+    }
+
+    fun submitKeyword() {
+        _uiState.update { it.copy(searchKeyword = it.searchKeywordDraft.trim()) }
         refreshPapers()
     }
 
@@ -51,9 +55,8 @@ class HomeViewModel(
     }
 
     fun selectDays(days: Int) {
-        _uiState.update { it.copy(selectedDays = days, dismissedSummary = false) }
+        _uiState.update { it.copy(selectedDays = days) }
         refreshPapers()
-        refreshTrendSummary()
     }
 
     fun toggleSummaryExpanded() {
@@ -163,7 +166,7 @@ class HomeViewModel(
         viewModelScope.launch {
             val current = _uiState.value
             _uiState.update { it.copy(isSummaryLoading = true) }
-            runCatching { repository.getTrendSummary(current.selectedCategory, current.selectedDays) }
+            runCatching { repository.getTrendSummary(current.selectedCategory) }
                 .onSuccess { summary ->
                     _uiState.update { it.copy(trendSummary = summary, isSummaryLoading = false, errorMessage = null) }
                 }

@@ -30,6 +30,7 @@ class HomeViewModelTest {
 
             assertEquals("cs.AI", viewModel.uiState.value.selectedCategory)
             assertEquals(7, viewModel.uiState.value.selectedDays)
+            assertEquals("cs.AI", repository.trendRequests.last())
             assertEquals(Triple(null, "cs.AI", 7), repository.listRequests.last())
 
             viewModel.selectCategory("cs.CL")
@@ -38,7 +39,33 @@ class HomeViewModelTest {
 
             assertEquals("cs.CL", viewModel.uiState.value.selectedCategory)
             assertEquals(30, viewModel.uiState.value.selectedDays)
+            assertEquals(listOf("cs.AI", "cs.CL"), repository.trendRequests)
             assertEquals(Triple(null, "cs.CL", 30), repository.listRequests.last())
+        }
+    }
+
+    @Test
+    fun updateKeyword_onlyRefreshesAfterSubmit() {
+        runTest {
+            val repository = FakePaperRepository()
+            val preferences = FakePreferencesRepository()
+
+            val viewModel = HomeViewModel(repository, preferences)
+            advanceUntilIdle()
+            repository.listRequests.clear()
+
+            viewModel.updateKeyword("diffusion")
+            advanceUntilIdle()
+
+            assertEquals("diffusion", viewModel.uiState.value.searchKeywordDraft)
+            assertEquals("", viewModel.uiState.value.searchKeyword)
+            assertTrue(repository.listRequests.isEmpty())
+
+            viewModel.submitKeyword()
+            advanceUntilIdle()
+
+            assertEquals("diffusion", viewModel.uiState.value.searchKeyword)
+            assertEquals(Triple("diffusion", "cs.CV", 3), repository.listRequests.last())
         }
     }
 

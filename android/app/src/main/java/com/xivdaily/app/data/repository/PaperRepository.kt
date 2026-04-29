@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.map
 
 interface PaperRepositoryContract {
     suspend fun listHomePapers(keyword: String?, category: String?, days: Int): List<PaperItem>
-    suspend fun getTrendSummary(category: String?, days: Int): TrendSummary
+    suspend fun getTrendSummary(category: String?): TrendSummary
     suspend fun translatePaper(paper: PaperItem): PaperItem
     fun observeFavorites(): Flow<List<FavoritePaperItem>>
     suspend fun saveFavorite(paper: PaperItem)
@@ -47,8 +47,9 @@ class PaperRepository(
         }
     }
 
-    override suspend fun getTrendSummary(category: String?, days: Int): TrendSummary {
-        val dto = apiService.getTrendSummary(category = category, days = days)
+    override suspend fun getTrendSummary(category: String?): TrendSummary {
+        // 趋势简报在客户端固定取最近三天，和论文列表时间窗彻底解耦。
+        val dto = apiService.getTrendSummary(category = category, days = FIXED_TREND_DAYS)
         return TrendSummary(
             intro = dto.intro,
             items = dto.items.map {
@@ -175,5 +176,6 @@ class PaperRepository(
 
     private companion object {
         const val AUTHOR_SEPARATOR = ";;"
+        const val FIXED_TREND_DAYS = 3
     }
 }

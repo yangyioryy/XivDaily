@@ -13,6 +13,7 @@ data class HomeUiState(
     val dayOptions: List<Int> = listOf(1, 3, 7, 30),
     val selectedCategory: String = "cs.CV",
     val selectedDays: Int = 3,
+    val searchKeywordDraft: String = "",
     val searchKeyword: String = "",
     val papers: List<PaperItem> = emptyList(),
     val trendSummary: TrendSummary? = null,

@@ -44,8 +44,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import com.xivdaily.app.data.model.PaperItem
 import com.xivdaily.app.ui.theme.XivDailyInfo
 import com.xivdaily.app.ui.theme.XivDailySuccess
@@ -58,6 +61,7 @@ import com.xivdaily.app.ui.viewmodel.HomeUiState
 fun HomeScreen(
     uiState: HomeUiState,
     onKeywordChange: (String) -> Unit,
+    onKeywordSubmit: () -> Unit,
     onCategorySelect: (String) -> Unit,
     onDaysSelect: (Int) -> Unit,
     onDismissPaper: (PaperItem) -> Unit,
@@ -84,6 +88,7 @@ fun HomeScreen(
             ExploreControlCard(
                 uiState = uiState,
                 onKeywordChange = onKeywordChange,
+                onKeywordSubmit = onKeywordSubmit,
                 onCategorySelect = onCategorySelect,
                 onDaysSelect = onDaysSelect,
             )
@@ -178,6 +183,7 @@ private fun HomeHeroSection(uiState: HomeUiState) {
 private fun ExploreControlCard(
     uiState: HomeUiState,
     onKeywordChange: (String) -> Unit,
+    onKeywordSubmit: () -> Unit,
     onCategorySelect: (String) -> Unit,
     onDaysSelect: (Int) -> Unit,
 ) {
@@ -211,15 +217,22 @@ private fun ExploreControlCard(
                 }
             }
             OutlinedTextField(
-                value = uiState.searchKeyword,
+                value = uiState.searchKeywordDraft,
                 onValueChange = onKeywordChange,
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("搜索论文、作者、关键词") },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onKeywordSubmit() }),
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Rounded.Search,
                         contentDescription = "搜索",
                     )
+                },
+                trailingIcon = {
+                    TextButton(onClick = onKeywordSubmit) {
+                        Text("搜索")
+                    }
                 },
             )
             FilterBlock(
@@ -269,7 +282,7 @@ private fun TrendSummaryCard(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "最近 ${formatDays(uiState.selectedDays)} · ${uiState.selectedCategory}",
+                        text = "最近 3 天 · ${uiState.selectedCategory}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
