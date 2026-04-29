@@ -1,8 +1,12 @@
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.ai.llm_gateway import LlmResult
+from app.db.base import Base
+from app.models.trend_summary_cache import TrendSummaryCacheModel
 from app.schemas.ai import TranslationRequest
 from app.schemas.paper import Paper, PaperListResponse, PaperQuery
 from app.services.ai_service import AiService
@@ -13,13 +17,19 @@ class FakeGateway:
         self.status = status
         self.text = text
         self.warning = warning
+        self.calls = 0
 
     async def complete(self, prompt: str, task_name: str) -> LlmResult:
+        self.calls += 1
         return LlmResult(text=self.text, status=self.status, warning=self.warning)
 
 
 class FakePaperService:
+    def __init__(self) -> None:
+        self.requests: list[PaperQuery] = []
+
     async def list_papers(self, query: PaperQuery) -> PaperListResponse:
+        self.requests.append(query)
         now = datetime.now(UTC)
         paper = Paper(
             id="2401.00001",
@@ -36,20 +46,33 @@ class FakePaperService:
         return PaperListResponse(query=query, items=[paper], page=1, page_size=10, total=1, has_more=False)
 
 
+def build_session() -> Session:
+    engine = create_engine("sqlite:///:memory:", future=True)
+    Base.metadata.create_all(bind=engine)
+    return sessionmaker(bind=engine, class_=Session, autoflush=False, autocommit=False)()
+
+
 @pytest.mark.anyio("asyncio")
 async def test_generate_trend_summary_degrades_without_model() -> None:
-    service = AiService(llm_gateway=FakeGateway(status="degraded", warning="no key"), paper_service=FakePaperService())
+    db = build_session()
+    paper_service = FakePaperService()
+    service = AiService(db=db, llm_gateway=FakeGateway(status="degraded", warning="no key"), paper_service=paper_service)
 
     result = await service.generate_trend_summary("cs.CV", 3)
 
     assert result.status == "degraded"
     assert result.warning == "no key"
     assert result.items[0].representative_paper_ids == ["2401.00001"]
+    assert paper_service.requests[0].days == 3
 
 
 @pytest.mark.anyio("asyncio")
 async def test_translate_summary_returns_fallback_when_model_unavailable() -> None:
-    service = AiService(llm_gateway=FakeGateway(status="degraded", warning="timeout"), paper_service=FakePaperService())
+    service = AiService(
+        db=build_session(),
+        llm_gateway=FakeGateway(status="degraded", warning="timeout"),
+        paper_service=FakePaperService(),
+    )
 
     result = await service.translate_summary(
         TranslationRequest(paper_id="2401.00001", source_summary="Original summary", target_language="zh-CN")
@@ -59,3 +82,24 @@ async def test_translate_summary_returns_fallback_when_model_unavailable() -> No
     assert "Original summary" in result.translated_summary
     assert result.warning == "timeout"
 
+
+@pytest.mark.anyio("asyncio")
+async def test_generate_trend_summary_hits_cache_without_second_llm_call() -> None:
+    db = build_session()
+    gateway = FakeGateway(
+        status="success",
+        text='{"intro":"AI 总览","items":[{"rank":1,"trend_title":"📈 视觉扩散","summary":"关注扩散式视觉生成。","representative_paper_ids":["2401.00001"]}]}',
+    )
+    paper_service = FakePaperService()
+    service = AiService(db=db, llm_gateway=gateway, paper_service=paper_service)
+
+    first = await service.generate_trend_summary("cs.CV", 30)
+    second = await service.generate_trend_summary("cs.CV", 1)
+
+    assert first.status == "success"
+    assert first.intro == "AI 总览"
+    assert first.items[0].trend_title == "📈 视觉扩散"
+    assert second.items[0].trend_title == "📈 视觉扩散"
+    assert gateway.calls == 1
+    assert len(paper_service.requests) == 1
+    assert db.get(TrendSummaryCacheModel, next(iter([row.cache_key for row in db.query(TrendSummaryCacheModel).all()]))) is not None

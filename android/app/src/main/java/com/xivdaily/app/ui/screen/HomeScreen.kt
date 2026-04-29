@@ -321,6 +321,9 @@ private fun TrendSummaryCard(
             }
             if (uiState.summaryExpanded) {
                 summary.items.forEach { item ->
+                    val representativeTitles = item.representativePaperIds.mapNotNull { paperId ->
+                        uiState.papers.firstOrNull { it.id == paperId }?.title
+                    }
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -338,6 +341,13 @@ private fun TrendSummaryCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        if (representativeTitles.isNotEmpty()) {
+                            Text(
+                                text = "代表论文：${representativeTitles.joinToString(" / ")}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }

@@ -11,13 +11,13 @@ class FakeAiService:
     async def generate_trend_summary(self, category: str | None, days: int) -> TrendSummary:
         return TrendSummary(
             category=category,
-            days=days,
+            days=3,
             generated_at=datetime.now(UTC),
             intro="mock",
             items=[
                 TrendSummaryItem(
                     rank=1,
-                    trend_title="Mock Trend",
+                    trend_title="📊 Mock Trend",
                     summary="Mock Summary",
                     representative_paper_ids=["2401.00001"],
                 )
@@ -39,11 +39,12 @@ def test_trend_summary_api_returns_payload() -> None:
     app.dependency_overrides[get_ai_service] = lambda: FakeAiService()
     client = TestClient(app)
 
-    response = client.get("/summaries/trends?category=cs.CV&days=3")
+    response = client.get("/summaries/trends?category=cs.CV&days=30")
 
     app.dependency_overrides.clear()
     assert response.status_code == 200
-    assert response.json()["items"][0]["trend_title"] == "Mock Trend"
+    assert response.json()["days"] == 3
+    assert response.json()["items"][0]["trend_title"] == "📊 Mock Trend"
 
 
 def test_translation_api_returns_payload() -> None:

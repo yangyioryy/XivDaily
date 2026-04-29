@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.db.session import get_db
 from app.schemas.ai import TranslationRequest, TranslationTask, TrendSummary
 from app.services.ai_service import AiService
 
 router = APIRouter(tags=["ai"])
 
 
-def get_ai_service() -> AiService:
-    return AiService()
+def get_ai_service(db: Session = Depends(get_db)) -> AiService:
+    return AiService(db=db)
 
 
 @router.get("/ai/config/status", response_model=dict)
