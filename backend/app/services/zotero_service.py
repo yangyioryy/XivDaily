@@ -19,16 +19,34 @@ class ZoteroService:
         self.zotero_client = zotero_client or ZoteroClient()
         self.paper_service = paper_service or PaperService()
 
-    def get_config_status(self) -> ZoteroConfigStatus:
+    async def get_config_status(self) -> ZoteroConfigStatus:
+        target_collection_name = self.zotero_client.target_collection_name
         if self.zotero_client.is_configured():
             settings = self.zotero_client.settings
+            try:
+                # 设置页与实际同步都依赖同一个归档集合，这里直接保证集合可用。
+                target_collection = await self._ensure_target_collection()
+            except Exception as exc:  # noqa: BLE001
+                return ZoteroConfigStatus(
+                    configured=True,
+                    user_id=settings.zotero_user_id,
+                    library_type=settings.zotero_library_type,
+                    target_collection_name=target_collection_name,
+                    target_collection_status="error",
+                    warning=f"Zotero 归档集合检查失败：{exc}",
+                )
             return ZoteroConfigStatus(
                 configured=True,
                 user_id=settings.zotero_user_id,
                 library_type=settings.zotero_library_type,
+                target_collection_name=str(target_collection["name"]),
+                target_collection_key=str(target_collection["key"]),
+                target_collection_status="created" if bool(target_collection["created"]) else "ready",
             )
         return ZoteroConfigStatus(
             configured=False,
+            target_collection_name=target_collection_name,
+            target_collection_status="not_configured",
             warning="未完成 Zotero User ID 或 API Key 配置。",
         )
 
@@ -44,6 +62,11 @@ class ZoteroService:
         if not self.zotero_client.is_configured():
             return self._upsert_record(db, paper_id, status="failed", message="未完成 Zotero 配置。")
 
+        try:
+            target_collection = await self._ensure_target_collection()
+        except Exception as exc:  # noqa: BLE001
+            return self._upsert_record(db, paper_id, status="failed", message=f"准备 Zotero 归档集合失败：{exc}")
+
         item_key = sha1(paper_id.encode("utf-8")).hexdigest()[:8]
         payload = {
             "itemKey": item_key,
@@ -57,6 +80,7 @@ class ZoteroService:
                 "date": paper.published_at.date().isoformat(),
                 "creators": [{"creatorType": "author", "name": author} for author in paper.authors],
                 "tags": [{"tag": category} for category in paper.categories],
+                "collections": [str(target_collection["key"])],
             },
         }
         try:
@@ -117,11 +141,19 @@ class ZoteroService:
         db.refresh(record)
         return record
 
-    def _extract_item_key(self, response: dict[str, object]) -> str | None:
-        successful = response.get("successful")
-        if isinstance(successful, dict):
-            for value in successful.values():
-                if isinstance(value, dict):
-                    return value.get("key")
-        return None
+    async def _ensure_target_collection(self) -> dict[str, object]:
+        return await self.zotero_client.get_or_create_collection()
 
+    def _extract_item_key(self, response: dict[str, object]) -> str | None:
+        for field_name in ("successful", "success"):
+            successful = response.get(field_name)
+            if not isinstance(successful, dict):
+                continue
+            for value in successful.values():
+                if isinstance(value, str):
+                    return value
+                if isinstance(value, dict):
+                    key = value.get("key")
+                    if isinstance(key, str):
+                        return key
+        return None

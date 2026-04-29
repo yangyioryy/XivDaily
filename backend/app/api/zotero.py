@@ -14,8 +14,8 @@ def get_zotero_service() -> ZoteroService:
 
 
 @router.get("/config/status", response_model=ZoteroConfigStatus)
-def get_config_status(service: ZoteroService = Depends(get_zotero_service)) -> ZoteroConfigStatus:
-    return service.get_config_status()
+async def get_config_status(service: ZoteroService = Depends(get_zotero_service)) -> ZoteroConfigStatus:
+    return await service.get_config_status()
 
 
 @router.post("/sync/{paper_id}", response_model=dict)
@@ -40,4 +40,3 @@ async def export_bibtex(
     service: ZoteroService = Depends(get_zotero_service),
 ) -> BibtexExportResponse:
     return await service.export_bibtex(request)
-

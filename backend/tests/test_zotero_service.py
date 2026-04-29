@@ -5,10 +5,27 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.base import Base
-from app.models.sync_record import SyncRecordModel
 from app.schemas.paper import Paper, PaperListResponse, PaperQuery
 from app.schemas.zotero import BibtexExportRequest
 from app.services.zotero_service import ZoteroService
+
+
+def config_status_to_dict(status: object) -> dict[str, object]:
+    if isinstance(status, dict):
+        return status
+    if hasattr(status, "model_dump"):
+        return status.model_dump()
+    return {key: value for key, value in vars(status).items() if not key.startswith("_")}
+
+
+def assert_collection_contract(payload: dict[str, object]) -> None:
+    # 配置页最少要能拿到集合名和真实状态，否则前端无法展示统一归档集合信息。
+    assert payload["target_collection_name"] == "XivDaily"
+    assert payload["target_collection_status"] in {"not_configured", "ready", "created", "error"}
+    collection_key = payload.get("target_collection_key")
+    if payload["target_collection_status"] in {"ready", "created"}:
+        assert isinstance(collection_key, str)
+        assert collection_key.strip()
 
 
 class FakePaperService:
@@ -30,16 +47,38 @@ class FakePaperService:
 
 
 class FakeZoteroClient:
-    def __init__(self, configured: bool = True) -> None:
+    def __init__(
+        self,
+        configured: bool = True,
+        target_collection_name: str = "XivDaily",
+        collection_created: bool = False,
+        collection_key: str = "COLL1234",
+    ) -> None:
         self._configured = configured
         self.calls = 0
+        self._target_collection_name = target_collection_name
+        self.collection_created = collection_created
+        self.collection_key = collection_key
+        self.last_item_payload: dict[str, object] | None = None
         self.settings = type("Settings", (), {"zotero_user_id": "12345", "zotero_library_type": "user"})()
 
     def is_configured(self) -> bool:
         return self._configured
 
+    @property
+    def target_collection_name(self) -> str:
+        return self._target_collection_name
+
+    async def get_or_create_collection(self, collection_name: str | None = None) -> dict[str, object]:
+        return {
+            "name": collection_name or self._target_collection_name,
+            "key": self.collection_key,
+            "created": self.collection_created,
+        }
+
     async def create_item(self, item_payload: dict[str, object]) -> dict[str, object]:
         self.calls += 1
+        self.last_item_payload = item_payload
         return {"successful": {"0": {"key": "ABCD1234"}}}
 
 
@@ -49,13 +88,58 @@ def build_session() -> Session:
     return sessionmaker(bind=engine, class_=Session, autoflush=False, autocommit=False)()
 
 
-def test_config_status_reports_missing_credentials() -> None:
+@pytest.mark.anyio("asyncio")
+async def test_config_status_reports_missing_credentials() -> None:
     service = ZoteroService(zotero_client=FakeZoteroClient(configured=False), paper_service=FakePaperService())
 
-    result = service.get_config_status()
+    result = await service.get_config_status()
 
     assert result.configured is False
+    assert result.warning is not None
     assert "未完成" in result.warning
+    payload = config_status_to_dict(result)
+    assert payload["target_collection_name"] == "XivDaily"
+    assert payload["target_collection_status"] == "not_configured"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_config_status_reports_collection_metadata_when_configured() -> None:
+    service = ZoteroService(
+        zotero_client=FakeZoteroClient(
+            configured=True,
+            target_collection_name="XivDaily",
+            collection_created=False,
+            collection_key="COLL1234",
+        ),
+        paper_service=FakePaperService(),
+    )
+
+    result = await service.get_config_status()
+    payload = config_status_to_dict(result)
+
+    assert payload["configured"] is True
+    assert payload["user_id"] == "12345"
+    assert payload["library_type"] == "user"
+    assert payload["target_collection_status"] == "ready"
+    assert_collection_contract(payload)
+
+
+@pytest.mark.anyio("asyncio")
+async def test_config_status_reports_created_collection_when_missing() -> None:
+    service = ZoteroService(
+        zotero_client=FakeZoteroClient(
+            configured=True,
+            target_collection_name="XivDaily",
+            collection_created=True,
+            collection_key="NEWCOLL1",
+        ),
+        paper_service=FakePaperService(),
+    )
+
+    result = await service.get_config_status()
+
+    assert result.target_collection_status == "created"
+    assert result.target_collection_key == "NEWCOLL1"
 
 
 @pytest.mark.anyio("asyncio")
@@ -70,6 +154,8 @@ async def test_sync_paper_is_idempotent_after_success() -> None:
     assert first.status == "synced"
     assert second.status == "synced"
     assert client.calls == 1
+    assert client.last_item_payload is not None
+    assert client.last_item_payload["data"]["collections"] == ["COLL1234"]
 
 
 @pytest.mark.anyio("asyncio")
@@ -81,4 +167,3 @@ async def test_export_bibtex_returns_entries() -> None:
     assert result.exported_count == 1
     assert "@misc{" in result.content
     assert "arXiv:2401.00001" in result.content
-
