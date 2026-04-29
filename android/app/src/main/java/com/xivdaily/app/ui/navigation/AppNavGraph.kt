@@ -1,8 +1,15 @@
 package com.xivdaily.app.ui.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Bookmarks
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -24,27 +32,37 @@ import com.xivdaily.app.XivDailyApplication
 import com.xivdaily.app.ui.screen.HomeScreen
 import com.xivdaily.app.ui.screen.LibraryScreen
 import com.xivdaily.app.ui.screen.SettingsScreen
+import com.xivdaily.app.ui.theme.xivSpacing
 import com.xivdaily.app.ui.viewmodel.HomeViewModel
 import com.xivdaily.app.ui.viewmodel.LibraryViewModel
 import com.xivdaily.app.ui.viewmodel.SettingsViewModel
 
-private data class BottomTab(val route: String, val labelRes: Int)
+private data class BottomTab(
+    val route: String,
+    val labelRes: Int,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+)
 
 @Composable
 fun AppNavGraph(settingsViewModel: SettingsViewModel) {
     val app = LocalContext.current.applicationContext as XivDailyApplication
     val navController = rememberNavController()
     val tabs = listOf(
-        BottomTab("home", R.string.tab_home),
-        BottomTab("library", R.string.tab_library),
-        BottomTab("settings", R.string.tab_settings),
+        BottomTab("home", R.string.tab_home, Icons.Rounded.AutoAwesome),
+        BottomTab("library", R.string.tab_library, Icons.Rounded.Bookmarks),
+        BottomTab("settings", R.string.tab_settings, Icons.Rounded.Tune),
     )
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+    val spacing = MaterialTheme.xivSpacing
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = spacing.xs,
+            ) {
                 tabs.forEach { tab ->
                     val selected = currentDestination?.hierarchy?.any { it.route == tab.route } == true
                     NavigationBarItem(
@@ -58,8 +76,26 @@ fun AppNavGraph(settingsViewModel: SettingsViewModel) {
                                 }
                             }
                         },
-                        label = { Text(text = stringResource(tab.labelRes)) },
-                        icon = {},
+                        label = {
+                            Text(
+                                text = stringResource(tab.labelRes),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            )
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = stringResource(tab.labelRes),
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
                     )
                 }
             }

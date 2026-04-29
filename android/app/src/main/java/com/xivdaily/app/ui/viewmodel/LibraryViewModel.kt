@@ -49,7 +49,7 @@ class LibraryViewModel(private val repository: PaperRepositoryContract) : ViewMo
         viewModelScope.launch {
             runCatching { repository.deleteFavorite(paperId) }
                 .onSuccess { _uiState.update { it.copy(actionMessage = "已删除收藏", errorMessage = null) } }
-                .onFailure { error -> setError("删除失败：${error.message ?: "未知错误"}") }
+                .onFailure { error -> setError(mapLibraryError("删除收藏暂时失败", error)) }
         }
     }
 
@@ -71,7 +71,7 @@ class LibraryViewModel(private val repository: PaperRepositoryContract) : ViewMo
                         )
                     }
                 }
-                .onFailure { error -> setError("批量删除失败：${error.message ?: "未知错误"}") }
+                .onFailure { error -> setError(mapLibraryError("批量删除暂时失败", error)) }
         }
     }
 
@@ -86,7 +86,7 @@ class LibraryViewModel(private val repository: PaperRepositoryContract) : ViewMo
                         )
                     }
                 }
-                .onFailure { error -> setError("收藏同步失败：${error.message ?: "未知错误"}") }
+                .onFailure { error -> setError(mapLibraryError("收藏同步暂时失败", error)) }
         }
     }
 
@@ -101,11 +101,22 @@ class LibraryViewModel(private val repository: PaperRepositoryContract) : ViewMo
                 .onSuccess { content ->
                     _uiState.update { it.copy(exportContent = content, actionMessage = "BibTeX 已生成", errorMessage = null) }
                 }
-                .onFailure { error -> setError("导出失败：${error.message ?: "未知错误"}") }
+                .onFailure { error -> setError(mapLibraryError("导出暂时失败", error)) }
         }
     }
 
     private fun setError(message: String) {
         _uiState.update { it.copy(errorMessage = message) }
+    }
+}
+
+private fun mapLibraryError(prefix: String, error: Throwable): String {
+    val detail = error.message.orEmpty()
+    return when {
+        detail.contains("timeout", ignoreCase = true) -> "$prefix，请稍后重试。"
+        detail.contains("Unable to resolve host", ignoreCase = true) -> "$prefix，请检查当前网络连接。"
+        detail.contains("Failed to connect", ignoreCase = true) ||
+            detail.contains("Connection refused", ignoreCase = true) -> "$prefix，请确认本地服务已经启动。"
+        else -> "$prefix，请稍后再试。"
     }
 }

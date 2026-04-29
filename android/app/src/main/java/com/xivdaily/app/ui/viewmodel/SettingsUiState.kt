@@ -6,6 +6,7 @@ data class SettingsUiState(
     val themeMode: String = "system",
     val zoteroConfigured: Boolean = false,
     val llmConfigured: Boolean = false,
+    val integrationStatusFailed: Boolean = false,
     val actionMessage: String? = null,
     val errorMessage: String? = null,
 )

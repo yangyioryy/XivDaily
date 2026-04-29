@@ -72,7 +72,7 @@ class HomeViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError("翻译失败：${error.message ?: "未知错误"}") }
+                .onFailure { error -> setError(mapUserFriendlyError("摘要翻译暂时不可用", error)) }
         }
     }
 
@@ -94,7 +94,7 @@ class HomeViewModel(
                         errorMessage = null,
                     )
                 }
-            }.onFailure { error -> setError("收藏操作失败：${error.message ?: "未知错误"}") }
+            }.onFailure { error -> setError(mapUserFriendlyError("收藏操作暂时失败", error)) }
         }
     }
 
@@ -105,12 +105,12 @@ class HomeViewModel(
                     _uiState.update { state ->
                         state.copy(
                             papers = state.papers.map { if (it.id == synced.id) synced else it },
-                            actionMessage = "Zotero 同步状态：${synced.zoteroSyncState}",
+                            actionMessage = if (synced.zoteroSyncState == "synced") "已同步到 Zotero" else "Zotero 同步暂未完成",
                             errorMessage = null,
                         )
                     }
                 }
-                .onFailure { error -> setError("Zotero 同步失败：${error.message ?: "未知错误"}") }
+                .onFailure { error -> setError(mapUserFriendlyError("Zotero 同步暂时失败", error)) }
         }
     }
 
@@ -128,7 +128,7 @@ class HomeViewModel(
                 _uiState.update { it.copy(papers = papers, isLoading = false) }
             }.onFailure { error ->
                 _uiState.update { it.copy(isLoading = false) }
-                setError("论文刷新失败：${error.message ?: "未知错误"}")
+                setError(mapUserFriendlyError("论文列表暂时无法刷新", error))
             }
         }
     }
@@ -143,12 +143,23 @@ class HomeViewModel(
                 }
                 .onFailure { error ->
                     _uiState.update { it.copy(isSummaryLoading = false) }
-                    setError("趋势摘要加载失败：${error.message ?: "未知错误"}")
+                    setError(mapUserFriendlyError("趋势摘要暂时不可用", error))
                 }
         }
     }
 
     private fun setError(message: String) {
         _uiState.update { it.copy(errorMessage = message) }
+    }
+}
+
+private fun mapUserFriendlyError(prefix: String, error: Throwable): String {
+    val detail = error.message.orEmpty()
+    return when {
+        detail.contains("timeout", ignoreCase = true) -> "$prefix，请稍后重试。"
+        detail.contains("Unable to resolve host", ignoreCase = true) -> "$prefix，请检查当前网络连接。"
+        detail.contains("Failed to connect", ignoreCase = true) ||
+            detail.contains("Connection refused", ignoreCase = true) -> "$prefix，请确认本地服务已经启动。"
+        else -> "$prefix，请稍后再试。"
     }
 }

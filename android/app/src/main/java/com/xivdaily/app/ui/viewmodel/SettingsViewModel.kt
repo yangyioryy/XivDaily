@@ -42,7 +42,12 @@ class SettingsViewModel(
         }
         viewModelScope.launch {
             preferencesRepository.setThemeMode(next)
-            _uiState.update { it.copy(actionMessage = "主题已切换到 $next", errorMessage = null) }
+            _uiState.update {
+                it.copy(
+                    actionMessage = "主题已切换为${themeModeLabel(next)}",
+                    errorMessage = null,
+                )
+            }
         }
     }
 
@@ -68,14 +73,28 @@ class SettingsViewModel(
                         it.copy(
                             zoteroConfigured = status.zoteroConfigured,
                             llmConfigured = status.llmConfigured,
+                            integrationStatusFailed = false,
                             actionMessage = "配置状态已刷新",
                             errorMessage = null,
                         )
                     }
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(errorMessage = "配置状态刷新失败：${error.message ?: "未知错误"}") }
+                    _uiState.update {
+                        it.copy(
+                            integrationStatusFailed = true,
+                            errorMessage = "配置状态刷新失败：${error.message ?: "未知错误"}",
+                        )
+                    }
                 }
         }
+    }
+}
+
+private fun themeModeLabel(themeMode: String): String {
+    return when (themeMode) {
+        "dark" -> "深色"
+        "light" -> "浅色"
+        else -> "跟随系统"
     }
 }
