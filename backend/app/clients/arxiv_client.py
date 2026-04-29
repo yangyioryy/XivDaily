@@ -47,6 +47,7 @@ class ArxivClient:
                 for category in entry.findall("atom:category", ATOM_NS)
                 if category.attrib.get("term")
             ]
+            primary_category = entry.find("arxiv:primary_category", ATOM_NS)
             entries.append(
                 {
                     "id": self._text(entry, "atom:id").rsplit("/", 1)[-1],
@@ -59,7 +60,8 @@ class ArxivClient:
                     "published_at": self._text(entry, "atom:published"),
                     "updated_at": self._text(entry, "atom:updated"),
                     "categories": categories,
-                    "primary_category": entry.find("arxiv:primary_category", ATOM_NS).attrib.get("term", categories[0] if categories else ""),
+                    # 某些返回可能缺主分类标签，首版回退到分类列表首项避免解析直接失败。
+                    "primary_category": primary_category.attrib.get("term", categories[0] if categories else "") if primary_category is not None else (categories[0] if categories else ""),
                     "source_url": source_url,
                     "pdf_url": pdf_url,
                 }
@@ -81,4 +83,3 @@ class ArxivClient:
             if link.attrib.get("title") == "pdf" or link.attrib.get("type") == "application/pdf":
                 return link.attrib.get("href", "")
         return ""
-

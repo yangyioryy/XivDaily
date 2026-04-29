@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+import httpx
+import pytest
+
+from app.ai.llm_gateway import LlmGateway
+
+
+def build_gateway(monkeypatch: pytest.MonkeyPatch, api_key: str | None = "test-key") -> LlmGateway:
+    settings = SimpleNamespace(
+        llm_api_key=api_key,
+        llm_model="gpt-5.4",
+        llm_base_url="https://example.test/v1",
+        llm_request_timeout_seconds=3,
+    )
+    monkeypatch.setattr("app.ai.llm_gateway.get_settings", lambda: settings)
+    return LlmGateway()
+
+
+@pytest.mark.anyio("asyncio")
+async def test_complete_degrades_without_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    gateway = build_gateway(monkeypatch, api_key=None)
+
+    result = await gateway.complete("hello", task_name="translation")
+
+    assert result.status == "degraded"
+    assert "未配置" in (result.warning or "")
+
+
+@pytest.mark.anyio("asyncio")
+async def test_complete_returns_success_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    gateway = build_gateway(monkeypatch)
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"choices": [{"message": {"content": "translated content"}}]}
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            assert url == "https://example.test/v1/chat/completions"
+            assert headers["Authorization"] == "Bearer test-key"
+            assert json["model"] == "gpt-5.4"
+            return FakeResponse()
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await gateway.complete("hello", task_name="translation")
+
+    assert result.status == "success"
+    assert result.text == "translated content"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_complete_degrades_after_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    gateway = build_gateway(monkeypatch)
+    attempts = {"count": 0}
+
+    class FailingClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]):
+            attempts["count"] += 1
+            raise httpx.ReadTimeout("timeout")
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FailingClient())
+
+    result = await gateway.complete("hello", task_name="translation")
+
+    assert attempts["count"] == 3
+    assert result.status == "degraded"
+    assert result.warning == "大模型调用失败，已使用本地降级结果。"

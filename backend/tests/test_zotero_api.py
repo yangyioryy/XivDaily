@@ -48,3 +48,15 @@ def test_zotero_export_api_returns_bibtex() -> None:
     app.dependency_overrides.clear()
     assert response.status_code == 200
     assert response.json()["exported_count"] == 1
+
+
+def test_zotero_sync_api_returns_sync_payload() -> None:
+    app.dependency_overrides[get_zotero_service] = lambda: FakeZoteroService()
+    client = TestClient(app)
+
+    response = client.post("/zotero/sync/2401.00001")
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()["paper_id"] == "2401.00001"
+    assert response.json()["status"] == "synced"
