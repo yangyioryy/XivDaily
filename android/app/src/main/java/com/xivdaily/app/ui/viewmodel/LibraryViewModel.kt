@@ -53,6 +53,43 @@ class LibraryViewModel(private val repository: PaperRepository) : ViewModel() {
         }
     }
 
+    fun deleteSelectedFavorites() {
+        val ids = _uiState.value.selectedPaperIds.toList()
+        if (ids.isEmpty()) {
+            setError("请先选择要删除的论文")
+            return
+        }
+        viewModelScope.launch {
+            runCatching { repository.deleteFavorites(ids) }
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            selectedPaperIds = emptySet(),
+                            isBatchMode = false,
+                            actionMessage = "已批量删除 ${ids.size} 条收藏",
+                            errorMessage = null,
+                        )
+                    }
+                }
+                .onFailure { error -> setError("批量删除失败：${error.message ?: "未知错误"}") }
+        }
+    }
+
+    fun syncFavoriteToZotero(paperId: String) {
+        viewModelScope.launch {
+            runCatching { repository.syncFavoriteToZotero(paperId) }
+                .onSuccess { synced ->
+                    _uiState.update {
+                        it.copy(
+                            actionMessage = "已同步到 Zotero：${synced.title}",
+                            errorMessage = null,
+                        )
+                    }
+                }
+                .onFailure { error -> setError("收藏同步失败：${error.message ?: "未知错误"}") }
+        }
+    }
+
     fun exportSelectedBibtex() {
         val ids = _uiState.value.selectedPaperIds.toList()
         if (ids.isEmpty()) {

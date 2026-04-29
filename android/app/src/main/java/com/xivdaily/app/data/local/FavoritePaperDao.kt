@@ -13,11 +13,17 @@ interface FavoritePaperDao {
     @Query("SELECT paperId FROM favorite_papers")
     suspend fun getFavoriteIds(): List<String>
 
+    @Query("SELECT * FROM favorite_papers WHERE paperId = :paperId LIMIT 1")
+    suspend fun getFavoriteById(paperId: String): FavoritePaperEntity?
+
     @Upsert
     suspend fun upsertFavorite(entity: FavoritePaperEntity)
 
     @Query("DELETE FROM favorite_papers WHERE paperId = :paperId")
     suspend fun deleteFavorite(paperId: String)
+
+    @Query("DELETE FROM favorite_papers WHERE paperId IN (:paperIds)")
+    suspend fun deleteFavorites(paperIds: List<String>)
 
     @Query("UPDATE favorite_papers SET zoteroSyncState = :syncState WHERE paperId = :paperId")
     suspend fun updateZoteroSyncState(paperId: String, syncState: String)

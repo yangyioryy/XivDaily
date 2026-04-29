@@ -32,6 +32,8 @@ fun LibraryScreen(
     onToggleSelection: (String) -> Unit,
     onChangeSyncFilter: (String) -> Unit,
     onDeleteFavorite: (String) -> Unit,
+    onDeleteSelected: () -> Unit,
+    onSyncFavorite: (String) -> Unit,
     onExportSelected: () -> Unit,
 ) {
     val filtered = uiState.favorites.filter {
@@ -51,8 +53,13 @@ fun LibraryScreen(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(text = "已选 ${uiState.selectedPaperIds.size} 项")
-                Button(onClick = onExportSelected, enabled = uiState.selectedPaperIds.isNotEmpty()) {
-                    Text("导出 BibTeX")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onDeleteSelected, enabled = uiState.selectedPaperIds.isNotEmpty()) {
+                        Text("批量删除")
+                    }
+                    Button(onClick = onExportSelected, enabled = uiState.selectedPaperIds.isNotEmpty()) {
+                        Text("导出 BibTeX")
+                    }
                 }
             }
         }
@@ -74,6 +81,7 @@ fun LibraryScreen(
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(text = "BibTeX 导出结果", fontWeight = FontWeight.Bold)
+                        Text(text = "首版出口：在收藏库中直接复制这段文本。")
                         Text(text = content.ifBlank { "未导出任何条目" })
                     }
                 }
@@ -88,6 +96,7 @@ fun LibraryScreen(
                 selected = favorite.paper.id in uiState.selectedPaperIds,
                 onToggleSelection = { onToggleSelection(favorite.paper.id) },
                 onDeleteFavorite = { onDeleteFavorite(favorite.paper.id) },
+                onSyncFavorite = { onSyncFavorite(favorite.paper.id) },
             )
         }
     }
@@ -99,6 +108,7 @@ private fun FavoritePaperCard(
     selected: Boolean,
     onToggleSelection: () -> Unit,
     onDeleteFavorite: () -> Unit,
+    onSyncFavorite: () -> Unit,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -108,7 +118,10 @@ private fun FavoritePaperCard(
             Text(text = favorite.paper.title, fontWeight = FontWeight.SemiBold)
             Text(text = "状态：${favorite.paper.zoteroSyncState} · 收藏于 ${favorite.savedAt.take(10)}")
             Text(text = if (selected) "已加入批量选择" else "点击加入批量选择")
-            Button(onClick = onDeleteFavorite) { Text("删除") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onSyncFavorite) { Text("同步 Zotero") }
+                Button(onClick = onDeleteFavorite) { Text("删除") }
+            }
         }
     }
 }

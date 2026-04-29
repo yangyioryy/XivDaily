@@ -75,6 +75,18 @@ class PaperRepository(
         favoritePaperDao.deleteFavorite(paperId)
     }
 
+    suspend fun deleteFavorites(paperIds: List<String>) {
+        if (paperIds.isNotEmpty()) {
+            favoritePaperDao.deleteFavorites(paperIds)
+        }
+    }
+
+    suspend fun syncFavoriteToZotero(paperId: String): PaperItem {
+        val favorite = favoritePaperDao.getFavoriteById(paperId)
+            ?: error("未找到要同步的收藏论文：$paperId")
+        return syncPaperToZotero(favorite.toPaperItem())
+    }
+
     suspend fun syncPaperToZotero(paper: PaperItem): PaperItem {
         // 同步前先落本地收藏，保证同步状态回写有稳定记录。
         saveFavorite(paper.copy(favoriteState = true))

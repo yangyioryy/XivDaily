@@ -97,6 +97,8 @@ fun AppNavGraph() {
                     onToggleSelection = libraryViewModel::togglePaperSelection,
                     onChangeSyncFilter = libraryViewModel::changeSyncFilter,
                     onDeleteFavorite = libraryViewModel::deleteFavorite,
+                    onDeleteSelected = libraryViewModel::deleteSelectedFavorites,
+                    onSyncFavorite = libraryViewModel::syncFavoriteToZotero,
                     onExportSelected = libraryViewModel::exportSelectedBibtex,
                 )
             }
