@@ -108,6 +108,9 @@ data class ZoteroConfigStatusDto(
     val configured: Boolean,
     @Json(name = "user_id") val userId: String?,
     @Json(name = "library_type") val libraryType: String?,
+    @Json(name = "target_collection_name") val targetCollectionName: String,
+    @Json(name = "target_collection_key") val targetCollectionKey: String?,
+    @Json(name = "target_collection_status") val targetCollectionStatus: String,
     val warning: String?,
 )
 

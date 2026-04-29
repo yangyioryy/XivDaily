@@ -37,5 +37,9 @@ data class FavoritePaperItem(
 data class IntegrationConfigStatus(
     val zoteroConfigured: Boolean,
     val zoteroUserId: String?,
+    val zoteroLibraryType: String?,
+    val zoteroTargetCollectionName: String,
+    val zoteroTargetCollectionKey: String?,
+    val zoteroTargetCollectionStatus: String,
     val llmConfigured: Boolean,
 )

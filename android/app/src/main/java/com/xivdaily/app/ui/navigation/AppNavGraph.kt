@@ -149,9 +149,27 @@ fun AppNavGraph(settingsViewModel: SettingsViewModel) {
                 val uiState by settingsViewModel.uiState.collectAsState()
                 SettingsScreen(
                     uiState = uiState,
-                    onToggleTheme = settingsViewModel::toggleThemeMode,
+                    onShowThemePicker = settingsViewModel::showThemePicker,
+                    onHideThemePicker = settingsViewModel::hideThemePicker,
+                    onSelectThemeMode = settingsViewModel::selectThemeMode,
+                    onShowLanguagePicker = settingsViewModel::showLanguagePicker,
+                    onHideLanguagePicker = settingsViewModel::hideLanguagePicker,
+                    onSelectLanguage = settingsViewModel::selectLanguage,
+                    onShowZoteroDetailDialog = settingsViewModel::showZoteroDetailDialog,
+                    onHideZoteroDetailDialog = settingsViewModel::hideZoteroDetailDialog,
+                    onShowLlmDetailDialog = settingsViewModel::showLlmDetailDialog,
+                    onHideLlmDetailDialog = settingsViewModel::hideLlmDetailDialog,
                     onUpdateDefaultCategory = settingsViewModel::updateDefaultCategory,
                     onUpdateDefaultDays = settingsViewModel::updateDefaultDays,
+                    onShowUpdateDialog = settingsViewModel::showUpdateDialog,
+                    onHideUpdateDialog = settingsViewModel::hideUpdateDialog,
+                    onShowAboutDialog = settingsViewModel::showAboutDialog,
+                    onHideAboutDialog = settingsViewModel::hideAboutDialog,
+                    onShowProfileDialog = settingsViewModel::showProfileDialog,
+                    onHideProfileDialog = settingsViewModel::hideProfileDialog,
+                    onShowClearCacheDialog = settingsViewModel::showClearCacheDialog,
+                    onHideClearCacheDialog = settingsViewModel::hideClearCacheDialog,
+                    onConfirmClearCache = settingsViewModel::clearCache,
                     onRefreshConfigStatus = settingsViewModel::refreshIntegrationStatus,
                 )
             }

@@ -62,7 +62,15 @@ internal open class FakePaperRepository(
     override suspend fun syncFavoriteToZotero(paperId: String): PaperItem = samplePaper(paperId)
     override suspend fun syncPaperToZotero(paper: PaperItem): PaperItem = paper.copy(zoteroSyncState = "synced")
     override suspend fun exportBibtex(paperIds: List<String>): String = "@misc{demo}"
-    override suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus = IntegrationConfigStatus(true, "12345678", true)
+    override suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus = IntegrationConfigStatus(
+        zoteroConfigured = true,
+        zoteroUserId = "12345678",
+        zoteroLibraryType = "user",
+        zoteroTargetCollectionName = "XivDaily",
+        zoteroTargetCollectionKey = "COLL1234",
+        zoteroTargetCollectionStatus = "ready",
+        llmConfigured = true,
+    )
 }
 
 internal fun samplePaper(id: String = "2401.00001"): PaperItem {

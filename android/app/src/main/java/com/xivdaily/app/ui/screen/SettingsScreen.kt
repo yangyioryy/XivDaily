@@ -33,11 +33,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,12 +59,44 @@ import com.xivdaily.app.ui.viewmodel.SettingsUiState
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
-    onToggleTheme: () -> Unit,
+    onShowThemePicker: () -> Unit,
+    onHideThemePicker: () -> Unit,
+    onSelectThemeMode: (String) -> Unit,
+    onShowLanguagePicker: () -> Unit,
+    onHideLanguagePicker: () -> Unit,
+    onSelectLanguage: (String) -> Unit,
+    onShowZoteroDetailDialog: () -> Unit,
+    onHideZoteroDetailDialog: () -> Unit,
+    onShowLlmDetailDialog: () -> Unit,
+    onHideLlmDetailDialog: () -> Unit,
     onUpdateDefaultCategory: (String) -> Unit,
     onUpdateDefaultDays: (Int) -> Unit,
+    onShowUpdateDialog: () -> Unit,
+    onHideUpdateDialog: () -> Unit,
+    onShowAboutDialog: () -> Unit,
+    onHideAboutDialog: () -> Unit,
+    onShowProfileDialog: () -> Unit,
+    onHideProfileDialog: () -> Unit,
+    onShowClearCacheDialog: () -> Unit,
+    onHideClearCacheDialog: () -> Unit,
+    onConfirmClearCache: () -> Unit,
     onRefreshConfigStatus: () -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
+    SettingsDialogs(
+        uiState = uiState,
+        onHideThemePicker = onHideThemePicker,
+        onSelectThemeMode = onSelectThemeMode,
+        onHideLanguagePicker = onHideLanguagePicker,
+        onSelectLanguage = onSelectLanguage,
+        onHideZoteroDetailDialog = onHideZoteroDetailDialog,
+        onHideLlmDetailDialog = onHideLlmDetailDialog,
+        onHideUpdateDialog = onHideUpdateDialog,
+        onHideAboutDialog = onHideAboutDialog,
+        onHideProfileDialog = onHideProfileDialog,
+        onHideClearCacheDialog = onHideClearCacheDialog,
+        onConfirmClearCache = onConfirmClearCache,
+    )
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -79,7 +113,7 @@ fun SettingsScreen(
             )
         }
         item {
-            ProfileCard()
+            ProfileCard(onClick = onShowProfileDialog)
         }
         item {
             SettingsSection(
@@ -112,7 +146,8 @@ fun SettingsScreen(
                             icon = Icons.Rounded.Language,
                             title = "语言",
                             subtitle = "文章摘要与界面默认语言",
-                            value = "简体中文",
+                            value = languageLabel(uiState.language),
+                            onClick = onShowLanguagePicker,
                         )
                     },
                 ),
@@ -126,14 +161,11 @@ fun SettingsScreen(
                         IntegrationStatusRow(
                             icon = Icons.Rounded.Science,
                             title = "Zotero 配置",
-                            subtitle = integrationSubtitle(
-                                configured = uiState.zoteroConfigured,
-                                failed = uiState.integrationStatusFailed,
-                                successText = "已准备好同步收藏论文",
-                                idleText = "尚未连接参考文献库",
-                            ),
+                            subtitle = zoteroSubtitle(uiState),
+                            value = zoteroCollectionBadge(uiState),
                             configured = uiState.zoteroConfigured,
                             failed = uiState.integrationStatusFailed,
+                            onClick = onShowZoteroDetailDialog,
                         )
                     },
                     {
@@ -146,8 +178,10 @@ fun SettingsScreen(
                                 successText = "摘要翻译与趋势总结可用",
                                 idleText = "摘要翻译和总结暂不可用",
                             ),
+                            value = if (uiState.llmConfigured) "已启用" else "未启用",
                             configured = uiState.llmConfigured,
                             failed = uiState.integrationStatusFailed,
+                            onClick = onShowLlmDetailDialog,
                         )
                     },
                 ),
@@ -164,7 +198,7 @@ fun SettingsScreen(
                             subtitle = "支持浅色、深色与跟随系统",
                             value = themeModeLabel(uiState.themeMode),
                             highlighted = true,
-                            onClick = onToggleTheme,
+                            onClick = onShowThemePicker,
                         )
                     },
                     {
@@ -173,6 +207,7 @@ fun SettingsScreen(
                             title = "字体大小",
                             subtitle = "当前版本采用统一阅读字号体系",
                             value = "标准",
+                            enabled = false,
                         )
                     },
                 ),
@@ -187,7 +222,8 @@ fun SettingsScreen(
                             icon = Icons.Rounded.DeleteSweep,
                             title = "清除缓存",
                             subtitle = "清理本地缓存的列表与摘要内容",
-                            value = "手动清理",
+                            value = uiState.cacheStatusText,
+                            onClick = onShowClearCacheDialog,
                         )
                     },
                     {
@@ -196,6 +232,7 @@ fun SettingsScreen(
                             title = "检查更新",
                             subtitle = "查看当前版本与后续更新说明",
                             value = "v${BuildConfig.VERSION_NAME}",
+                            onClick = onShowUpdateDialog,
                         )
                     },
                     {
@@ -203,6 +240,7 @@ fun SettingsScreen(
                             icon = Icons.Rounded.Info,
                             title = "关于我们",
                             subtitle = "了解 XivDaily 的定位与版本信息",
+                            onClick = onShowAboutDialog,
                         )
                     },
                 ),
@@ -272,10 +310,14 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun ProfileCard() {
+private fun ProfileCard(
+    onClick: () -> Unit,
+) {
     val spacing = MaterialTheme.xivSpacing
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
@@ -406,11 +448,6 @@ private fun PreferenceChipsRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Icon(
-                imageVector = Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
             values.forEach { value ->
@@ -463,11 +500,6 @@ private fun PreferenceChipsRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Icon(
-                imageVector = Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
             values.forEach { value ->
@@ -493,14 +525,16 @@ private fun SettingsActionRow(
     subtitle: String,
     value: String? = null,
     highlighted: Boolean = false,
+    enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
 ) {
     val spacing = MaterialTheme.xivSpacing
+    val clickable = onClick != null && enabled
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(
-                if (onClick != null) {
+                if (clickable) {
                     Modifier.clickable(onClick = onClick)
                 } else {
                     Modifier
@@ -519,7 +553,7 @@ private fun SettingsActionRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = subtitle,
@@ -531,15 +565,17 @@ private fun SettingsActionRow(
             Text(
                 text = it,
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline,
                 textAlign = TextAlign.End,
             )
         }
-        Icon(
-            imageVector = Icons.Rounded.ChevronRight,
-            contentDescription = null,
-            tint = if (onClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (enabled) {
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = if (clickable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -548,8 +584,10 @@ private fun IntegrationStatusRow(
     icon: ImageVector,
     title: String,
     subtitle: String,
+    value: String,
     configured: Boolean,
     failed: Boolean,
+    onClick: () -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
     val statusColor = when {
@@ -565,6 +603,7 @@ private fun IntegrationStatusRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(horizontal = spacing.md, vertical = spacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
@@ -582,6 +621,12 @@ private fun IntegrationStatusRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.End,
+        )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -651,7 +696,7 @@ private fun LeadingIcon(
 }
 
 private fun formatDays(days: Int): String {
-    return if (days == 1) "24h" else "$days Days"
+    return if (days == 1) "24h" else "$days 天"
 }
 
 private fun themeModeLabel(themeMode: String): String {
@@ -659,6 +704,13 @@ private fun themeModeLabel(themeMode: String): String {
         "dark" -> "深色"
         "light" -> "浅色"
         else -> "跟随系统"
+    }
+}
+
+private fun languageLabel(language: String): String {
+    return when (language) {
+        "en-US" -> "English"
+        else -> "简体中文"
     }
 }
 
@@ -673,4 +725,177 @@ private fun integrationSubtitle(
         configured -> successText
         else -> idleText
     }
+}
+
+private fun zoteroCollectionBadge(uiState: SettingsUiState): String {
+    return when (uiState.zoteroTargetCollectionStatus) {
+        "created" -> "已创建"
+        "ready" -> "已就绪"
+        "error" -> "异常"
+        "not_configured" -> "未配置"
+        else -> "待确认"
+    }
+}
+
+private fun zoteroSubtitle(uiState: SettingsUiState): String {
+    return when {
+        uiState.integrationStatusFailed -> "状态刷新异常，请稍后重试"
+        uiState.zoteroConfigured -> "统一归档到 ${uiState.zoteroTargetCollectionName}"
+        else -> "尚未连接参考文献库"
+    }
+}
+
+private fun buildZoteroDetailMessage(uiState: SettingsUiState): String {
+    return buildString {
+        appendLine("配置状态：${if (uiState.zoteroConfigured) "已配置" else "未配置"}")
+        appendLine("目标集合：${uiState.zoteroTargetCollectionName}")
+        appendLine("集合状态：${zoteroCollectionBadge(uiState)}")
+        appendLine("库类型：${uiState.zoteroLibraryType ?: "未知"}")
+        append("用户 ID：${uiState.zoteroUserId ?: "未提供"}")
+        uiState.zoteroTargetCollectionKey?.takeIf { it.isNotBlank() }?.let { key ->
+            appendLine()
+            append("集合 Key：$key")
+        }
+    }
+}
+
+@Composable
+private fun SettingsDialogs(
+    uiState: SettingsUiState,
+    onHideThemePicker: () -> Unit,
+    onSelectThemeMode: (String) -> Unit,
+    onHideLanguagePicker: () -> Unit,
+    onSelectLanguage: (String) -> Unit,
+    onHideZoteroDetailDialog: () -> Unit,
+    onHideLlmDetailDialog: () -> Unit,
+    onHideUpdateDialog: () -> Unit,
+    onHideAboutDialog: () -> Unit,
+    onHideProfileDialog: () -> Unit,
+    onHideClearCacheDialog: () -> Unit,
+    onConfirmClearCache: () -> Unit,
+) {
+    if (uiState.isThemePickerVisible) {
+        OptionDialog(
+            title = "选择主题模式",
+            options = listOf("system" to "跟随系统", "light" to "浅色", "dark" to "深色"),
+            selectedValue = uiState.themeMode,
+            onDismiss = onHideThemePicker,
+            onSelect = onSelectThemeMode,
+        )
+    }
+    if (uiState.isLanguagePickerVisible) {
+        OptionDialog(
+            title = "选择语言",
+            options = listOf("zh-CN" to "简体中文"),
+            selectedValue = uiState.language,
+            onDismiss = onHideLanguagePicker,
+            onSelect = onSelectLanguage,
+        )
+    }
+    if (uiState.isUpdateDialogVisible) {
+        MessageDialog(
+            title = "检查更新",
+            message = "当前版本：v${BuildConfig.VERSION_NAME}\n最新版本：v${BuildConfig.VERSION_NAME}\n更新时间：今天\n当前已经是最新版本。",
+            onDismiss = onHideUpdateDialog,
+        )
+    }
+    if (uiState.isAboutDialogVisible) {
+        MessageDialog(
+            title = "关于 XivDaily",
+            message = "XivDaily 是面向研究阅读场景的每日论文工作台。\n当前版本聚焦首页流、收藏同步和趋势摘要体验。",
+            onDismiss = onHideAboutDialog,
+        )
+    }
+    if (uiState.isProfileDialogVisible) {
+        MessageDialog(
+            title = "个人资料",
+            message = "当前版本先提供只读资料卡反馈。\n后续会补充头像、名称和阅读偏好编辑能力。",
+            onDismiss = onHideProfileDialog,
+        )
+    }
+    if (uiState.isClearCacheDialogVisible) {
+        AlertDialog(
+            onDismissRequest = onHideClearCacheDialog,
+            title = { Text("确认清理缓存") },
+            text = { Text("将清理首页列表与趋势提示缓存反馈，不影响收藏库与偏好设置。") },
+            confirmButton = {
+                TextButton(onClick = onConfirmClearCache) {
+                    Text("开始清理")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onHideClearCacheDialog) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+    if (uiState.isZoteroDetailDialogVisible) {
+        MessageDialog(
+            title = "Zotero 统一归档集合",
+            message = buildZoteroDetailMessage(uiState),
+            onDismiss = onHideZoteroDetailDialog,
+        )
+    }
+    if (uiState.isLlmDetailDialogVisible) {
+        MessageDialog(
+            title = "大模型配置详情",
+            message = if (uiState.llmConfigured) {
+                "当前已启用摘要翻译与趋势总结能力。"
+            } else {
+                "当前未启用大模型配置，趋势与翻译会回退到降级结果。"
+            },
+            onDismiss = onHideLlmDetailDialog,
+        )
+    }
+}
+
+@Composable
+private fun OptionDialog(
+    title: String,
+    options: List<Pair<String, String>>,
+    selectedValue: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                options.forEach { (value, label) ->
+                    SettingsActionRow(
+                        icon = if (selectedValue == value) Icons.Rounded.AutoAwesome else Icons.Rounded.ChevronRight,
+                        title = label,
+                        subtitle = if (selectedValue == value) "当前已选中" else "点击切换到该选项",
+                        enabled = true,
+                        onClick = { onSelect(value) },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        },
+    )
+}
+
+@Composable
+private fun MessageDialog(
+    title: String,
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("知道了")
+            }
+        },
+    )
 }

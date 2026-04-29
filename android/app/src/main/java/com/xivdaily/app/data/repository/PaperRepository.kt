@@ -121,6 +121,10 @@ class PaperRepository(
         return IntegrationConfigStatus(
             zoteroConfigured = zotero.configured,
             zoteroUserId = zotero.userId,
+            zoteroLibraryType = zotero.libraryType,
+            zoteroTargetCollectionName = zotero.targetCollectionName,
+            zoteroTargetCollectionKey = zotero.targetCollectionKey,
+            zoteroTargetCollectionStatus = zotero.targetCollectionStatus,
             llmConfigured = ai.configured,
         )
     }
