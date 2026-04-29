@@ -6,6 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -153,27 +159,37 @@ fun HomeScreen(
 @Composable
 private fun HomeHeroSection(uiState: HomeUiState) {
     val spacing = MaterialTheme.xivSpacing
-    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        Text(
-            text = "首页",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-            text = "把每日论文流整理成一眼能读懂的研究工作台。",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.primaryContainer,
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             Text(
-                text = "当前聚焦：${uiState.selectedCategory} · ${formatDays(uiState.selectedDays)}",
-                modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                text = "首页",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
             )
+            Text(
+                text = "把每日论文流整理成一眼能读懂的研究工作台。",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Text(
+                    text = "当前聚焦：${uiState.selectedCategory} · ${formatDays(uiState.selectedDays)}",
+                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
         }
     }
 }
@@ -192,7 +208,7 @@ private fun ExploreControlCard(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
@@ -264,10 +280,12 @@ private fun TrendSummaryCard(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
+            modifier = Modifier
+                .padding(horizontal = spacing.md, vertical = spacing.lg)
+                .animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
             Row(
@@ -319,7 +337,13 @@ private fun TrendSummaryCard(
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
-            if (uiState.summaryExpanded) {
+            // 趋势详情只做轻量展开/收起，避免打断首页连续浏览节奏。
+            AnimatedVisibility(
+                visible = uiState.summaryExpanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.md)) {
                 summary.items.forEach { item ->
                     val representativeTitles = item.representativePaperIds.mapNotNull { paperId ->
                         uiState.papers.firstOrNull { it.id == paperId }?.title
@@ -349,6 +373,7 @@ private fun TrendSummaryCard(
                             )
                         }
                     }
+                }
                 }
             }
             TextButton(onClick = onToggleSummary) {
@@ -400,13 +425,14 @@ private fun HomePaperCard(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .animateContentSize()
                     .combinedClickable(
                         onClick = onOpenPaper,
                         onDoubleClick = onFavorite,
                     ),
                 shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             ) {
                 Column(
                     modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),

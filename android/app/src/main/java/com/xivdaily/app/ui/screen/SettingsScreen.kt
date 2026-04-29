@@ -3,6 +3,7 @@ package com.xivdaily.app.ui.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -106,11 +107,7 @@ fun SettingsScreen(
     ) {
         item {
             Spacer(modifier = Modifier.height(spacing.xs))
-            Text(
-                text = "设置",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+            SettingsHeroSection()
         }
         item {
             ProfileCard(onClick = onShowProfileDialog)
@@ -320,11 +317,12 @@ private fun ProfileCard(
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .animateContentSize()
                 .padding(horizontal = spacing.md, vertical = spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.md),
@@ -394,9 +392,13 @@ private fun SettingsSection(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize()
+            ) {
                 rows.forEachIndexed { index, row ->
                     row()
                     if (index != rows.lastIndex) {
@@ -670,6 +672,34 @@ private fun FeedbackBanner(
             style = MaterialTheme.typography.bodySmall,
             color = foreground,
         )
+    }
+}
+
+@Composable
+private fun SettingsHeroSection() {
+    val spacing = MaterialTheme.xivSpacing
+    // 设置页头部与首页、收藏页统一为白底信息卡，减少页面风格割裂。
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
+        ) {
+            Text(
+                text = "设置",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = "统一管理偏好、集成状态与阅读工作流配置。",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

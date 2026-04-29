@@ -2,6 +2,10 @@ package com.xivdaily.app.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -86,24 +90,29 @@ fun LibraryScreen(
                 onChangeSyncFilter = onChangeSyncFilter,
             )
         }
-        uiState.actionMessage?.let { message ->
+        if (uiState.actionMessage != null) {
             item {
-                StatusCard(
-                    title = "操作反馈",
-                    message = message,
-                    background = MaterialTheme.colorScheme.primaryContainer,
-                    foreground = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                // 操作反馈只做淡入淡出，减少列表内容被硬切打断的感觉。
+                AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
+                    StatusCard(
+                        title = "操作反馈",
+                        message = uiState.actionMessage,
+                        background = MaterialTheme.colorScheme.primaryContainer,
+                        foreground = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
         }
-        uiState.errorMessage?.let { message ->
+        if (uiState.errorMessage != null) {
             item {
-                StatusCard(
-                    title = "操作提醒",
-                    message = message,
-                    background = MaterialTheme.colorScheme.tertiaryContainer,
-                    foreground = MaterialTheme.colorScheme.onTertiaryContainer,
-                )
+                AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
+                    StatusCard(
+                        title = "操作提醒",
+                        message = uiState.errorMessage,
+                        background = MaterialTheme.colorScheme.tertiaryContainer,
+                        foreground = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                }
             }
         }
         uiState.exportContent?.let { content ->
@@ -162,27 +171,37 @@ private fun LibraryHeroSection(
     filteredCount: Int,
 ) {
     val spacing = MaterialTheme.xivSpacing
-    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        Text(
-            text = "收藏库",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-            text = "把值得长期跟进的论文整理成可同步、可导出的个人资料库。",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.primaryContainer,
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             Text(
-                text = "当前筛选：${filterLabel(uiState.syncFilter)} · ${filteredCount} 条结果",
-                modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                text = "收藏库",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
             )
+            Text(
+                text = "把值得长期跟进的论文整理成可同步、可导出的个人资料库。",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Text(
+                    text = "当前筛选：${filterLabel(uiState.syncFilter)} · ${filteredCount} 条结果",
+                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
         }
     }
 }
@@ -199,10 +218,12 @@ private fun LibraryToolbar(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
+            modifier = Modifier
+                .padding(horizontal = spacing.md, vertical = spacing.lg)
+                .animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
             Row(
@@ -275,7 +296,7 @@ private fun LibraryFilterToolbar(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
@@ -415,10 +436,12 @@ private fun FavoritePaperCard(
             .clickable(onClick = onToggleSelection),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
+            modifier = Modifier
+                .padding(horizontal = spacing.md, vertical = spacing.lg)
+                .animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             Row(
