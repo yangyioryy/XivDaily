@@ -1,28 +1,38 @@
 package com.xivdaily.app.ui.navigation
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.xivdaily.app.R
+import com.xivdaily.app.XivDailyApplication
+import com.xivdaily.app.ui.screen.HomeScreen
 import com.xivdaily.app.ui.screen.LibraryScreen
 import com.xivdaily.app.ui.screen.SettingsScreen
-import com.xivdaily.app.ui.screen.HomeScreen
+import com.xivdaily.app.ui.viewmodel.HomeViewModel
+import com.xivdaily.app.ui.viewmodel.LibraryViewModel
+import com.xivdaily.app.ui.viewmodel.SettingsViewModel
 
 private data class BottomTab(val route: String, val labelRes: Int)
 
 @Composable
 fun AppNavGraph() {
+    val app = LocalContext.current.applicationContext as XivDailyApplication
     val navController = rememberNavController()
     val tabs = listOf(
         BottomTab("home", R.string.tab_home),
@@ -60,9 +70,53 @@ fun AppNavGraph() {
             startDestination = "home",
             modifier = Modifier.padding(paddingValues),
         ) {
-            composable("home") { HomeScreen() }
-            composable("library") { LibraryScreen() }
-            composable("settings") { SettingsScreen() }
+            composable("home") {
+                val homeViewModel: HomeViewModel = viewModel(
+                    factory = viewModelFactory { HomeViewModel(app.container.paperRepository) }
+                )
+                val uiState by homeViewModel.uiState.collectAsState()
+                HomeScreen(
+                    uiState = uiState,
+                    onKeywordChange = homeViewModel::updateKeyword,
+                    onCategorySelect = homeViewModel::selectCategory,
+                    onDaysSelect = homeViewModel::selectDays,
+                    onTranslate = homeViewModel::translatePaper,
+                    onFavorite = homeViewModel::toggleFavorite,
+                    onSyncToZotero = homeViewModel::syncToZotero,
+                    onToggleSummary = homeViewModel::toggleSummaryExpanded,
+                    onDismissSummary = homeViewModel::dismissSummary,
+                )
+            }
+            composable("library") {
+                val libraryViewModel: LibraryViewModel = viewModel(
+                    factory = viewModelFactory { LibraryViewModel(app.container.paperRepository) }
+                )
+                val uiState by libraryViewModel.uiState.collectAsState()
+                LibraryScreen(
+                    uiState = uiState,
+                    onToggleSelection = libraryViewModel::togglePaperSelection,
+                    onChangeSyncFilter = libraryViewModel::changeSyncFilter,
+                    onDeleteFavorite = libraryViewModel::deleteFavorite,
+                    onExportSelected = libraryViewModel::exportSelectedBibtex,
+                )
+            }
+            composable("settings") {
+                val settingsViewModel: SettingsViewModel = viewModel()
+                val uiState by settingsViewModel.uiState.collectAsState()
+                SettingsScreen(
+                    uiState = uiState,
+                    onToggleTheme = settingsViewModel::toggleThemeMode,
+                    onToggleZoteroConfigured = settingsViewModel::toggleZoteroConfigured,
+                    onToggleLlmConfigured = settingsViewModel::toggleLlmConfigured,
+                )
+            }
         }
+    }
+}
+
+private fun <T : ViewModel> viewModelFactory(create: () -> T): ViewModelProvider.Factory {
+    return object : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <VM : ViewModel> create(modelClass: Class<VM>): VM = create() as VM
     }
 }

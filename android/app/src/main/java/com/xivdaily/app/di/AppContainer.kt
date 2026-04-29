@@ -17,5 +17,5 @@ class AppContainer(private val context: Context) {
     ).build()
 
     val userPreferencesRepository = UserPreferencesRepository(context)
-    val paperRepository = PaperRepository(apiService)
+    val paperRepository = PaperRepository(apiService, database.favoritePaperDao())
 }
