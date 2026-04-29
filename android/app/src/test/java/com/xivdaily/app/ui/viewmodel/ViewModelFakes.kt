@@ -34,10 +34,13 @@ internal open class FakePaperRepository(
     private val favoritesFlow: Flow<List<FavoritePaperItem>> = flowOf(emptyList()),
 ) : PaperRepositoryContract {
     var listRequests: MutableList<Triple<String?, String?, Int>> = mutableListOf()
+    val homePapers: MutableList<PaperItem> = mutableListOf()
+    val savedFavoriteIds: MutableList<String> = mutableListOf()
+    val deletedFavoriteIds: MutableList<String> = mutableListOf()
 
     override suspend fun listHomePapers(keyword: String?, category: String?, days: Int): List<PaperItem> {
         listRequests.add(Triple(keyword, category, days))
-        return emptyList()
+        return homePapers.toList()
     }
 
     override suspend fun getTrendSummary(category: String?, days: Int): TrendSummary {
@@ -46,8 +49,13 @@ internal open class FakePaperRepository(
 
     override suspend fun translatePaper(paper: PaperItem): PaperItem = paper.copy(translatedSummary = "translated")
     override fun observeFavorites(): Flow<List<FavoritePaperItem>> = favoritesFlow
-    override suspend fun saveFavorite(paper: PaperItem) {}
-    override suspend fun deleteFavorite(paperId: String) {}
+    override suspend fun saveFavorite(paper: PaperItem) {
+        savedFavoriteIds += paper.id
+    }
+
+    override suspend fun deleteFavorite(paperId: String) {
+        deletedFavoriteIds += paperId
+    }
     override suspend fun deleteFavorites(paperIds: List<String>) {}
     override suspend fun syncFavoriteToZotero(paperId: String): PaperItem = samplePaper(paperId)
     override suspend fun syncPaperToZotero(paper: PaperItem): PaperItem = paper.copy(zoteroSyncState = "synced")

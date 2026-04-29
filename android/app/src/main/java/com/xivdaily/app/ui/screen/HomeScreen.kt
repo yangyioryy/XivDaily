@@ -1,9 +1,11 @@
 package com.xivdaily.app.ui.screen
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -31,12 +33,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xivdaily.app.data.model.PaperItem
@@ -53,6 +60,7 @@ fun HomeScreen(
     onKeywordChange: (String) -> Unit,
     onCategorySelect: (String) -> Unit,
     onDaysSelect: (Int) -> Unit,
+    onDismissPaper: (PaperItem) -> Unit,
     onTranslate: (PaperItem) -> Unit,
     onFavorite: (PaperItem) -> Unit,
     onSyncToZotero: (PaperItem) -> Unit,
@@ -60,6 +68,7 @@ fun HomeScreen(
     onDismissSummary: () -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
+    val uriHandler = LocalUriHandler.current
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -91,7 +100,7 @@ fun HomeScreen(
         uiState.actionMessage?.let { message ->
             item {
                 InlineMessageCard(
-                    message = message,
+                    message = message.text,
                     background = MaterialTheme.colorScheme.primaryContainer,
                     foreground = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
@@ -123,6 +132,8 @@ fun HomeScreen(
         items(uiState.papers, key = { it.id }) { paper ->
             HomePaperCard(
                 paper = paper,
+                onOpenPaper = { uriHandler.openUri(paper.sourceUrl) },
+                onDismiss = { onDismissPaper(paper) },
                 onTranslate = { onTranslate(paper) },
                 onFavorite = { onFavorite(paper) },
                 onSyncToZotero = { onSyncToZotero(paper) },
@@ -325,69 +336,180 @@ private fun TrendSummaryCard(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun HomePaperCard(
     paper: PaperItem,
+    onOpenPaper: () -> Unit,
+    onDismiss: () -> Unit,
     onTranslate: () -> Unit,
     onFavorite: () -> Unit,
     onSyncToZotero: () -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(spacing.sm),
-        ) {
-            Text(
-                text = paper.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+    val dismissState = rememberSwipeToDismissBoxState(
+        positionalThreshold = { distance -> distance * 0.35f },
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    // 右滑只触发同步提示，不直接把卡片从列表中移除。
+                    onSyncToZotero()
+                    false
+                }
+                SwipeToDismissBoxValue.EndToStart -> true
+                SwipeToDismissBoxValue.Settled -> true
+            }
+        },
+    )
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+            onDismiss()
+        }
+    }
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            SwipeHintBackground(
+                dismissValue = dismissState.dismissDirection,
+                isSettled = dismissState.currentValue == SwipeToDismissBoxValue.Settled,
             )
-            Text(
-                text = paper.authors.joinToString(", "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+        },
+        content = {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = onOpenPaper,
+                        onDoubleClick = onFavorite,
+                    ),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = spacing.xs),
             ) {
-                Text(
-                    text = "${paper.primaryCategory} · ${paper.publishedAt.take(10)} · Zotero ${paper.zoteroSyncState}",
-                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.xs),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                Column(
+                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                ) {
+                    Text(
+                        text = paper.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = paper.authors.joinToString(", "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    ) {
+                        Text(
+                            text = "${paper.primaryCategory} · ${paper.publishedAt.take(10)} · Zotero ${paper.zoteroSyncState}",
+                            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.xs),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                    Text(
+                        text = paper.translatedSummary ?: paper.summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "点击查看原文，双击快速收藏，右滑同步，左滑移出当前流",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                        ActionButton(
+                            icon = Icons.Rounded.Translate,
+                            label = "翻译",
+                            onClick = onTranslate,
+                        )
+                        ActionButton(
+                            icon = Icons.Rounded.BookmarkBorder,
+                            label = if (paper.favoriteState) "取消收藏" else "收藏",
+                            onClick = onFavorite,
+                        )
+                        ActionButton(
+                            icon = Icons.Rounded.Sync,
+                            label = "同步",
+                            onClick = onSyncToZotero,
+                        )
+                    }
+                }
             }
-            Text(
-                text = paper.translatedSummary ?: paper.summary,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+        },
+    )
+}
+
+@Composable
+private fun SwipeHintBackground(
+    dismissValue: SwipeToDismissBoxValue,
+    isSettled: Boolean,
+) {
+    val spacing = MaterialTheme.xivSpacing
+    val (background, foreground, icon, text, alignment) = when {
+        isSettled || dismissValue == SwipeToDismissBoxValue.Settled -> {
+            SwipeHintVisual(
+                background = MaterialTheme.colorScheme.surfaceVariant,
+                foreground = MaterialTheme.colorScheme.onSurfaceVariant,
+                icon = Icons.Rounded.ChevronRight,
+                text = "左右滑动可触发快捷操作",
+                alignment = Alignment.Center,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                ActionButton(
-                    icon = Icons.Rounded.Translate,
-                    label = "翻译",
-                    onClick = onTranslate,
-                )
-                ActionButton(
-                    icon = Icons.Rounded.BookmarkBorder,
-                    label = if (paper.favoriteState) "取消收藏" else "收藏",
-                    onClick = onFavorite,
-                )
-                ActionButton(
-                    icon = Icons.Rounded.Sync,
-                    label = "同步",
-                    onClick = onSyncToZotero,
-                )
-            }
+        }
+        dismissValue == SwipeToDismissBoxValue.StartToEnd -> {
+            SwipeHintVisual(
+                background = XivDailySuccess.copy(alpha = 0.18f),
+                foreground = XivDailySuccess,
+                icon = Icons.Rounded.Sync,
+                text = "右滑同步到 Zotero",
+                alignment = Alignment.CenterStart,
+            )
+        }
+        else -> {
+            SwipeHintVisual(
+                background = XivDailyWarning.copy(alpha = 0.18f),
+                foreground = XivDailyWarning,
+                icon = Icons.Rounded.ChevronRight,
+                text = "左滑移出当前流",
+                alignment = Alignment.CenterEnd,
+            )
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(color = background, shape = MaterialTheme.shapes.large)
+            .padding(horizontal = spacing.md, vertical = spacing.lg),
+        contentAlignment = alignment,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = foreground,
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                color = foreground,
+            )
         }
     }
 }
+
+private data class SwipeHintVisual(
+    val background: Color,
+    val foreground: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val text: String,
+    val alignment: Alignment,
+)
 
 @Composable
 private fun InlineMessageCard(

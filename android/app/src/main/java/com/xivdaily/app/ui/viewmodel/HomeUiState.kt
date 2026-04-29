@@ -3,6 +3,11 @@ package com.xivdaily.app.ui.viewmodel
 import com.xivdaily.app.data.model.PaperItem
 import com.xivdaily.app.data.model.TrendSummary
 
+data class HomeActionMessage(
+    val id: Long,
+    val text: String,
+)
+
 data class HomeUiState(
     val categories: List<String> = listOf("cs.CV", "cs.LG", "cs.AI", "cs.CL"),
     val dayOptions: List<Int> = listOf(1, 3, 7, 30),
@@ -15,6 +20,6 @@ data class HomeUiState(
     val dismissedSummary: Boolean = false,
     val isLoading: Boolean = false,
     val isSummaryLoading: Boolean = false,
-    val actionMessage: String? = null,
+    val actionMessage: HomeActionMessage? = null,
     val errorMessage: String? = null,
 )

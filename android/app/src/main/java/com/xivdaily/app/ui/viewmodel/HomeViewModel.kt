@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.xivdaily.app.data.datastore.UserPreferencesRepositoryContract
 import com.xivdaily.app.data.model.PaperItem
 import com.xivdaily.app.data.repository.PaperRepositoryContract
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +21,8 @@ class HomeViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private var nextActionMessageId = 0L
+    private var actionMessageJob: Job? = null
 
     init {
         preferencesRepository.preferences
@@ -60,6 +64,22 @@ class HomeViewModel(
         _uiState.update { it.copy(dismissedSummary = true) }
     }
 
+    fun dismissPaperFromFeed(paper: PaperItem) {
+        // 左滑只影响首页当前流，不触碰收藏库实体，避免误删用户已收藏论文。
+        _uiState.update { state ->
+            state.copy(
+                papers = state.papers.filterNot { it.id == paper.id },
+                errorMessage = null,
+            )
+        }
+        val message = if (paper.favoriteState) {
+            "已从当前流移出，收藏库保留不变"
+        } else {
+            "已从当前流移出"
+        }
+        showActionMessage(message)
+    }
+
     fun translatePaper(paper: PaperItem) {
         viewModelScope.launch {
             runCatching { repository.translatePaper(paper) }
@@ -67,10 +87,10 @@ class HomeViewModel(
                     _uiState.update { state ->
                         state.copy(
                             papers = state.papers.map { if (it.id == translated.id) translated else it },
-                            actionMessage = "摘要翻译已完成",
                             errorMessage = null,
                         )
                     }
+                    showActionMessage("摘要翻译已完成")
                 }
                 .onFailure { error -> setError(mapUserFriendlyError("摘要翻译暂时不可用", error)) }
         }
@@ -90,10 +110,10 @@ class HomeViewModel(
                 _uiState.update { state ->
                     state.copy(
                         papers = state.papers.map { if (it.id == updated.id) updated else it },
-                        actionMessage = if (updated.favoriteState) "已加入收藏库" else "已取消收藏",
                         errorMessage = null,
                     )
                 }
+                showActionMessage(if (updated.favoriteState) "已加入收藏库" else "已取消收藏")
             }.onFailure { error -> setError(mapUserFriendlyError("收藏操作暂时失败", error)) }
         }
     }
@@ -105,10 +125,16 @@ class HomeViewModel(
                     _uiState.update { state ->
                         state.copy(
                             papers = state.papers.map { if (it.id == synced.id) synced else it },
-                            actionMessage = if (synced.zoteroSyncState == "synced") "已同步到 Zotero" else "Zotero 同步暂未完成",
                             errorMessage = null,
                         )
                     }
+                    showActionMessage(
+                        if (synced.zoteroSyncState == "synced") {
+                            "已同步到 Zotero"
+                        } else {
+                            "Zotero 同步暂未完成"
+                        }
+                    )
                 }
                 .onFailure { error -> setError(mapUserFriendlyError("Zotero 同步暂时失败", error)) }
         }
@@ -120,7 +146,7 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching {
                 repository.listHomePapers(
-                    keyword = current.searchKeyword,
+                    keyword = current.searchKeyword.takeIf { it.isNotBlank() },
                     category = current.selectedCategory,
                     days = current.selectedDays,
                 )
@@ -150,6 +176,27 @@ class HomeViewModel(
 
     private fun setError(message: String) {
         _uiState.update { it.copy(errorMessage = message) }
+    }
+
+    private fun showActionMessage(message: String) {
+        // 用唯一 id 保护超时清理，避免旧协程把新提示提前清掉。
+        val messageId = ++nextActionMessageId
+        actionMessageJob?.cancel()
+        _uiState.update { it.copy(actionMessage = HomeActionMessage(messageId, message), errorMessage = null) }
+        actionMessageJob = viewModelScope.launch {
+            delay(ACTION_MESSAGE_TIMEOUT_MS)
+            _uiState.update { state ->
+                if (state.actionMessage?.id == messageId) {
+                    state.copy(actionMessage = null)
+                } else {
+                    state
+                }
+            }
+        }
+    }
+
+    private companion object {
+        const val ACTION_MESSAGE_TIMEOUT_MS = 2500L
     }
 }
 

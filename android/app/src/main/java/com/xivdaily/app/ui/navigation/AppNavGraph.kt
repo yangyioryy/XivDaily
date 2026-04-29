@@ -121,6 +121,7 @@ fun AppNavGraph(settingsViewModel: SettingsViewModel) {
                     onKeywordChange = homeViewModel::updateKeyword,
                     onCategorySelect = homeViewModel::selectCategory,
                     onDaysSelect = homeViewModel::selectDays,
+                    onDismissPaper = homeViewModel::dismissPaperFromFeed,
                     onTranslate = homeViewModel::translatePaper,
                     onFavorite = homeViewModel::toggleFavorite,
                     onSyncToZotero = homeViewModel::syncToZotero,
