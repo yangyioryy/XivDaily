@@ -3,17 +3,14 @@
 ## 后端环境
 
 - Python 后端统一使用 `xivdaily` conda 环境。
-- 当前仓库还没有正式 FastAPI 工程，后续搭建时必须在该环境内安装依赖，
-  避免误装到 base 环境。
-- 本机开发期的大模型密钥来源允许读取项目根目录下的
-  `openai开发密钥.txt`，但只能作为人工录入或环境注入来源，不得在代码中
-  直接硬编码文件路径读取明文后再提交。
+- 当前仓库已经包含可运行的 FastAPI 工程、Alembic 迁移与测试集。
+- 本机敏感配置只允许通过 `backend/.env` 或运行时环境变量注入，不得把密钥写入代码、CSV、README 或日志。
 
 ## Android 环境
 
-- 当前仓库还没有正式 Android Gradle 工程。
-- 已确认本机存在 JDK，但尚未确认 Android SDK 与 Gradle CLI 完整可用，
-  因此后续搭建脚手架后要优先补环境验证。
+- 当前仓库已经包含可构建的 Android Gradle 工程。
+- Windows 中文路径构建依赖 `android.overridePathCheck=true`，这是当前仓库的已知本机兼容设置。
+- 本机当前通过 `android/gradlew.bat --no-daemon :app:assembleDebug` 可产出 debug APK。
 
 ## 运行边界
 
@@ -22,7 +19,5 @@
 
 ## 协作要求
 
-- issue CSV 是唯一状态源，需求变化先改 CSV。
-- 能跑测试就跑测试；如果受限，必须在对应 issue 的 `notes` 中记明原因和
-  手动验证步骤。
-
+- `issues/2026-04-29_10-30-25-xivdaily-business-flow-validation.csv` 是当前执行轮次的唯一状态源。
+- 能跑测试就跑测试；如果受限，必须在对应 issue 的 `notes` 中写明原因、替代验证和手动步骤。

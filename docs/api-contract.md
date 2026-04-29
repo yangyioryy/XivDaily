@@ -1,22 +1,25 @@
-# API 合同占位说明
+# API 合同说明
 
-本文件用于冻结前后端接口协作边界，详细 OpenAPI 草案将在 `XIV-003`
-阶段补齐。当前先记录首版必须存在的接口类别，避免 Android 和后端并行时
-各自假设不一致。
+本文件以当前真实后端实现为准，用于冻结前后端协作边界。
+Android 与后端联调时，若文档与代码冲突，应优先修正文档而不是继续沿用过期路径。
 
-## 首版接口类别
+## 当前真实接口
 
 - `GET /health`：健康检查。
-- `GET /papers`：论文列表查询，支持关键词、分类、时间窗口和分页。
-- `GET /summaries/trends`：当前时间窗口的趋势摘要。
-- `POST /translations`：单篇摘要翻译。
-- `POST /favorites/{paperId}/sync-zotero`：同步单篇论文到 Zotero。
-- `POST /exports/bibtex`：批量导出 BibTeX。
-- `GET /preferences/bootstrap`：客户端启动时获取默认配置占位。
+- `GET /papers`：论文列表查询，支持 `keyword`、`category`、`days`、`page`、`pageSize`。
+- `GET /summaries/trends`：按当前筛选条件生成趋势摘要。
+- `POST /translations`：翻译单篇论文摘要。
+- `GET /zotero/config/status`：检查 Zotero 配置状态。
+- `POST /zotero/sync/{paper_id}`：同步单篇论文到 Zotero。
+- `POST /zotero/exports/bibtex`：批量导出 BibTeX。
+
+## 当前不在合同内的能力
+
+- `preferences/bootstrap` 尚未落地，当前客户端默认配置由本地状态和后续 DataStore 持久化承担。
+- 文档中不再保留 `/favorites/{paperId}/sync-zotero`、`/exports/bibtex` 等旧路径。
 
 ## 合同约束
 
-- 字段命名、实体定义和 DTO 映射将在后续 issue 中统一冻结。
-- 所有失败返回必须可区分用户可恢复错误与系统异常。
-- AI 与 Zotero 相关接口必须预留超时、失败降级和状态说明字段。
-
+- 请求参数保留 `pageSize` 这类现有别名，避免 Android 查询参数回退。
+- 响应字段当前由后端真实模型决定；如需统一到 camelCase，必须同步修改后端与 Android DTO。
+- AI 与 Zotero 相关接口必须保留失败降级或状态字段，客户端不能把失败视为成功。
