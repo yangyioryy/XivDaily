@@ -10,6 +10,7 @@ from app.models.trend_summary_cache import TrendSummaryCacheModel
 from app.schemas.ai import TranslationRequest, TranslationTask, TrendSummary, TrendSummaryItem
 from app.schemas.paper import PaperQuery
 from app.services.paper_service import PaperService
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 
@@ -29,9 +30,9 @@ class AiService:
     async def generate_trend_summary(self, category: str | None, days: int) -> TrendSummary:
         fixed_days = FIXED_TREND_DAYS
         cache_key, window_start, window_end = self._build_cache_window(category)
-        cached = self.db.get(TrendSummaryCacheModel, cache_key)
+        cached = self._load_cached_summary(cache_key)
         if cached is not None:
-            return self._cache_model_to_summary(cached)
+            return cached
 
         paper_query = PaperQuery(category=category, keyword=None, days=fixed_days, page=1, page_size=10)
         papers = (await self.paper_service.list_papers(paper_query)).items
@@ -182,8 +183,15 @@ class AiService:
             warning=summary.warning,
             generated_at=summary.generated_at,
         )
-        self.db.merge(model)
-        self.db.commit()
+        try:
+            self.db.merge(model)
+            self.db.commit()
+        except OperationalError as exc:
+            # 兼容已存在旧版 SQLite 文件但尚未执行 0002 migration 的场景。
+            if not self._recover_missing_cache_table(exc):
+                raise
+            self.db.merge(model)
+            self.db.commit()
 
     def _cache_model_to_summary(self, model: TrendSummaryCacheModel) -> TrendSummary:
         items = [TrendSummaryItem.model_validate(item) for item in json.loads(model.items_json)]
@@ -197,6 +205,30 @@ class AiService:
             status=model.status,
             warning=model.warning,
         )
+
+    def _load_cached_summary(self, cache_key: str) -> TrendSummary | None:
+        try:
+            cached = self.db.get(TrendSummaryCacheModel, cache_key)
+        except OperationalError as exc:
+            # 老库缺表时先补建缓存表，再回到正常缓存流程。
+            if not self._recover_missing_cache_table(exc):
+                raise
+            cached = self.db.get(TrendSummaryCacheModel, cache_key)
+        return self._cache_model_to_summary(cached) if cached is not None else None
+
+    def _recover_missing_cache_table(self, exc: OperationalError) -> bool:
+        if not self._is_missing_cache_table_error(exc):
+            self.db.rollback()
+            return False
+
+        self.db.rollback()
+        bind = self.db.get_bind()
+        TrendSummaryCacheModel.__table__.create(bind=bind, checkfirst=True)
+        return True
+
+    def _is_missing_cache_table_error(self, exc: OperationalError) -> bool:
+        message = str(getattr(exc, "orig", exc)).lower()
+        return "no such table" in message and TrendSummaryCacheModel.__tablename__ in message
 
 
 FIXED_TREND_DAYS = 3

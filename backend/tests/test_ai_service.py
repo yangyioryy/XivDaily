@@ -52,6 +52,13 @@ def build_session() -> Session:
     return sessionmaker(bind=engine, class_=Session, autoflush=False, autocommit=False)()
 
 
+def build_session_without_trend_cache() -> Session:
+    engine = create_engine("sqlite:///:memory:", future=True)
+    tables = [table for table in Base.metadata.sorted_tables if table.name != TrendSummaryCacheModel.__tablename__]
+    Base.metadata.create_all(bind=engine, tables=tables)
+    return sessionmaker(bind=engine, class_=Session, autoflush=False, autocommit=False)()
+
+
 @pytest.mark.anyio("asyncio")
 async def test_generate_trend_summary_degrades_without_model() -> None:
     db = build_session()
@@ -103,3 +110,17 @@ async def test_generate_trend_summary_hits_cache_without_second_llm_call() -> No
     assert gateway.calls == 1
     assert len(paper_service.requests) == 1
     assert db.get(TrendSummaryCacheModel, next(iter([row.cache_key for row in db.query(TrendSummaryCacheModel).all()]))) is not None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_generate_trend_summary_recovers_when_cache_table_is_missing() -> None:
+    db = build_session_without_trend_cache()
+    paper_service = FakePaperService()
+    service = AiService(db=db, llm_gateway=FakeGateway(status="degraded", warning="no key"), paper_service=paper_service)
+
+    result = await service.generate_trend_summary("cs.CV", 3)
+    cached_rows = db.query(TrendSummaryCacheModel).all()
+
+    assert result.status == "degraded"
+    assert len(cached_rows) == 1
+    assert cached_rows[0].cache_key.startswith("cs.CV:3:")

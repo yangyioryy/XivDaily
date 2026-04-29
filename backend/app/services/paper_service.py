@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from time import monotonic
 
+import httpx
+
 from app.clients.arxiv_client import ArxivClient
 from app.core.config import get_settings
 from app.schemas.paper import Paper, PaperListResponse, PaperQuery
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -16,12 +22,15 @@ class CacheEntry:
 
 
 class PaperService:
-    """论文查询服务，负责缓存、去重、日期过滤和分页。"""
+    """论文查询服务，负责缓存、去重、时间窗过滤和分页。"""
+
+    # FastAPI 会频繁创建服务实例，这里共享缓存才能真正跨请求限流。
+    _shared_cache: dict[tuple[str | None, str | None], CacheEntry] = {}
 
     def __init__(self, arxiv_client: ArxivClient | None = None) -> None:
         self.settings = get_settings()
         self.arxiv_client = arxiv_client or ArxivClient()
-        self._cache: dict[tuple[str | None, str | None], CacheEntry] = {}
+        self._cache = self._shared_cache
 
     async def list_papers(self, query: PaperQuery) -> PaperListResponse:
         raw_items = await self._load_raw_items(query)
@@ -46,9 +55,17 @@ class PaperService:
         if cached and monotonic() - cached.created_at < self.settings.arxiv_cache_ttl_seconds:
             return cached.items
 
-        # arXiv API 不能可靠表达“最近 N 天”，先拉取较大窗口，再在本地按发布时间过滤。
         max_results = max(query.page * query.page_size * 3, 100)
-        items = await self.arxiv_client.search(query.category, query.keyword, max_results)
+        try:
+            items = await self.arxiv_client.search(query.category, query.keyword, max_results)
+        except httpx.HTTPError as exc:
+            if cached is not None:
+                logger.warning("arXiv 请求失败，回退到过期缓存: %s", exc)
+                return cached.items
+            # 上游限流或网络抖动时，优先返回空列表而不是把接口直接打成 500。
+            logger.warning("arXiv 请求失败且无缓存可用，返回空结果: %s", exc)
+            return []
+
         self._cache[cache_key] = CacheEntry(created_at=monotonic(), items=items)
         return items
 
@@ -84,4 +101,3 @@ class PaperService:
         normalized = value.replace("Z", "+00:00")
         parsed = datetime.fromisoformat(normalized)
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
-
