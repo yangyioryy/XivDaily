@@ -28,10 +28,6 @@ internal class FakePreferencesRepository(
     override suspend fun setThemeMode(themeMode: String) {
         state.value = state.value.copy(themeMode = themeMode)
     }
-
-    override suspend fun setBackendBaseUrl(baseUrl: String) {
-        state.value = state.value.copy(backendBaseUrl = baseUrl)
-    }
 }
 
 internal open class FakePaperRepository(

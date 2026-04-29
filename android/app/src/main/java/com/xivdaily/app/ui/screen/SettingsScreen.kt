@@ -64,8 +64,6 @@ fun SettingsScreen(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                SettingRow("后端 Base URL", uiState.backendBaseUrl)
             }
         }
         item {

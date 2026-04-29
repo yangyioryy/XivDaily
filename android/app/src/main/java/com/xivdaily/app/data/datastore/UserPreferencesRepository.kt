@@ -14,7 +14,6 @@ data class UserPreferences(
     val defaultCategory: String = "cs.CV",
     val defaultDays: Int = 3,
     val themeMode: String = "system",
-    val backendBaseUrl: String = "http://10.0.2.2:8000/",
 )
 
 interface UserPreferencesRepositoryContract {
@@ -22,21 +21,18 @@ interface UserPreferencesRepositoryContract {
     suspend fun setDefaultCategory(category: String)
     suspend fun setDefaultDays(days: Int)
     suspend fun setThemeMode(themeMode: String)
-    suspend fun setBackendBaseUrl(baseUrl: String)
 }
 
 class UserPreferencesRepository(private val context: Context) : UserPreferencesRepositoryContract {
     private val defaultCategoryKey = stringPreferencesKey("default_category")
     private val defaultDaysKey = intPreferencesKey("default_days")
     private val themeModeKey = stringPreferencesKey("theme_mode")
-    private val backendBaseUrlKey = stringPreferencesKey("backend_base_url")
 
     override val preferences: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
         UserPreferences(
             defaultCategory = preferences[defaultCategoryKey] ?: "cs.CV",
             defaultDays = preferences[defaultDaysKey] ?: 3,
             themeMode = preferences[themeModeKey] ?: "system",
-            backendBaseUrl = preferences[backendBaseUrlKey] ?: "http://10.0.2.2:8000/",
         )
     }
 
@@ -50,9 +46,5 @@ class UserPreferencesRepository(private val context: Context) : UserPreferencesR
 
     override suspend fun setThemeMode(themeMode: String) {
         context.dataStore.edit { it[themeModeKey] = themeMode }
-    }
-
-    override suspend fun setBackendBaseUrl(baseUrl: String) {
-        context.dataStore.edit { it[backendBaseUrlKey] = baseUrl }
     }
 }

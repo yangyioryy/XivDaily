@@ -27,7 +27,6 @@ class SettingsViewModel(
                         defaultCategory = preferences.defaultCategory,
                         defaultDays = preferences.defaultDays,
                         themeMode = preferences.themeMode,
-                        backendBaseUrl = preferences.backendBaseUrl,
                     )
                 }
             }

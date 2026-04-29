@@ -5,6 +5,9 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+val releaseBackendBaseUrl = providers.gradleProperty("xivdaily.releaseBaseUrl")
+    .orElse("https://api.xivdaily.invalid/")
+
 android {
     namespace = "com.xivdaily.app"
     compileSdk = 36
@@ -21,6 +24,18 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    buildTypes {
+        debug {
+            // 本地联调只允许通过 debug 构建访问模拟器映射出来的宿主机服务。
+            buildConfigField("String", "BACKEND_BASE_URL", "\"http://10.0.2.2:8000/\"")
+        }
+        release {
+            isMinifyEnabled = false
+            // release 地址必须由构建参数覆盖，避免把开发地址带进正式包。
+            buildConfigField("String", "BACKEND_BASE_URL", "\"${releaseBackendBaseUrl.get()}\"")
+        }
     }
 
     compileOptions {
