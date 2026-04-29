@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     arxiv_cache_ttl_seconds: int = Field(default=900, validation_alias="ARXIV_CACHE_TTL_SECONDS")
     llm_base_url: str = Field(default="https://api.openai.com/v1", validation_alias="LLM_BASE_URL")
     llm_api_key: str | None = Field(default=None, validation_alias="LLM_API_KEY")
-    llm_model: str = Field(default="gpt-4.1-mini", validation_alias="LLM_MODEL")
+    llm_model: str = Field(default="gpt-5.4", validation_alias="LLM_MODEL")
     llm_request_timeout_seconds: int = Field(default=30, validation_alias="LLM_REQUEST_TIMEOUT_SECONDS")
     zotero_base_url: str = Field(default="https://api.zotero.org", validation_alias="ZOTERO_BASE_URL")
     zotero_user_id: str | None = Field(default=None, validation_alias="ZOTERO_USER_ID")
@@ -45,4 +45,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

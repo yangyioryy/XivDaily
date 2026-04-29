@@ -35,7 +35,6 @@ class LlmGateway:
         }
         headers = {"Authorization": f"Bearer {self.settings.llm_api_key}"}
         started = monotonic()
-        last_error: str | None = None
 
         for attempt in range(1, 4):
             try:
@@ -49,11 +48,10 @@ class LlmGateway:
                 )
                 return LlmResult(text=content, status="success")
             except Exception as exc:  # noqa: BLE001
-                last_error = str(exc)
+                # 失败响应可能带上游 URL 或账号信息，接口只返回通用提示，细节留在受控日志。
                 logger.warning(
                     "llm_call_failed",
-                    extra={"task_name": task_name, "attempt": attempt, "error": last_error},
+                    extra={"task_name": task_name, "attempt": attempt, "error_type": type(exc).__name__},
                 )
 
-        return LlmResult(text="", status="degraded", warning=f"大模型调用失败，已使用本地降级结果：{last_error}")
-
+        return LlmResult(text="", status="degraded", warning="大模型调用失败，已使用本地降级结果。")
