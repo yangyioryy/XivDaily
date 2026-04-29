@@ -43,7 +43,17 @@ class FakePaperService:
             source_url="https://arxiv.org/abs/2401.00001",
             pdf_url="https://arxiv.org/pdf/2401.00001",
         )
-        return PaperListResponse(query=query, items=[paper], page=1, page_size=10, total=1, has_more=False)
+        return PaperListResponse(
+            query=query,
+            items=[paper],
+            page=1,
+            page_size=10,
+            total=1,
+            has_more=False,
+            status="ok",
+            warning=None,
+            empty_reason=None,
+        )
 
 
 class FakeZoteroClient:
@@ -60,6 +70,7 @@ class FakeZoteroClient:
         self.collection_created = collection_created
         self.collection_key = collection_key
         self.last_item_payload: dict[str, object] | None = None
+        self.item_visible = True
         self.settings = type("Settings", (), {"zotero_user_id": "12345", "zotero_library_type": "user"})()
 
     def is_configured(self) -> bool:
@@ -80,6 +91,9 @@ class FakeZoteroClient:
         self.calls += 1
         self.last_item_payload = item_payload
         return {"successful": {"0": {"key": "ABCD1234"}}}
+
+    async def is_item_in_collection(self, item_key: str, collection_key: str) -> bool:
+        return self.item_visible
 
 
 def build_session() -> Session:
@@ -153,9 +167,26 @@ async def test_sync_paper_is_idempotent_after_success() -> None:
 
     assert first.status == "synced"
     assert second.status == "synced"
+    assert first.visibility_status == "verified"
+    assert first.target_collection_key == "COLL1234"
     assert client.calls == 1
     assert client.last_item_payload is not None
     assert client.last_item_payload["data"]["collections"] == ["COLL1234"]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_sync_paper_reports_missing_visibility_when_item_not_found_in_collection() -> None:
+    db = build_session()
+    client = FakeZoteroClient(configured=True)
+    client.item_visible = False
+    service = ZoteroService(zotero_client=client, paper_service=FakePaperService())
+
+    result = await service.sync_paper(db, "2401.00001")
+
+    assert result.status == "synced"
+    assert result.visibility_status == "missing_from_collection"
+    assert "暂未在目标集合中确认可见" in (result.message or "")
+    assert "未在目标集合中读取到该条目" in (result.visibility_message or "")
 
 
 @pytest.mark.anyio("asyncio")

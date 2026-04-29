@@ -76,6 +76,16 @@ class LibraryViewModel(private val repository: PaperRepositoryContract) : ViewMo
     }
 
     fun syncFavoriteToZotero(paperId: String) {
+        val favorite = _uiState.value.favorites.firstOrNull { it.paper.id == paperId }
+        if (favorite?.paper?.zoteroSyncState == "synced") {
+            _uiState.update {
+                it.copy(
+                    actionMessage = "这篇论文已经同步到 Zotero",
+                    errorMessage = null,
+                )
+            }
+            return
+        }
         viewModelScope.launch {
             runCatching { repository.syncFavoriteToZotero(paperId) }
                 .onSuccess { synced ->

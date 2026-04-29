@@ -29,6 +29,8 @@ class SettingsViewModel(
                         defaultDays = preferences.defaultDays,
                         themeMode = preferences.themeMode,
                         hasSeenOnboarding = preferences.hasSeenOnboarding,
+                        displayName = preferences.displayName,
+                        avatarPreset = preferences.avatarPreset,
                     )
                 }
             }
@@ -123,11 +125,33 @@ class SettingsViewModel(
     }
 
     fun showProfileDialog() {
-        _uiState.update { it.copy(isProfileDialogVisible = true, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                isProfileDialogVisible = true,
+                isProfileEditorVisible = true,
+                errorMessage = null,
+            )
+        }
     }
 
     fun hideProfileDialog() {
-        _uiState.update { it.copy(isProfileDialogVisible = false) }
+        _uiState.update { it.copy(isProfileDialogVisible = false, isProfileEditorVisible = false) }
+    }
+
+    fun updateProfile(displayName: String, avatarPreset: String) {
+        viewModelScope.launch {
+            val normalizedName = displayName.trim().ifBlank { "XivDaily Reader" }
+            preferencesRepository.setDisplayName(normalizedName)
+            preferencesRepository.setAvatarPreset(avatarPreset)
+            _uiState.update {
+                it.copy(
+                    actionMessage = "个人资料已保存",
+                    errorMessage = null,
+                    isProfileDialogVisible = false,
+                    isProfileEditorVisible = false,
+                )
+            }
+        }
     }
 
     fun showClearCacheDialog() {

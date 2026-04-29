@@ -21,5 +21,17 @@ Android 与后端联调时，若文档与代码冲突，应优先修正文档而
 ## 合同约束
 
 - 请求参数保留 `pageSize` 这类现有别名，避免 Android 查询参数回退。
+- `GET /papers` 当前除 `items/page/page_size/total/has_more` 外，还返回：
+  - `status`: `ok | empty | stale | unavailable`
+  - `warning`: 需要直接展示给客户端的补充提示
+  - `empty_reason`: `time_window_filtered | no_results | null`
+- `POST /zotero/sync/{paper_id}` 当前除 `paper_id/status/zotero_item_key/message/synced_at` 外，还返回：
+  - `library_type`
+  - `user_id`
+  - `target_collection_name`
+  - `target_collection_key`
+  - `target_collection_status`
+  - `visibility_status`
+  - `visibility_message`
 - 响应字段当前由后端真实模型决定；如需统一到 camelCase，必须同步修改后端与 Android DTO。
 - AI 与 Zotero 相关接口必须保留失败降级或状态字段，客户端不能把失败视为成功。

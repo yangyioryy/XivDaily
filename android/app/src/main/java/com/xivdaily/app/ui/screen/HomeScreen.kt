@@ -126,6 +126,15 @@ fun HomeScreen(
                 )
             }
         }
+        uiState.listWarning?.let { warning ->
+            item {
+                InlineMessageCard(
+                    message = warning,
+                    background = MaterialTheme.colorScheme.secondaryContainer,
+                    foreground = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+        }
         item {
             SectionHeader(
                 title = if (uiState.isLoading) "论文加载中..." else "今日论文",
@@ -135,8 +144,8 @@ fun HomeScreen(
         if (uiState.papers.isEmpty()) {
             item {
                 EmptyStateCard(
-                    title = if (uiState.isLoading) "正在刷新论文列表" else "当前暂无可展示论文",
-                    subtitle = if (uiState.isLoading) "稍后将自动填充最新内容" else "可以切换领域、时间窗口或重新搜索",
+                    title = resolveEmptyTitle(uiState),
+                    subtitle = resolveEmptySubtitle(uiState),
                 )
             }
         }
@@ -159,38 +168,37 @@ fun HomeScreen(
 @Composable
 private fun HomeHeroSection(uiState: HomeUiState) {
     val spacing = MaterialTheme.xivSpacing
-    Card(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(spacing.sm),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "首页",
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            Text(
-                text = "把每日论文流整理成一眼能读懂的研究工作台。",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 Text(
-                    text = "当前聚焦：${uiState.selectedCategory} · ${formatDays(uiState.selectedDays)}",
-                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                    text = "${uiState.selectedCategory} · ${formatDays(uiState.selectedDays)}",
+                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.xs),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
         }
+        Text(
+            text = "围绕当天筛选范围快速浏览、收藏和同步论文。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -221,12 +229,12 @@ private fun ExploreControlCard(
                 LeadingPill(icon = Icons.Rounded.Search)
                 Column {
                     Text(
-                        text = "探索控制台",
+                        text = "搜索与筛选",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "搜索关键词并快速切换领域、时间窗口",
+                        text = "像参考稿一样，把筛选入口收成一组轻量操作。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -465,7 +473,11 @@ private fun HomePaperCard(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "点击查看原文，双击快速收藏，右滑同步，左滑移出当前流",
+                        text = if (paper.zoteroSyncState == "synced") {
+                            "点击查看原文，双击快速收藏，左滑移出当前流"
+                        } else {
+                            "点击查看原文，双击快速收藏，右滑同步，左滑移出当前流"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -480,11 +492,13 @@ private fun HomePaperCard(
                             label = if (paper.favoriteState) "取消收藏" else "收藏",
                             onClick = onFavorite,
                         )
-                        ActionButton(
-                            icon = Icons.Rounded.Sync,
-                            label = "同步",
-                            onClick = onSyncToZotero,
-                        )
+                        if (paper.zoteroSyncState != "synced") {
+                            ActionButton(
+                                icon = Icons.Rounded.Sync,
+                                label = "同步",
+                                onClick = onSyncToZotero,
+                            )
+                        }
                     }
                 }
             }
@@ -513,7 +527,7 @@ private fun SwipeHintBackground(
                 background = XivDailySuccess.copy(alpha = 0.18f),
                 foreground = XivDailySuccess,
                 icon = Icons.Rounded.Sync,
-                text = "右滑同步到 Zotero",
+                text = "右滑执行 Zotero 同步",
                 alignment = Alignment.CenterStart,
             )
         }
@@ -723,4 +737,29 @@ private fun StatusDot(color: Color) {
 
 private fun formatDays(days: Int): String {
     return if (days == 1) "24h" else "$days 天"
+}
+
+private fun resolveEmptyTitle(uiState: HomeUiState): String {
+    if (uiState.isLoading) {
+        return "正在刷新论文列表"
+    }
+    return when (uiState.listStatus) {
+        "unavailable" -> "当前暂时无法获取论文"
+        else -> "当前暂无可展示论文"
+    }
+}
+
+private fun resolveEmptySubtitle(uiState: HomeUiState): String {
+    if (uiState.isLoading) {
+        return "稍后将自动填充最新内容"
+    }
+    return when (uiState.emptyReason) {
+        "time_window_filtered" -> "当前时间窗口过窄，可以尝试切换到 7 天或 30 天。"
+        "no_results" -> "当前搜索条件下没有命中论文，可以切换领域或重新搜索。"
+        else -> if (uiState.listStatus == "unavailable") {
+            "请稍后重试，或先检查本地网络与服务状态。"
+        } else {
+            "可以切换领域、时间窗口或重新搜索"
+        }
+    }
 }

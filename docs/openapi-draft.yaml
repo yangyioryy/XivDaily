@@ -145,7 +145,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SyncRecord"
+                $ref: "#/components/schemas/ZoteroSyncResult"
   /zotero/exports/bibtex:
     post:
       tags: [Zotero]
@@ -235,7 +235,7 @@ components:
           enum: [not_synced, synced, failed]
     PaperListResponse:
       type: object
-      required: [query, items, page, page_size, total, has_more]
+      required: [query, items, page, page_size, total, has_more, status]
       properties:
         query:
           $ref: "#/components/schemas/PaperQuery"
@@ -251,6 +251,16 @@ components:
           type: integer
         has_more:
           type: boolean
+        status:
+          type: string
+          enum: [ok, empty, stale, unavailable]
+        warning:
+          type: string
+          nullable: true
+        empty_reason:
+          type: string
+          nullable: true
+          enum: [time_window_filtered, no_results]
     TrendSummaryItem:
       type: object
       required: [rank, trend_title, summary, representative_paper_ids]
@@ -320,7 +330,7 @@ components:
           nullable: true
     ZoteroConfigStatus:
       type: object
-      required: [configured, library_type]
+      required: [configured, library_type, target_collection_name, target_collection_status]
       properties:
         configured:
           type: boolean
@@ -329,6 +339,14 @@ components:
           nullable: true
         library_type:
           type: string
+        target_collection_name:
+          type: string
+        target_collection_key:
+          type: string
+          nullable: true
+        target_collection_status:
+          type: string
+          enum: [not_configured, ready, created, error]
         warning:
           type: string
           nullable: true
@@ -350,6 +368,45 @@ components:
         synced_at:
           type: string
           format: date-time
+          nullable: true
+    ZoteroSyncResult:
+      type: object
+      required:
+        [paper_id, status, synced_at, target_collection_name, target_collection_status, visibility_status]
+      properties:
+        paper_id:
+          type: string
+        status:
+          type: string
+          enum: [synced, failed]
+        zotero_item_key:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        synced_at:
+          type: string
+          format: date-time
+        library_type:
+          type: string
+          nullable: true
+        user_id:
+          type: string
+          nullable: true
+        target_collection_name:
+          type: string
+        target_collection_key:
+          type: string
+          nullable: true
+        target_collection_status:
+          type: string
+          enum: [not_configured, ready, created, error]
+        visibility_status:
+          type: string
+          enum: [verified, missing_from_collection, unverified, not_checked]
+        visibility_message:
+          type: string
           nullable: true
     BibtexExportRequest:
       type: object

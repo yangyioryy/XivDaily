@@ -122,6 +122,10 @@ class HomeViewModel(
     }
 
     fun syncToZotero(paper: PaperItem) {
+        if (paper.zoteroSyncState == "synced") {
+            showActionMessage("这篇论文已经同步到 Zotero")
+            return
+        }
         viewModelScope.launch {
             runCatching { repository.syncPaperToZotero(paper) }
                 .onSuccess { synced ->
@@ -153,8 +157,16 @@ class HomeViewModel(
                     category = current.selectedCategory,
                     days = current.selectedDays,
                 )
-            }.onSuccess { papers ->
-                _uiState.update { it.copy(papers = papers, isLoading = false) }
+            }.onSuccess { result ->
+                _uiState.update {
+                    it.copy(
+                        papers = result.items,
+                        listStatus = result.status,
+                        listWarning = result.warning,
+                        emptyReason = result.emptyReason,
+                        isLoading = false,
+                    )
+                }
             }.onFailure { error ->
                 _uiState.update { it.copy(isLoading = false) }
                 setError(mapUserFriendlyError("论文列表暂时无法刷新", error))

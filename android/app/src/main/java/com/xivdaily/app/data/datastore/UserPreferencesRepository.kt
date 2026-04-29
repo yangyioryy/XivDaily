@@ -13,8 +13,10 @@ private val Context.dataStore by preferencesDataStore(name = "user_preferences")
 data class UserPreferences(
     val defaultCategory: String = "cs.CV",
     val defaultDays: Int = 3,
-    val themeMode: String = "system",
+    val themeMode: String = "light",
     val hasSeenOnboarding: Boolean = false,
+    val displayName: String = "XivDaily Reader",
+    val avatarPreset: String = "study",
 )
 
 interface UserPreferencesRepositoryContract {
@@ -23,6 +25,8 @@ interface UserPreferencesRepositoryContract {
     suspend fun setDefaultDays(days: Int)
     suspend fun setThemeMode(themeMode: String)
     suspend fun setHasSeenOnboarding(hasSeen: Boolean)
+    suspend fun setDisplayName(displayName: String)
+    suspend fun setAvatarPreset(avatarPreset: String)
 }
 
 class UserPreferencesRepository(private val context: Context) : UserPreferencesRepositoryContract {
@@ -30,13 +34,17 @@ class UserPreferencesRepository(private val context: Context) : UserPreferencesR
     private val defaultDaysKey = intPreferencesKey("default_days")
     private val themeModeKey = stringPreferencesKey("theme_mode")
     private val hasSeenOnboardingKey = androidx.datastore.preferences.core.booleanPreferencesKey("has_seen_onboarding")
+    private val displayNameKey = stringPreferencesKey("display_name")
+    private val avatarPresetKey = stringPreferencesKey("avatar_preset")
 
     override val preferences: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
         UserPreferences(
             defaultCategory = preferences[defaultCategoryKey] ?: "cs.CV",
             defaultDays = preferences[defaultDaysKey] ?: 3,
-            themeMode = preferences[themeModeKey] ?: "system",
+            themeMode = preferences[themeModeKey] ?: "light",
             hasSeenOnboarding = preferences[hasSeenOnboardingKey] ?: false,
+            displayName = preferences[displayNameKey] ?: "XivDaily Reader",
+            avatarPreset = preferences[avatarPresetKey] ?: "study",
         )
     }
 
@@ -54,5 +62,13 @@ class UserPreferencesRepository(private val context: Context) : UserPreferencesR
 
     override suspend fun setHasSeenOnboarding(hasSeen: Boolean) {
         context.dataStore.edit { it[hasSeenOnboardingKey] = hasSeen }
+    }
+
+    override suspend fun setDisplayName(displayName: String) {
+        context.dataStore.edit { it[displayNameKey] = displayName }
+    }
+
+    override suspend fun setAvatarPreset(avatarPreset: String) {
+        context.dataStore.edit { it[avatarPresetKey] = avatarPreset }
     }
 }

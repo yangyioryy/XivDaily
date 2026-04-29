@@ -15,6 +15,13 @@ data class PaperItem(
     val zoteroSyncState: String,
 )
 
+data class HomePaperResult(
+    val items: List<PaperItem>,
+    val status: String,
+    val warning: String?,
+    val emptyReason: String?,
+)
+
 data class TrendSummaryItem(
     val rank: Int,
     val trendTitle: String,

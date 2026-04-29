@@ -26,17 +26,20 @@ class FakeZoteroService:
         }
 
     async def sync_paper(self, db, paper_id: str):
-        return type(
-            "Record",
-            (),
-            {
-                "paper_id": paper_id,
-                "status": "synced",
-                "zotero_item_key": "ABCD1234",
-                "message": "同步成功。",
-                "synced_at": datetime.now(UTC),
-            },
-        )()
+        return {
+            "paper_id": paper_id,
+            "status": "synced",
+            "zotero_item_key": "ABCD1234",
+            "message": "同步成功。",
+            "synced_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "library_type": "user",
+            "user_id": "12345",
+            "target_collection_name": "XivDaily",
+            "target_collection_key": "COLL1234",
+            "target_collection_status": "ready",
+            "visibility_status": "verified",
+            "visibility_message": "已确认条目出现在目标集合中。",
+        }
 
     async def export_bibtex(self, request) -> BibtexExportResponse:
         return BibtexExportResponse(content="@misc{demo}", exported_count=1)
@@ -82,3 +85,5 @@ def test_zotero_sync_api_returns_sync_payload() -> None:
     assert response.status_code == 200
     assert response.json()["paper_id"] == "2401.00001"
     assert response.json()["status"] == "synced"
+    assert response.json()["target_collection_name"] == "XivDaily"
+    assert response.json()["visibility_status"] == "verified"

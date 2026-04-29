@@ -171,38 +171,37 @@ private fun LibraryHeroSection(
     filteredCount: Int,
 ) {
     val spacing = MaterialTheme.xivSpacing
-    Card(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(spacing.sm),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "收藏库",
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            Text(
-                text = "把值得长期跟进的论文整理成可同步、可导出的个人资料库。",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 Text(
-                    text = "当前筛选：${filterLabel(uiState.syncFilter)} · ${filteredCount} 条结果",
-                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                    text = "${filterLabel(uiState.syncFilter)} · ${filteredCount} 条",
+                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.xs),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
         }
+        Text(
+            text = "保留真正值得长期跟进的论文，批量管理同步与导出。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -486,21 +485,23 @@ private fun FavoritePaperCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                Button(
-                    onClick = onSyncFavorite,
-                    shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Sync,
-                        contentDescription = "同步 Zotero",
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(modifier = Modifier.size(spacing.xs))
-                    Text("同步 Zotero")
+                if (favorite.paper.zoteroSyncState != "synced") {
+                    Button(
+                        onClick = onSyncFavorite,
+                        shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Sync,
+                            contentDescription = "同步 Zotero",
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.size(spacing.xs))
+                        Text("同步 Zotero")
+                    }
                 }
                 Button(
                     onClick = onDeleteFavorite,

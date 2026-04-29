@@ -91,6 +91,31 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun emptyListFromTimeWindow_exposesWarningAndReason() {
+        runTest {
+            val repository = FakePaperRepository().apply {
+                homePaperStatus = "empty"
+                homePaperWarning = "当前 3 天时间窗内暂无结果，可以尝试切换到 7 天或 30 天。"
+                homePaperEmptyReason = "time_window_filtered"
+            }
+            val preferences = FakePreferencesRepository(
+                UserPreferences(defaultCategory = "cs.AI", defaultDays = 3)
+            )
+
+            val viewModel = HomeViewModel(repository, preferences)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.papers.isEmpty())
+            assertEquals("empty", viewModel.uiState.value.listStatus)
+            assertEquals("time_window_filtered", viewModel.uiState.value.emptyReason)
+            assertEquals(
+                "当前 3 天时间窗内暂无结果，可以尝试切换到 7 天或 30 天。",
+                viewModel.uiState.value.listWarning,
+            )
+        }
+    }
+
+    @Test
     fun toggleFavorite_actionMessageClearsAfterTimeout() {
         runTest {
             val repository = FakePaperRepository().apply {

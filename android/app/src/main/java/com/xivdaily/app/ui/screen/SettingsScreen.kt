@@ -38,10 +38,15 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,6 +83,7 @@ fun SettingsScreen(
     onHideAboutDialog: () -> Unit,
     onShowProfileDialog: () -> Unit,
     onHideProfileDialog: () -> Unit,
+    onUpdateProfile: (String, String) -> Unit,
     onShowClearCacheDialog: () -> Unit,
     onHideClearCacheDialog: () -> Unit,
     onConfirmClearCache: () -> Unit,
@@ -95,6 +101,7 @@ fun SettingsScreen(
         onHideUpdateDialog = onHideUpdateDialog,
         onHideAboutDialog = onHideAboutDialog,
         onHideProfileDialog = onHideProfileDialog,
+        onUpdateProfile = onUpdateProfile,
         onHideClearCacheDialog = onHideClearCacheDialog,
         onConfirmClearCache = onConfirmClearCache,
     )
@@ -110,7 +117,11 @@ fun SettingsScreen(
             SettingsHeroSection()
         }
         item {
-            ProfileCard(onClick = onShowProfileDialog)
+            ProfileCard(
+                displayName = uiState.displayName,
+                avatarPreset = uiState.avatarPreset,
+                onClick = onShowProfileDialog,
+            )
         }
         item {
             SettingsSection(
@@ -308,6 +319,8 @@ fun SettingsScreen(
 
 @Composable
 private fun ProfileCard(
+    displayName: String,
+    avatarPreset: String,
     onClick: () -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
@@ -336,7 +349,7 @@ private fun ProfileCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "学",
+                    text = avatarPresetToGlyph(avatarPreset),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
@@ -350,10 +363,10 @@ private fun ProfileCard(
                     horizontalArrangement = Arrangement.spacedBy(spacing.xs),
                 ) {
                     Text(
-                    text = "XivDaily Reader",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                        text = displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
                     Icon(
                         imageVector = Icons.Rounded.Edit,
                         contentDescription = "编辑资料",
@@ -362,7 +375,7 @@ private fun ProfileCard(
                     )
                 }
                 Text(
-                    text = "保持每日研究敏感度",
+                    text = avatarPresetToSubtitle(avatarPreset),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -678,28 +691,20 @@ private fun FeedbackBanner(
 @Composable
 private fun SettingsHeroSection() {
     val spacing = MaterialTheme.xivSpacing
-    // 设置页头部与首页、收藏页统一为白底信息卡，减少页面风格割裂。
-    Card(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(spacing.sm),
-        ) {
-            Text(
-                text = "设置",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                text = "统一管理偏好、集成状态与阅读工作流配置。",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = "设置",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text = "把偏好、集成和资料卡收成更接近参考图的轻量设置页。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -801,6 +806,7 @@ private fun SettingsDialogs(
     onHideUpdateDialog: () -> Unit,
     onHideAboutDialog: () -> Unit,
     onHideProfileDialog: () -> Unit,
+    onUpdateProfile: (String, String) -> Unit,
     onHideClearCacheDialog: () -> Unit,
     onConfirmClearCache: () -> Unit,
 ) {
@@ -837,10 +843,11 @@ private fun SettingsDialogs(
         )
     }
     if (uiState.isProfileDialogVisible) {
-        MessageDialog(
-            title = "个人资料",
-            message = "当前版本先提供只读资料卡反馈。\n后续会补充头像、名称和阅读偏好编辑能力。",
+        ProfileEditorDialog(
+            displayName = uiState.displayName,
+            avatarPreset = uiState.avatarPreset,
             onDismiss = onHideProfileDialog,
+            onConfirm = onUpdateProfile,
         )
     }
     if (uiState.isClearCacheDialogVisible) {
@@ -928,4 +935,74 @@ private fun MessageDialog(
             }
         },
     )
+}
+
+@Composable
+private fun ProfileEditorDialog(
+    displayName: String,
+    avatarPreset: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String) -> Unit,
+) {
+    var draftName by remember(displayName) { mutableStateOf(displayName) }
+    var draftAvatar by remember(avatarPreset) { mutableStateOf(avatarPreset) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("编辑个人资料") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = draftName,
+                    onValueChange = { draftName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("用户名") },
+                    singleLine = true,
+                )
+                Text(
+                    text = "头像预设",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        "study" to "学者",
+                        "spark" to "灵感",
+                        "orbit" to "探索",
+                    ).forEach { (value, label) ->
+                        FilterChip(
+                            selected = draftAvatar == value,
+                            onClick = { draftAvatar = value },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(draftName, draftAvatar) }) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        },
+    )
+}
+
+private fun avatarPresetToGlyph(avatarPreset: String): String {
+    return when (avatarPreset) {
+        "spark" -> "灵"
+        "orbit" -> "研"
+        else -> "学"
+    }
+}
+
+private fun avatarPresetToSubtitle(avatarPreset: String): String {
+    return when (avatarPreset) {
+        "spark" -> "保持研究灵感在线"
+        "orbit" -> "围绕主题持续追踪"
+        else -> "保持每日研究敏感度"
+    }
 }

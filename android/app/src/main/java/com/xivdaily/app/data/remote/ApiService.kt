@@ -47,6 +47,9 @@ data class PaperListDto(
     val total: Int,
     @Json(name = "has_more")
     val hasMore: Boolean,
+    val status: String,
+    val warning: String?,
+    @Json(name = "empty_reason") val emptyReason: String?,
 )
 
 data class PaperQueryDto(

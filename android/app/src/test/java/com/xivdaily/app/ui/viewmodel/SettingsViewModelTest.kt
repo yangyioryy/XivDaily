@@ -81,4 +81,22 @@ class SettingsViewModelTest {
             assertEquals("COLL1234", viewModel.uiState.value.zoteroTargetCollectionKey)
         }
     }
+
+    @Test
+    fun updateProfile_persistsDisplayNameAndAvatarPreset() {
+        runTest {
+            val preferences = FakePreferencesRepository()
+            val viewModel = SettingsViewModel(preferences, FakePaperRepository())
+            advanceUntilIdle()
+
+            viewModel.showProfileDialog()
+            viewModel.updateProfile("Ada Researcher", "orbit")
+            advanceUntilIdle()
+
+            assertEquals("Ada Researcher", viewModel.uiState.value.displayName)
+            assertEquals("orbit", viewModel.uiState.value.avatarPreset)
+            assertEquals("个人资料已保存", viewModel.uiState.value.actionMessage)
+            assertTrue(!viewModel.uiState.value.isProfileDialogVisible)
+        }
+    }
 }

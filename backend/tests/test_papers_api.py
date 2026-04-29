@@ -30,6 +30,9 @@ class FakePaperService:
             page_size=query.page_size,
             total=1,
             has_more=False,
+            status="ok",
+            warning=None,
+            empty_reason=None,
         )
 
 
@@ -45,3 +48,6 @@ def test_papers_api_returns_paginated_response() -> None:
     assert body["total"] == 1
     assert body["items"][0]["id"] == "2401.00001"
     assert body["query"]["category"] == "cs.CV"
+    assert body["status"] == "ok"
+    assert body["warning"] is None
+    assert body["empty_reason"] is None

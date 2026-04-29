@@ -3,6 +3,7 @@ package com.xivdaily.app.ui.viewmodel
 import com.xivdaily.app.data.datastore.UserPreferences
 import com.xivdaily.app.data.datastore.UserPreferencesRepositoryContract
 import com.xivdaily.app.data.model.FavoritePaperItem
+import com.xivdaily.app.data.model.HomePaperResult
 import com.xivdaily.app.data.model.IntegrationConfigStatus
 import com.xivdaily.app.data.model.PaperItem
 import com.xivdaily.app.data.model.TrendSummary
@@ -32,6 +33,14 @@ internal class FakePreferencesRepository(
     override suspend fun setHasSeenOnboarding(hasSeen: Boolean) {
         state.value = state.value.copy(hasSeenOnboarding = hasSeen)
     }
+
+    override suspend fun setDisplayName(displayName: String) {
+        state.value = state.value.copy(displayName = displayName)
+    }
+
+    override suspend fun setAvatarPreset(avatarPreset: String) {
+        state.value = state.value.copy(avatarPreset = avatarPreset)
+    }
 }
 
 internal open class FakePaperRepository(
@@ -40,12 +49,20 @@ internal open class FakePaperRepository(
     var listRequests: MutableList<Triple<String?, String?, Int>> = mutableListOf()
     val trendRequests: MutableList<String?> = mutableListOf()
     val homePapers: MutableList<PaperItem> = mutableListOf()
+    var homePaperStatus: String = "ok"
+    var homePaperWarning: String? = null
+    var homePaperEmptyReason: String? = null
     val savedFavoriteIds: MutableList<String> = mutableListOf()
     val deletedFavoriteIds: MutableList<String> = mutableListOf()
 
-    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int): List<PaperItem> {
+    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int): HomePaperResult {
         listRequests.add(Triple(keyword, category, days))
-        return homePapers.toList()
+        return HomePaperResult(
+            items = homePapers.toList(),
+            status = homePaperStatus,
+            warning = homePaperWarning,
+            emptyReason = homePaperEmptyReason,
+        )
     }
 
     override suspend fun getTrendSummary(category: String?): TrendSummary {

@@ -171,6 +171,7 @@ fun AppNavGraph(
                     onHideAboutDialog = settingsViewModel::hideAboutDialog,
                     onShowProfileDialog = settingsViewModel::showProfileDialog,
                     onHideProfileDialog = settingsViewModel::hideProfileDialog,
+                    onUpdateProfile = settingsViewModel::updateProfile,
                     onShowClearCacheDialog = settingsViewModel::showClearCacheDialog,
                     onHideClearCacheDialog = settingsViewModel::hideClearCacheDialog,
                     onConfirmClearCache = settingsViewModel::clearCache,

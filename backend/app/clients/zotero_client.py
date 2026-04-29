@@ -66,11 +66,24 @@ class ZoteroClient:
     async def create_collection(self, collection_name: str) -> dict[str, object]:
         headers = self._write_headers(secrets.token_hex(16))
         url = f"{self.settings.zotero_base_url}/{self._library_prefix()}/collections"
-        payload = {"name": collection_name}
+        # Zotero 写接口要求以数组提交可编辑 JSON，这里保持和 items 写入协议一致。
+        payload = [{"name": collection_name}]
         async with httpx.AsyncClient(timeout=20) as client:
             response = await client.post(url, json=payload, headers=headers)
             response.raise_for_status()
         return response.json()
+
+    async def is_item_in_collection(self, item_key: str, collection_key: str) -> bool:
+        url = f"{self.settings.zotero_base_url}/{self._library_prefix()}/collections/{collection_key}/items"
+        headers = self._default_headers()
+        params = {"itemKey": item_key, "limit": 1}
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.get(url, headers=headers, params=params)
+            response.raise_for_status()
+        for raw_item in response.json():
+            if self._extract_item_key_from_read_payload(raw_item) == item_key:
+                return True
+        return False
 
     def _library_prefix(self) -> str:
         resource = "groups" if self.settings.zotero_library_type == "group" else "users"
@@ -113,6 +126,18 @@ class ZoteroClient:
                     if isinstance(key, str):
                         return key
         return None
+
+    def _extract_item_key_from_read_payload(self, raw_item: object) -> str | None:
+        if not isinstance(raw_item, dict):
+            return None
+        direct_key = raw_item.get("key")
+        if isinstance(direct_key, str):
+            return direct_key
+        data = raw_item.get("data")
+        if not isinstance(data, dict):
+            return None
+        nested_key = data.get("key")
+        return nested_key if isinstance(nested_key, str) else None
 
     def _extract_next_link(self, response: httpx.Response) -> str | None:
         link_header = response.headers.get("Link")

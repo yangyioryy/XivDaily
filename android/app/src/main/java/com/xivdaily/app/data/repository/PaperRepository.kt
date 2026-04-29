@@ -3,6 +3,7 @@ package com.xivdaily.app.data.repository
 import com.xivdaily.app.data.local.FavoritePaperDao
 import com.xivdaily.app.data.local.FavoritePaperEntity
 import com.xivdaily.app.data.model.FavoritePaperItem
+import com.xivdaily.app.data.model.HomePaperResult
 import com.xivdaily.app.data.model.IntegrationConfigStatus
 import com.xivdaily.app.data.model.PaperItem
 import com.xivdaily.app.data.model.TrendSummary
@@ -16,7 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 interface PaperRepositoryContract {
-    suspend fun listHomePapers(keyword: String?, category: String?, days: Int): List<PaperItem>
+    suspend fun listHomePapers(keyword: String?, category: String?, days: Int): HomePaperResult
     suspend fun getTrendSummary(category: String?): TrendSummary
     suspend fun translatePaper(paper: PaperItem): PaperItem
     fun observeFavorites(): Flow<List<FavoritePaperItem>>
@@ -33,7 +34,7 @@ class PaperRepository(
     private val apiService: ApiService,
     private val favoritePaperDao: FavoritePaperDao,
 ) : PaperRepositoryContract {
-    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int): List<PaperItem> {
+    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int): HomePaperResult {
         val response = apiService.listPapers(
             keyword = keyword?.takeIf { it.isNotBlank() },
             category = category,
@@ -42,9 +43,15 @@ class PaperRepository(
             pageSize = 20,
         )
         val localFavoriteIds = favoritePaperDao.getFavoriteIds().toSet()
-        return response.items.map { dto ->
+        val items = response.items.map { dto ->
             dto.toPaperItem().copy(favoriteState = dto.id in localFavoriteIds || dto.favoriteState)
         }
+        return HomePaperResult(
+            items = items,
+            status = response.status,
+            warning = response.warning,
+            emptyReason = response.emptyReason,
+        )
     }
 
     override suspend fun getTrendSummary(category: String?): TrendSummary {

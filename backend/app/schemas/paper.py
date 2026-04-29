@@ -34,4 +34,9 @@ class PaperListResponse(BaseModel):
     page_size: int
     total: int
     has_more: bool
-
+    status: str = Field(default="ok", description="列表状态：ok、stale、empty 或 unavailable")
+    warning: str | None = Field(default=None, description="需要提示给前端的补充说明")
+    empty_reason: str | None = Field(
+        default=None,
+        description="空列表原因：time_window_filtered、no_results，非空时留空",
+    )

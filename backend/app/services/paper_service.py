@@ -21,6 +21,13 @@ class CacheEntry:
     items: list[dict[str, object]]
 
 
+@dataclass
+class LoadResult:
+    items: list[dict[str, object]]
+    status: str
+    warning: str | None = None
+
+
 class PaperService:
     """论文查询服务，负责缓存、去重、时间窗过滤和分页。"""
 
@@ -33,13 +40,15 @@ class PaperService:
         self._cache = self._shared_cache
 
     async def list_papers(self, query: PaperQuery) -> PaperListResponse:
-        raw_items = await self._load_raw_items(query)
+        load_result = await self._load_raw_items(query)
+        raw_items = load_result.items
         normalized = [self._to_paper(item) for item in raw_items]
         filtered = self._filter_by_time_window(normalized, query.days)
         filtered = self._dedupe(filtered)
         start = (query.page - 1) * query.page_size
         end = start + query.page_size
         page_items = filtered[start:end]
+        empty_reason = self._resolve_empty_reason(raw_items, filtered, load_result.status)
         return PaperListResponse(
             query=query,
             items=page_items,
@@ -47,13 +56,16 @@ class PaperService:
             page_size=query.page_size,
             total=len(filtered),
             has_more=end < len(filtered),
+            status=self._resolve_response_status(load_result.status, filtered),
+            warning=self._build_warning(query.days, load_result.warning, empty_reason),
+            empty_reason=empty_reason,
         )
 
-    async def _load_raw_items(self, query: PaperQuery) -> list[dict[str, object]]:
+    async def _load_raw_items(self, query: PaperQuery) -> LoadResult:
         cache_key = (query.category, query.keyword)
         cached = self._cache.get(cache_key)
         if cached and monotonic() - cached.created_at < self.settings.arxiv_cache_ttl_seconds:
-            return cached.items
+            return LoadResult(items=cached.items, status="ok")
 
         max_results = max(query.page * query.page_size * 3, 100)
         try:
@@ -61,13 +73,21 @@ class PaperService:
         except httpx.HTTPError as exc:
             if cached is not None:
                 logger.warning("arXiv 请求失败，回退到过期缓存: %s", exc)
-                return cached.items
+                return LoadResult(
+                    items=cached.items,
+                    status="stale",
+                    warning="arXiv 请求失败，当前展示的是最近一次缓存结果。",
+                )
             # 上游限流或网络抖动时，优先返回空列表而不是把接口直接打成 500。
             logger.warning("arXiv 请求失败且无缓存可用，返回空结果: %s", exc)
-            return []
+            return LoadResult(
+                items=[],
+                status="unavailable",
+                warning="arXiv 请求暂时不可用，请稍后重试。",
+            )
 
         self._cache[cache_key] = CacheEntry(created_at=monotonic(), items=items)
-        return items
+        return LoadResult(items=items, status="ok")
 
     def _filter_by_time_window(self, papers: list[Paper], days: int) -> list[Paper]:
         cutoff = datetime.now(UTC) - timedelta(days=days)
@@ -101,3 +121,29 @@ class PaperService:
         normalized = value.replace("Z", "+00:00")
         parsed = datetime.fromisoformat(normalized)
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+    def _resolve_empty_reason(
+        self,
+        raw_items: list[dict[str, object]],
+        filtered: list[Paper],
+        load_status: str,
+    ) -> str | None:
+        if filtered:
+            return None
+        if load_status == "unavailable":
+            return None
+        if raw_items:
+            return "time_window_filtered"
+        return "no_results"
+
+    def _resolve_response_status(self, load_status: str, filtered: list[Paper]) -> str:
+        if load_status in {"stale", "unavailable"}:
+            return load_status
+        return "empty" if not filtered else "ok"
+
+    def _build_warning(self, days: int, load_warning: str | None, empty_reason: str | None) -> str | None:
+        if load_warning:
+            return load_warning
+        if empty_reason == "time_window_filtered":
+            return f"当前 {days} 天时间窗内暂无结果，可以尝试切换到 7 天或 30 天。"
+        return None

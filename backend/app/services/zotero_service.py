@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.clients.zotero_client import ZoteroClient
 from app.models.sync_record import SyncRecordModel
 from app.schemas.paper import PaperQuery
-from app.schemas.zotero import BibtexExportRequest, BibtexExportResponse, ZoteroConfigStatus
+from app.schemas.zotero import BibtexExportRequest, BibtexExportResponse, ZoteroConfigStatus, ZoteroSyncResult
 from app.services.paper_service import PaperService
 
 
@@ -50,22 +50,53 @@ class ZoteroService:
             warning="未完成 Zotero User ID 或 API Key 配置。",
         )
 
-    async def sync_paper(self, db: Session, paper_id: str) -> SyncRecordModel:
+    async def sync_paper(self, db: Session, paper_id: str) -> ZoteroSyncResult:
         existing = db.get(SyncRecordModel, paper_id)
         if existing and existing.status == "synced":
-            return existing
+            return self._build_sync_result(
+                record=existing,
+                target_collection={
+                    "name": self.zotero_client.target_collection_name,
+                    "key": None,
+                    "created": False,
+                },
+                target_collection_status="ready",
+                visibility_status="not_checked",
+                visibility_message="本地已存在成功记录，本次未重复执行远端校验。",
+            )
 
         paper = await self._find_paper(paper_id)
         if paper is None:
-            return self._upsert_record(db, paper_id, status="failed", message="未找到对应论文，无法同步到 Zotero。")
+            record = self._upsert_record(db, paper_id, status="failed", message="未找到对应论文，无法同步到 Zotero。")
+            return self._build_sync_result(
+                record=record,
+                target_collection={"name": self.zotero_client.target_collection_name, "key": None, "created": False},
+                target_collection_status="error",
+                visibility_status="not_checked",
+                visibility_message="未找到论文，未发起远端同步。",
+            )
 
         if not self.zotero_client.is_configured():
-            return self._upsert_record(db, paper_id, status="failed", message="未完成 Zotero 配置。")
+            record = self._upsert_record(db, paper_id, status="failed", message="未完成 Zotero 配置。")
+            return self._build_sync_result(
+                record=record,
+                target_collection={"name": self.zotero_client.target_collection_name, "key": None, "created": False},
+                target_collection_status="not_configured",
+                visibility_status="not_checked",
+                visibility_message="配置未完成，未发起远端同步。",
+            )
 
         try:
             target_collection = await self._ensure_target_collection()
         except Exception as exc:  # noqa: BLE001
-            return self._upsert_record(db, paper_id, status="failed", message=f"准备 Zotero 归档集合失败：{exc}")
+            record = self._upsert_record(db, paper_id, status="failed", message=f"准备 Zotero 归档集合失败：{exc}")
+            return self._build_sync_result(
+                record=record,
+                target_collection={"name": self.zotero_client.target_collection_name, "key": None, "created": False},
+                target_collection_status="error",
+                visibility_status="not_checked",
+                visibility_message=f"集合准备失败：{exc}",
+            )
 
         item_key = sha1(paper_id.encode("utf-8")).hexdigest()[:8]
         payload = {
@@ -86,9 +117,25 @@ class ZoteroService:
         try:
             response = await self.zotero_client.create_item(payload)
             item_key = self._extract_item_key(response) or item_key
-            return self._upsert_record(db, paper_id, status="synced", zotero_item_key=item_key, message="同步成功。")
+            visibility = await self._verify_item_visibility(item_key, str(target_collection["key"]))
+            message = "同步成功。" if visibility["status"] == "verified" else "同步请求已提交，但条目暂未在目标集合中确认可见。"
+            record = self._upsert_record(db, paper_id, status="synced", zotero_item_key=item_key, message=message)
+            return self._build_sync_result(
+                record=record,
+                target_collection=target_collection,
+                target_collection_status="created" if bool(target_collection["created"]) else "ready",
+                visibility_status=str(visibility["status"]),
+                visibility_message=str(visibility["message"]),
+            )
         except Exception as exc:  # noqa: BLE001
-            return self._upsert_record(db, paper_id, status="failed", message=f"同步失败：{exc}")
+            record = self._upsert_record(db, paper_id, status="failed", message=f"同步失败：{exc}")
+            return self._build_sync_result(
+                record=record,
+                target_collection=target_collection,
+                target_collection_status="created" if bool(target_collection["created"]) else "ready",
+                visibility_status="not_checked",
+                visibility_message=f"远端创建条目失败：{exc}",
+            )
 
     async def export_bibtex(self, request: BibtexExportRequest) -> BibtexExportResponse:
         entries: list[str] = []
@@ -144,6 +191,24 @@ class ZoteroService:
     async def _ensure_target_collection(self) -> dict[str, object]:
         return await self.zotero_client.get_or_create_collection()
 
+    async def _verify_item_visibility(self, item_key: str, collection_key: str) -> dict[str, str]:
+        try:
+            visible = await self.zotero_client.is_item_in_collection(item_key, collection_key)
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "status": "unverified",
+                "message": f"已提交同步，但读取可见性校验失败：{exc}",
+            }
+        if visible:
+            return {
+                "status": "verified",
+                "message": "已确认条目出现在目标集合中。",
+            }
+        return {
+            "status": "missing_from_collection",
+            "message": "同步请求成功，但未在目标集合中读取到该条目。",
+        }
+
     def _extract_item_key(self, response: dict[str, object]) -> str | None:
         for field_name in ("successful", "success"):
             successful = response.get(field_name)
@@ -157,3 +222,28 @@ class ZoteroService:
                     if isinstance(key, str):
                         return key
         return None
+
+    def _build_sync_result(
+        self,
+        record: SyncRecordModel,
+        target_collection: dict[str, object],
+        target_collection_status: str,
+        visibility_status: str,
+        visibility_message: str,
+    ) -> ZoteroSyncResult:
+        settings = getattr(self.zotero_client, "settings", None)
+        synced_at = record.synced_at.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        return ZoteroSyncResult(
+            paper_id=record.paper_id,
+            status=record.status,
+            zotero_item_key=record.zotero_item_key,
+            message=record.message,
+            synced_at=synced_at,
+            library_type=getattr(settings, "zotero_library_type", None),
+            user_id=getattr(settings, "zotero_user_id", None),
+            target_collection_name=str(target_collection.get("name", self.zotero_client.target_collection_name)),
+            target_collection_key=target_collection.get("key") and str(target_collection["key"]),
+            target_collection_status=target_collection_status,
+            visibility_status=visibility_status,
+            visibility_message=visibility_message,
+        )

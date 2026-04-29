@@ -2,8 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.sync_record import SyncRecordModel
-from app.schemas.zotero import BibtexExportRequest, BibtexExportResponse, ZoteroConfigStatus
+from app.schemas.zotero import BibtexExportRequest, BibtexExportResponse, ZoteroConfigStatus, ZoteroSyncResult
 from app.services.zotero_service import ZoteroService
 
 router = APIRouter(prefix="/zotero", tags=["zotero"])
@@ -18,20 +17,13 @@ async def get_config_status(service: ZoteroService = Depends(get_zotero_service)
     return await service.get_config_status()
 
 
-@router.post("/sync/{paper_id}", response_model=dict)
+@router.post("/sync/{paper_id}", response_model=ZoteroSyncResult)
 async def sync_paper(
     paper_id: str,
     db: Session = Depends(get_db),
     service: ZoteroService = Depends(get_zotero_service),
-) -> dict[str, object]:
-    record: SyncRecordModel = await service.sync_paper(db, paper_id)
-    return {
-        "paper_id": record.paper_id,
-        "status": record.status,
-        "zotero_item_key": record.zotero_item_key,
-        "message": record.message,
-        "synced_at": record.synced_at,
-    }
+) -> ZoteroSyncResult:
+    return await service.sync_paper(db, paper_id)
 
 
 @router.post("/exports/bibtex", response_model=BibtexExportResponse)
