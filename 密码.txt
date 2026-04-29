@@ -1,3 +1,0 @@
-mysql的用户名和密码
-mysql -u root -p 12345678
-

@@ -11,6 +11,16 @@ openai开发密钥.txt
 *.secret
 *.local
 
+# 仓库私有资料与本地过程文件
+/.idea/
+/issues/
+/plan/
+/密码.txt
+/要求.txt
+/需求.txt
+/设计图.png
+/参考/设计图.png
+
 # Python 后端
 backend/.venv/
 backend/.pytest_cache/
