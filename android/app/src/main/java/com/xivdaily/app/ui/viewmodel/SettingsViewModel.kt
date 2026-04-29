@@ -2,8 +2,8 @@ package com.xivdaily.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.xivdaily.app.data.datastore.UserPreferencesRepository
-import com.xivdaily.app.data.repository.PaperRepository
+import com.xivdaily.app.data.datastore.UserPreferencesRepositoryContract
+import com.xivdaily.app.data.repository.PaperRepositoryContract
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,8 +13,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
-    private val preferencesRepository: UserPreferencesRepository,
-    private val paperRepository: PaperRepository,
+    private val preferencesRepository: UserPreferencesRepositoryContract,
+    private val paperRepository: PaperRepositoryContract,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()

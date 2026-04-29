@@ -17,13 +17,21 @@ data class UserPreferences(
     val backendBaseUrl: String = "http://10.0.2.2:8000/",
 )
 
-class UserPreferencesRepository(private val context: Context) {
+interface UserPreferencesRepositoryContract {
+    val preferences: Flow<UserPreferences>
+    suspend fun setDefaultCategory(category: String)
+    suspend fun setDefaultDays(days: Int)
+    suspend fun setThemeMode(themeMode: String)
+    suspend fun setBackendBaseUrl(baseUrl: String)
+}
+
+class UserPreferencesRepository(private val context: Context) : UserPreferencesRepositoryContract {
     private val defaultCategoryKey = stringPreferencesKey("default_category")
     private val defaultDaysKey = intPreferencesKey("default_days")
     private val themeModeKey = stringPreferencesKey("theme_mode")
     private val backendBaseUrlKey = stringPreferencesKey("backend_base_url")
 
-    val preferences: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
+    override val preferences: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
         UserPreferences(
             defaultCategory = preferences[defaultCategoryKey] ?: "cs.CV",
             defaultDays = preferences[defaultDaysKey] ?: 3,
@@ -32,19 +40,19 @@ class UserPreferencesRepository(private val context: Context) {
         )
     }
 
-    suspend fun setDefaultCategory(category: String) {
+    override suspend fun setDefaultCategory(category: String) {
         context.dataStore.edit { it[defaultCategoryKey] = category }
     }
 
-    suspend fun setDefaultDays(days: Int) {
+    override suspend fun setDefaultDays(days: Int) {
         context.dataStore.edit { it[defaultDaysKey] = days }
     }
 
-    suspend fun setThemeMode(themeMode: String) {
+    override suspend fun setThemeMode(themeMode: String) {
         context.dataStore.edit { it[themeModeKey] = themeMode }
     }
 
-    suspend fun setBackendBaseUrl(baseUrl: String) {
+    override suspend fun setBackendBaseUrl(baseUrl: String) {
         context.dataStore.edit { it[backendBaseUrlKey] = baseUrl }
     }
 }

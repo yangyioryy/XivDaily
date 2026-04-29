@@ -15,11 +15,25 @@ import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+interface PaperRepositoryContract {
+    suspend fun listHomePapers(keyword: String?, category: String?, days: Int): List<PaperItem>
+    suspend fun getTrendSummary(category: String?, days: Int): TrendSummary
+    suspend fun translatePaper(paper: PaperItem): PaperItem
+    fun observeFavorites(): Flow<List<FavoritePaperItem>>
+    suspend fun saveFavorite(paper: PaperItem)
+    suspend fun deleteFavorite(paperId: String)
+    suspend fun deleteFavorites(paperIds: List<String>)
+    suspend fun syncFavoriteToZotero(paperId: String): PaperItem
+    suspend fun syncPaperToZotero(paper: PaperItem): PaperItem
+    suspend fun exportBibtex(paperIds: List<String>): String
+    suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus
+}
+
 class PaperRepository(
     private val apiService: ApiService,
     private val favoritePaperDao: FavoritePaperDao,
-) {
-    suspend fun listHomePapers(keyword: String?, category: String?, days: Int): List<PaperItem> {
+) : PaperRepositoryContract {
+    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int): List<PaperItem> {
         val response = apiService.listPapers(
             keyword = keyword?.takeIf { it.isNotBlank() },
             category = category,
@@ -33,7 +47,7 @@ class PaperRepository(
         }
     }
 
-    suspend fun getTrendSummary(category: String?, days: Int): TrendSummary {
+    override suspend fun getTrendSummary(category: String?, days: Int): TrendSummary {
         val dto = apiService.getTrendSummary(category = category, days = days)
         return TrendSummary(
             intro = dto.intro,
@@ -50,7 +64,7 @@ class PaperRepository(
         )
     }
 
-    suspend fun translatePaper(paper: PaperItem): PaperItem {
+    override suspend fun translatePaper(paper: PaperItem): PaperItem {
         val dto = apiService.translateSummary(
             TranslationRequestDto(
                 paperId = paper.id,
@@ -61,33 +75,33 @@ class PaperRepository(
         return paper.copy(translatedSummary = dto.translatedSummary)
     }
 
-    fun observeFavorites(): Flow<List<FavoritePaperItem>> {
+    override fun observeFavorites(): Flow<List<FavoritePaperItem>> {
         return favoritePaperDao.observeFavorites().map { entities ->
             entities.map { FavoritePaperItem(paper = it.toPaperItem(), savedAt = it.savedAt) }
         }
     }
 
-    suspend fun saveFavorite(paper: PaperItem) {
+    override suspend fun saveFavorite(paper: PaperItem) {
         favoritePaperDao.upsertFavorite(paper.toFavoriteEntity(syncState = paper.zoteroSyncState))
     }
 
-    suspend fun deleteFavorite(paperId: String) {
+    override suspend fun deleteFavorite(paperId: String) {
         favoritePaperDao.deleteFavorite(paperId)
     }
 
-    suspend fun deleteFavorites(paperIds: List<String>) {
+    override suspend fun deleteFavorites(paperIds: List<String>) {
         if (paperIds.isNotEmpty()) {
             favoritePaperDao.deleteFavorites(paperIds)
         }
     }
 
-    suspend fun syncFavoriteToZotero(paperId: String): PaperItem {
+    override suspend fun syncFavoriteToZotero(paperId: String): PaperItem {
         val favorite = favoritePaperDao.getFavoriteById(paperId)
             ?: error("未找到要同步的收藏论文：$paperId")
         return syncPaperToZotero(favorite.toPaperItem())
     }
 
-    suspend fun syncPaperToZotero(paper: PaperItem): PaperItem {
+    override suspend fun syncPaperToZotero(paper: PaperItem): PaperItem {
         // 同步前先落本地收藏，保证同步状态回写有稳定记录。
         saveFavorite(paper.copy(favoriteState = true))
         val result = apiService.syncPaperToZotero(paper.id)
@@ -96,11 +110,11 @@ class PaperRepository(
         return paper.copy(favoriteState = true, zoteroSyncState = nextState)
     }
 
-    suspend fun exportBibtex(paperIds: List<String>): String {
+    override suspend fun exportBibtex(paperIds: List<String>): String {
         return apiService.exportBibtex(BibtexExportRequestDto(paperIds)).content
     }
 
-    suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus {
+    override suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus {
         val ai = apiService.getAiConfigStatus()
         val zotero = apiService.getZoteroConfigStatus()
         return IntegrationConfigStatus(
