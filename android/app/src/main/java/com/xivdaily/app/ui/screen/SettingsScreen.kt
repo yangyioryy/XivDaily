@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -26,8 +27,9 @@ import com.xivdaily.app.ui.viewmodel.SettingsUiState
 fun SettingsScreen(
     uiState: SettingsUiState,
     onToggleTheme: () -> Unit,
-    onToggleZoteroConfigured: () -> Unit,
-    onToggleLlmConfigured: () -> Unit,
+    onUpdateDefaultCategory: (String) -> Unit,
+    onUpdateDefaultDays: (Int) -> Unit,
+    onRefreshConfigStatus: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier
@@ -41,9 +43,29 @@ fun SettingsScreen(
         }
         item {
             SettingsGroup(title = "偏好设置") {
-                SettingRow("默认关注领域", uiState.defaultCategory)
+                Text(text = "默认关注领域")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("cs.CV", "cs.LG", "cs.AI", "cs.CL").forEach { category ->
+                        FilterChip(
+                            selected = uiState.defaultCategory == category,
+                            onClick = { onUpdateDefaultCategory(category) },
+                            label = { Text(category) },
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(8.dp))
-                SettingRow("默认时间窗口", "${uiState.defaultDays} Days")
+                Text(text = "默认时间窗口")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(1, 3, 7, 30).forEach { days ->
+                        FilterChip(
+                            selected = uiState.defaultDays == days,
+                            onClick = { onUpdateDefaultDays(days) },
+                            label = { Text(if (days == 1) "24h" else "${days} Days") },
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                SettingRow("后端 Base URL", uiState.backendBaseUrl)
             }
         }
         item {
@@ -61,11 +83,10 @@ fun SettingsScreen(
                 }
             }
         }
+        uiState.actionMessage?.let { item { Text(text = it, color = MaterialTheme.colorScheme.primary) } }
+        uiState.errorMessage?.let { item { Text(text = it, color = MaterialTheme.colorScheme.error) } }
         item {
-            Button(onClick = {
-                onToggleZoteroConfigured()
-                onToggleLlmConfigured()
-            }) {
+            Button(onClick = onRefreshConfigStatus) {
                 Text("刷新配置状态")
             }
         }

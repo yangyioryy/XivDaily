@@ -101,11 +101,12 @@ class PaperRepository(
     }
 
     suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus {
+        val ai = apiService.getAiConfigStatus()
         val zotero = apiService.getZoteroConfigStatus()
         return IntegrationConfigStatus(
             zoteroConfigured = zotero.configured,
             zoteroUserId = zotero.userId,
-            llmConfigured = true,
+            llmConfigured = ai.configured,
         )
     }
 

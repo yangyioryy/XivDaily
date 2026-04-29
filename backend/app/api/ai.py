@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
+from app.core.config import get_settings
 from app.schemas.ai import TranslationRequest, TranslationTask, TrendSummary
 from app.services.ai_service import AiService
 
@@ -8,6 +9,12 @@ router = APIRouter(tags=["ai"])
 
 def get_ai_service() -> AiService:
     return AiService()
+
+
+@router.get("/ai/config/status", response_model=dict)
+def get_ai_config_status() -> dict[str, bool]:
+    settings = get_settings()
+    return {"configured": bool(settings.llm_api_key)}
 
 
 @router.get("/summaries/trends", response_model=TrendSummary)
@@ -25,4 +32,3 @@ async def create_translation(
     service: AiService = Depends(get_ai_service),
 ) -> TranslationTask:
     return await service.translate_summary(request)
-

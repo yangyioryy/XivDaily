@@ -31,7 +31,7 @@ import com.xivdaily.app.ui.viewmodel.SettingsViewModel
 private data class BottomTab(val route: String, val labelRes: Int)
 
 @Composable
-fun AppNavGraph() {
+fun AppNavGraph(settingsViewModel: SettingsViewModel) {
     val app = LocalContext.current.applicationContext as XivDailyApplication
     val navController = rememberNavController()
     val tabs = listOf(
@@ -72,7 +72,12 @@ fun AppNavGraph() {
         ) {
             composable("home") {
                 val homeViewModel: HomeViewModel = viewModel(
-                    factory = viewModelFactory { HomeViewModel(app.container.paperRepository) }
+                    factory = viewModelFactory {
+                        HomeViewModel(
+                            repository = app.container.paperRepository,
+                            preferencesRepository = app.container.userPreferencesRepository,
+                        )
+                    }
                 )
                 val uiState by homeViewModel.uiState.collectAsState()
                 HomeScreen(
@@ -103,20 +108,20 @@ fun AppNavGraph() {
                 )
             }
             composable("settings") {
-                val settingsViewModel: SettingsViewModel = viewModel()
                 val uiState by settingsViewModel.uiState.collectAsState()
                 SettingsScreen(
                     uiState = uiState,
                     onToggleTheme = settingsViewModel::toggleThemeMode,
-                    onToggleZoteroConfigured = settingsViewModel::toggleZoteroConfigured,
-                    onToggleLlmConfigured = settingsViewModel::toggleLlmConfigured,
+                    onUpdateDefaultCategory = settingsViewModel::updateDefaultCategory,
+                    onUpdateDefaultDays = settingsViewModel::updateDefaultDays,
+                    onRefreshConfigStatus = settingsViewModel::refreshIntegrationStatus,
                 )
             }
         }
     }
 }
 
-private fun <T : ViewModel> viewModelFactory(create: () -> T): ViewModelProvider.Factory {
+fun <T : ViewModel> viewModelFactory(create: () -> T): ViewModelProvider.Factory {
     return object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <VM : ViewModel> create(modelClass: Class<VM>): VM = create() as VM

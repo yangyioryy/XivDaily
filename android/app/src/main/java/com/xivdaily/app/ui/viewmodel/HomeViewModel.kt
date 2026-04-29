@@ -2,21 +2,37 @@ package com.xivdaily.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.xivdaily.app.data.datastore.UserPreferencesRepository
 import com.xivdaily.app.data.model.PaperItem
 import com.xivdaily.app.data.repository.PaperRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class HomeViewModel(private val repository: PaperRepository) : ViewModel() {
+class HomeViewModel(
+    private val repository: PaperRepository,
+    private val preferencesRepository: UserPreferencesRepository,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        refreshPapers()
-        refreshTrendSummary()
+        preferencesRepository.preferences
+            .onEach { preferences ->
+                _uiState.update {
+                    it.copy(
+                        selectedCategory = preferences.defaultCategory,
+                        selectedDays = preferences.defaultDays,
+                    )
+                }
+                refreshPapers()
+                refreshTrendSummary()
+            }
+            .launchIn(viewModelScope)
     }
 
     fun updateKeyword(keyword: String) {

@@ -26,6 +26,9 @@ interface ApiService {
     @POST("translations")
     suspend fun translateSummary(@Body request: TranslationRequestDto): TranslationTaskDto
 
+    @GET("ai/config/status")
+    suspend fun getAiConfigStatus(): AiConfigStatusDto
+
     @GET("zotero/config/status")
     suspend fun getZoteroConfigStatus(): ZoteroConfigStatusDto
 
@@ -95,6 +98,10 @@ data class TranslationTaskDto(
     val status: String,
     @Json(name = "translated_summary") val translatedSummary: String,
     val warning: String?,
+)
+
+data class AiConfigStatusDto(
+    val configured: Boolean,
 )
 
 data class ZoteroConfigStatusDto(
