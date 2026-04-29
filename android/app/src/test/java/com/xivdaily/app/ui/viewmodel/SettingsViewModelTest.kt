@@ -35,6 +35,7 @@ class SettingsViewModelTest {
             assertTrue(viewModel.uiState.value.zoteroConfigured)
             assertEquals("XivDaily", viewModel.uiState.value.zoteroTargetCollectionName)
             assertEquals("ready", viewModel.uiState.value.zoteroTargetCollectionStatus)
+            assertTrue(!viewModel.uiState.value.hasSeenOnboarding)
         }
     }
 

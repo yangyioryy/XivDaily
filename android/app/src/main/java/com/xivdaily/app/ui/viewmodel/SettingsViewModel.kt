@@ -28,6 +28,7 @@ class SettingsViewModel(
                         defaultCategory = preferences.defaultCategory,
                         defaultDays = preferences.defaultDays,
                         themeMode = preferences.themeMode,
+                        hasSeenOnboarding = preferences.hasSeenOnboarding,
                     )
                 }
             }

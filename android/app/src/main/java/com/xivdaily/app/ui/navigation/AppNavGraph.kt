@@ -44,7 +44,10 @@ private data class BottomTab(
 )
 
 @Composable
-fun AppNavGraph(settingsViewModel: SettingsViewModel) {
+fun AppNavGraph(
+    settingsViewModel: SettingsViewModel,
+    hasSeenOnboarding: Boolean,
+) {
     val app = LocalContext.current.applicationContext as XivDailyApplication
     val navController = rememberNavController()
     val tabs = listOf(
@@ -55,6 +58,7 @@ fun AppNavGraph(settingsViewModel: SettingsViewModel) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val spacing = MaterialTheme.xivSpacing
+    val startRoute = if (hasSeenOnboarding) "home" else "home"
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -103,7 +107,7 @@ fun AppNavGraph(settingsViewModel: SettingsViewModel) {
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = "home",
+            startDestination = startRoute,
             modifier = Modifier.padding(paddingValues),
         ) {
             composable("home") {

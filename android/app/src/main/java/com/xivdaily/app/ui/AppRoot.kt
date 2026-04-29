@@ -28,7 +28,11 @@ fun AppRoot() {
 
     XivDailyTheme(themeMode = settingsState.themeMode) {
         Surface(color = MaterialTheme.colorScheme.background) {
-            AppNavGraph(settingsViewModel = settingsViewModel)
+            // 这里只预留首次引导分流入口，后续补 onboarding 页面时不需要再返工根导航。
+            AppNavGraph(
+                settingsViewModel = settingsViewModel,
+                hasSeenOnboarding = settingsState.hasSeenOnboarding,
+            )
         }
     }
 }

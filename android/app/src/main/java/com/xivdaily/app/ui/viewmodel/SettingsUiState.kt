@@ -4,6 +4,7 @@ data class SettingsUiState(
     val defaultCategory: String = "cs.CV",
     val defaultDays: Int = 3,
     val themeMode: String = "system",
+    val hasSeenOnboarding: Boolean = false,
     val language: String = "zh-CN",
     val zoteroConfigured: Boolean = false,
     val zoteroUserId: String? = null,

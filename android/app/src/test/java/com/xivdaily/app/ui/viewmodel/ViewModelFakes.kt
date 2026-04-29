@@ -28,6 +28,10 @@ internal class FakePreferencesRepository(
     override suspend fun setThemeMode(themeMode: String) {
         state.value = state.value.copy(themeMode = themeMode)
     }
+
+    override suspend fun setHasSeenOnboarding(hasSeen: Boolean) {
+        state.value = state.value.copy(hasSeenOnboarding = hasSeen)
+    }
 }
 
 internal open class FakePaperRepository(
