@@ -4,6 +4,7 @@ import com.squareup.moshi.Json
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -31,6 +32,21 @@ interface ApiService {
 
     @GET("zotero/config/status")
     suspend fun getZoteroConfigStatus(): ZoteroConfigStatusDto
+
+    @GET("config/integrations")
+    suspend fun getIntegrationConfig(): IntegrationConfigDto
+
+    @PUT("config/zotero")
+    suspend fun saveZoteroConfig(@Body request: ZoteroConfigSaveRequestDto): IntegrationConfigDto
+
+    @POST("config/zotero/test")
+    suspend fun testZoteroConfig(): ConfigTestResultDto
+
+    @PUT("config/llm")
+    suspend fun saveLlmConfig(@Body request: LlmConfigSaveRequestDto): IntegrationConfigDto
+
+    @POST("config/llm/test")
+    suspend fun testLlmConfig(): ConfigTestResultDto
 
     @POST("zotero/sync/{paper_id}")
     suspend fun syncPaperToZotero(@Path("paper_id") paperId: String): ZoteroSyncDto
@@ -105,6 +121,48 @@ data class TranslationTaskDto(
 
 data class AiConfigStatusDto(
     val configured: Boolean,
+)
+
+data class SecretFieldStateDto(
+    val configured: Boolean,
+    val masked: String?,
+)
+
+data class ZoteroConfigReadDto(
+    @Json(name = "user_id") val userId: String?,
+    @Json(name = "library_type") val libraryType: String,
+    @Json(name = "api_key") val apiKey: SecretFieldStateDto,
+    @Json(name = "target_collection_name") val targetCollectionName: String,
+)
+
+data class LlmConfigReadDto(
+    @Json(name = "base_url") val baseUrl: String,
+    @Json(name = "api_key") val apiKey: SecretFieldStateDto,
+    val model: String,
+)
+
+data class IntegrationConfigDto(
+    val zotero: ZoteroConfigReadDto,
+    val llm: LlmConfigReadDto,
+)
+
+data class ZoteroConfigSaveRequestDto(
+    @Json(name = "user_id") val userId: String?,
+    @Json(name = "library_type") val libraryType: String,
+    @Json(name = "api_key") val apiKey: String?,
+    @Json(name = "target_collection_name") val targetCollectionName: String,
+)
+
+data class LlmConfigSaveRequestDto(
+    @Json(name = "base_url") val baseUrl: String,
+    @Json(name = "api_key") val apiKey: String?,
+    val model: String,
+)
+
+data class ConfigTestResultDto(
+    val ok: Boolean,
+    val status: String,
+    val message: String,
 )
 
 data class ZoteroConfigStatusDto(

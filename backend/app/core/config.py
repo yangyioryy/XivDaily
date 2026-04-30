@@ -1,4 +1,5 @@
 from functools import lru_cache
+import json
 from pathlib import Path
 
 from pydantic import Field
@@ -32,6 +33,7 @@ class Settings(BaseSettings):
     zotero_user_id: str | None = Field(default=None, validation_alias="ZOTERO_USER_ID")
     zotero_library_type: str = Field(default="user", validation_alias="ZOTERO_LIBRARY_TYPE")
     zotero_api_key: str | None = Field(default=None, validation_alias="ZOTERO_API_KEY")
+    zotero_target_collection_name: str = Field(default="XivDaily", validation_alias="ZOTERO_TARGET_COLLECTION_NAME")
 
     @property
     def sqlite_path(self) -> Path | None:
@@ -41,7 +43,26 @@ class Settings(BaseSettings):
             return None
         return Path(self.database_url.removeprefix(prefix))
 
+    @property
+    def runtime_config_path(self) -> Path:
+        base_dir = self.sqlite_path.parent if self.sqlite_path is not None else Path("data")
+        return base_dir / "runtime_config.json"
+
+    def apply_runtime_overrides(self) -> None:
+        path = self.runtime_config_path
+        if not path.exists():
+            return
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        for key, value in payload.get("llm", {}).items():
+            if key in {"base_url", "api_key", "model"}:
+                setattr(self, f"llm_{key}", value)
+        for key, value in payload.get("zotero", {}).items():
+            if key in {"user_id", "library_type", "api_key", "target_collection_name"}:
+                setattr(self, f"zotero_{key}", value)
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+    settings.apply_runtime_overrides()
+    return settings

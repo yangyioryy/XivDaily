@@ -83,6 +83,40 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun configForms_saveAndTestThroughRepository() {
+        runTest {
+            val repository = FakePaperRepository()
+            val viewModel = SettingsViewModel(FakePreferencesRepository(), repository)
+            advanceUntilIdle()
+
+            viewModel.showZoteroDetailDialog()
+            viewModel.updateZoteroUserIdDraft("87654321")
+            viewModel.updateZoteroApiKeyDraft("zotero-key")
+            viewModel.updateZoteroCollectionDraft("Daily Papers")
+            viewModel.saveZoteroConfig()
+            advanceUntilIdle()
+
+            assertEquals(listOf("87654321", "user", "zotero-key", "Daily Papers"), repository.savedZoteroConfigs.single())
+            assertEquals("Zotero 配置已保存", viewModel.uiState.value.actionMessage)
+            assertTrue(!viewModel.uiState.value.isZoteroDetailDialogVisible)
+
+            viewModel.showLlmDetailDialog()
+            viewModel.updateLlmBaseUrlDraft("https://llm.example.test/v1")
+            viewModel.updateLlmApiKeyDraft("llm-key")
+            viewModel.updateLlmModelDraft("gpt-test")
+            viewModel.saveLlmConfig()
+            advanceUntilIdle()
+
+            assertEquals(listOf("https://llm.example.test/v1", "llm-key", "gpt-test"), repository.savedLlmConfigs.single())
+            assertEquals("大模型配置已保存", viewModel.uiState.value.actionMessage)
+
+            viewModel.testZoteroConfig()
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.actionMessage?.contains("Zotero") == true)
+        }
+    }
+
+    @Test
     fun updateProfile_persistsDisplayNameAndAvatarPreset() {
         runTest {
             val preferences = FakePreferencesRepository()

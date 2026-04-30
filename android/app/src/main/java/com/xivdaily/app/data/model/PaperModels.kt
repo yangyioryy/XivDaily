@@ -45,8 +45,18 @@ data class IntegrationConfigStatus(
     val zoteroConfigured: Boolean,
     val zoteroUserId: String?,
     val zoteroLibraryType: String?,
+    val zoteroApiKeyMasked: String?,
     val zoteroTargetCollectionName: String,
     val zoteroTargetCollectionKey: String?,
     val zoteroTargetCollectionStatus: String,
     val llmConfigured: Boolean,
+    val llmBaseUrl: String,
+    val llmModel: String,
+    val llmApiKeyMasked: String?,
+)
+
+data class ConfigTestResult(
+    val ok: Boolean,
+    val status: String,
+    val message: String,
 )

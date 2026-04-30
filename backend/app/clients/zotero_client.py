@@ -6,8 +6,6 @@ import httpx
 
 from app.core.config import get_settings
 
-DEFAULT_ZOTERO_COLLECTION_NAME = "XivDaily"
-
 
 class ZoteroClient:
     """Zotero Web API 客户端，负责集合与条目的远端读写。"""
@@ -20,7 +18,7 @@ class ZoteroClient:
 
     @property
     def target_collection_name(self) -> str:
-        return DEFAULT_ZOTERO_COLLECTION_NAME
+        return self.settings.zotero_target_collection_name
 
     async def create_item(self, item_payload: dict[str, object]) -> dict[str, object]:
         headers = self._write_headers(str(item_payload["itemKey"]))

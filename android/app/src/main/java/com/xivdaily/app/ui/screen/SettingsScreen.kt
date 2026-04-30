@@ -53,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.xivdaily.app.BuildConfig
@@ -73,8 +74,19 @@ fun SettingsScreen(
     onSelectLanguage: (String) -> Unit,
     onShowZoteroDetailDialog: () -> Unit,
     onHideZoteroDetailDialog: () -> Unit,
+    onUpdateZoteroUserId: (String) -> Unit,
+    onUpdateZoteroLibraryType: (String) -> Unit,
+    onUpdateZoteroApiKey: (String) -> Unit,
+    onUpdateZoteroCollection: (String) -> Unit,
+    onSaveZoteroConfig: () -> Unit,
+    onTestZoteroConfig: () -> Unit,
     onShowLlmDetailDialog: () -> Unit,
     onHideLlmDetailDialog: () -> Unit,
+    onUpdateLlmBaseUrl: (String) -> Unit,
+    onUpdateLlmApiKey: (String) -> Unit,
+    onUpdateLlmModel: (String) -> Unit,
+    onSaveLlmConfig: () -> Unit,
+    onTestLlmConfig: () -> Unit,
     onUpdateDefaultCategory: (String) -> Unit,
     onUpdateDefaultDays: (Int) -> Unit,
     onShowUpdateDialog: () -> Unit,
@@ -97,7 +109,18 @@ fun SettingsScreen(
         onHideLanguagePicker = onHideLanguagePicker,
         onSelectLanguage = onSelectLanguage,
         onHideZoteroDetailDialog = onHideZoteroDetailDialog,
+        onUpdateZoteroUserId = onUpdateZoteroUserId,
+        onUpdateZoteroLibraryType = onUpdateZoteroLibraryType,
+        onUpdateZoteroApiKey = onUpdateZoteroApiKey,
+        onUpdateZoteroCollection = onUpdateZoteroCollection,
+        onSaveZoteroConfig = onSaveZoteroConfig,
+        onTestZoteroConfig = onTestZoteroConfig,
         onHideLlmDetailDialog = onHideLlmDetailDialog,
+        onUpdateLlmBaseUrl = onUpdateLlmBaseUrl,
+        onUpdateLlmApiKey = onUpdateLlmApiKey,
+        onUpdateLlmModel = onUpdateLlmModel,
+        onSaveLlmConfig = onSaveLlmConfig,
+        onTestLlmConfig = onTestLlmConfig,
         onHideUpdateDialog = onHideUpdateDialog,
         onHideAboutDialog = onHideAboutDialog,
         onHideProfileDialog = onHideProfileDialog,
@@ -802,7 +825,18 @@ private fun SettingsDialogs(
     onHideLanguagePicker: () -> Unit,
     onSelectLanguage: (String) -> Unit,
     onHideZoteroDetailDialog: () -> Unit,
+    onUpdateZoteroUserId: (String) -> Unit,
+    onUpdateZoteroLibraryType: (String) -> Unit,
+    onUpdateZoteroApiKey: (String) -> Unit,
+    onUpdateZoteroCollection: (String) -> Unit,
+    onSaveZoteroConfig: () -> Unit,
+    onTestZoteroConfig: () -> Unit,
     onHideLlmDetailDialog: () -> Unit,
+    onUpdateLlmBaseUrl: (String) -> Unit,
+    onUpdateLlmApiKey: (String) -> Unit,
+    onUpdateLlmModel: (String) -> Unit,
+    onSaveLlmConfig: () -> Unit,
+    onTestLlmConfig: () -> Unit,
     onHideUpdateDialog: () -> Unit,
     onHideAboutDialog: () -> Unit,
     onHideProfileDialog: () -> Unit,
@@ -868,23 +902,154 @@ private fun SettingsDialogs(
         )
     }
     if (uiState.isZoteroDetailDialogVisible) {
-        MessageDialog(
-            title = "Zotero 统一归档集合",
-            message = buildZoteroDetailMessage(uiState),
+        ZoteroConfigDialog(
+            uiState = uiState,
             onDismiss = onHideZoteroDetailDialog,
+            onUserIdChange = onUpdateZoteroUserId,
+            onLibraryTypeChange = onUpdateZoteroLibraryType,
+            onApiKeyChange = onUpdateZoteroApiKey,
+            onCollectionChange = onUpdateZoteroCollection,
+            onSave = onSaveZoteroConfig,
+            onTest = onTestZoteroConfig,
         )
     }
     if (uiState.isLlmDetailDialogVisible) {
-        MessageDialog(
-            title = "大模型配置详情",
-            message = if (uiState.llmConfigured) {
-                "当前已启用摘要翻译与趋势总结能力。"
-            } else {
-                "当前未启用大模型配置，趋势与翻译会回退到降级结果。"
-            },
+        LlmConfigDialog(
+            uiState = uiState,
             onDismiss = onHideLlmDetailDialog,
+            onBaseUrlChange = onUpdateLlmBaseUrl,
+            onApiKeyChange = onUpdateLlmApiKey,
+            onModelChange = onUpdateLlmModel,
+            onSave = onSaveLlmConfig,
+            onTest = onTestLlmConfig,
         )
     }
+}
+
+@Composable
+private fun ZoteroConfigDialog(
+    uiState: SettingsUiState,
+    onDismiss: () -> Unit,
+    onUserIdChange: (String) -> Unit,
+    onLibraryTypeChange: (String) -> Unit,
+    onApiKeyChange: (String) -> Unit,
+    onCollectionChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onTest: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Zotero 配置") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = uiState.zoteroUserIdDraft,
+                    onValueChange = onUserIdChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("User ID / Group ID") },
+                    singleLine = true,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("user" to "个人库", "group" to "群组库").forEach { (value, label) ->
+                        FilterChip(
+                            selected = uiState.zoteroLibraryTypeDraft == value,
+                            onClick = { onLibraryTypeChange(value) },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = uiState.zoteroApiKeyDraft,
+                    onValueChange = onApiKeyChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("API Key") },
+                    placeholder = { Text(uiState.zoteroApiKeyMasked ?: "保存后仅脱敏显示") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = uiState.zoteroTargetCollectionNameDraft,
+                    onValueChange = onCollectionChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("目标集合名称") },
+                    singleLine = true,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !uiState.isConfigBusy, onClick = onSave) {
+                Text(if (uiState.isConfigBusy) "保存中..." else "保存")
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(enabled = !uiState.isConfigBusy, onClick = onTest) {
+                    Text("测试")
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("取消")
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun LlmConfigDialog(
+    uiState: SettingsUiState,
+    onDismiss: () -> Unit,
+    onBaseUrlChange: (String) -> Unit,
+    onApiKeyChange: (String) -> Unit,
+    onModelChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onTest: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("大模型 API 配置") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = uiState.llmBaseUrlDraft,
+                    onValueChange = onBaseUrlChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Base URL") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = uiState.llmModelDraft,
+                    onValueChange = onModelChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Model") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = uiState.llmApiKeyDraft,
+                    onValueChange = onApiKeyChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("API Key") },
+                    placeholder = { Text(uiState.llmApiKeyMasked ?: "保存后仅脱敏显示") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !uiState.isConfigBusy, onClick = onSave) {
+                Text(if (uiState.isConfigBusy) "保存中..." else "保存")
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(enabled = !uiState.isConfigBusy, onClick = onTest) {
+                    Text("测试")
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("取消")
+                }
+            }
+        },
+    )
 }
 
 @Composable

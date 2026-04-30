@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.ai import router as ai_router
+from app.api.config import router as config_router
 from app.api.health import router as health_router
 from app.api.papers import router as papers_router
 from app.api.zotero import router as zotero_router
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(papers_router)
     app.include_router(ai_router)
+    app.include_router(config_router)
     app.include_router(zotero_router)
     return app
 

@@ -97,7 +97,16 @@ class SettingsViewModel(
     }
 
     fun showZoteroDetailDialog() {
-        _uiState.update { it.copy(isZoteroDetailDialogVisible = true, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                isZoteroDetailDialogVisible = true,
+                zoteroUserIdDraft = it.zoteroUserId.orEmpty(),
+                zoteroLibraryTypeDraft = it.zoteroLibraryType ?: "user",
+                zoteroApiKeyDraft = "",
+                zoteroTargetCollectionNameDraft = it.zoteroTargetCollectionName,
+                errorMessage = null,
+            )
+        }
     }
 
     fun hideZoteroDetailDialog() {
@@ -105,11 +114,136 @@ class SettingsViewModel(
     }
 
     fun showLlmDetailDialog() {
-        _uiState.update { it.copy(isLlmDetailDialogVisible = true, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                isLlmDetailDialogVisible = true,
+                llmBaseUrlDraft = it.llmBaseUrl,
+                llmApiKeyDraft = "",
+                llmModelDraft = it.llmModel,
+                errorMessage = null,
+            )
+        }
     }
 
     fun hideLlmDetailDialog() {
         _uiState.update { it.copy(isLlmDetailDialogVisible = false) }
+    }
+
+    fun updateZoteroUserIdDraft(value: String) {
+        _uiState.update { it.copy(zoteroUserIdDraft = value) }
+    }
+
+    fun updateZoteroLibraryTypeDraft(value: String) {
+        _uiState.update { it.copy(zoteroLibraryTypeDraft = value) }
+    }
+
+    fun updateZoteroApiKeyDraft(value: String) {
+        _uiState.update { it.copy(zoteroApiKeyDraft = value) }
+    }
+
+    fun updateZoteroCollectionDraft(value: String) {
+        _uiState.update { it.copy(zoteroTargetCollectionNameDraft = value) }
+    }
+
+    fun updateLlmBaseUrlDraft(value: String) {
+        _uiState.update { it.copy(llmBaseUrlDraft = value) }
+    }
+
+    fun updateLlmApiKeyDraft(value: String) {
+        _uiState.update { it.copy(llmApiKeyDraft = value) }
+    }
+
+    fun updateLlmModelDraft(value: String) {
+        _uiState.update { it.copy(llmModelDraft = value) }
+    }
+
+    fun saveZoteroConfig() {
+        viewModelScope.launch {
+            val current = _uiState.value
+            _uiState.update { it.copy(isConfigBusy = true, errorMessage = null) }
+            runCatching {
+                paperRepository.saveZoteroConfig(
+                    userId = current.zoteroUserIdDraft.trim().ifBlank { null },
+                    libraryType = current.zoteroLibraryTypeDraft.trim().ifBlank { "user" },
+                    apiKey = current.zoteroApiKeyDraft.trim().ifBlank { null },
+                    targetCollectionName = current.zoteroTargetCollectionNameDraft.trim().ifBlank { "XivDaily" },
+                )
+            }.onSuccess { status ->
+                _uiState.update {
+                    it.applyIntegrationStatus(status).copy(
+                        isConfigBusy = false,
+                        isZoteroDetailDialogVisible = false,
+                        actionMessage = "Zotero 配置已保存",
+                        errorMessage = null,
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { it.copy(isConfigBusy = false, errorMessage = "Zotero 配置保存失败：${error.message ?: "未知错误"}") }
+            }
+        }
+    }
+
+    fun saveLlmConfig() {
+        viewModelScope.launch {
+            val current = _uiState.value
+            _uiState.update { it.copy(isConfigBusy = true, errorMessage = null) }
+            runCatching {
+                paperRepository.saveLlmConfig(
+                    baseUrl = current.llmBaseUrlDraft.trim().ifBlank { "https://api.openai.com/v1" },
+                    apiKey = current.llmApiKeyDraft.trim().ifBlank { null },
+                    model = current.llmModelDraft.trim().ifBlank { "gpt-5.4" },
+                )
+            }.onSuccess { status ->
+                _uiState.update {
+                    it.applyIntegrationStatus(status).copy(
+                        isConfigBusy = false,
+                        isLlmDetailDialogVisible = false,
+                        actionMessage = "大模型配置已保存",
+                        errorMessage = null,
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { it.copy(isConfigBusy = false, errorMessage = "大模型配置保存失败：${error.message ?: "未知错误"}") }
+            }
+        }
+    }
+
+    fun testZoteroConfig() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isConfigBusy = true, errorMessage = null) }
+            runCatching { paperRepository.testZoteroConfig() }
+                .onSuccess { result ->
+                    _uiState.update {
+                        it.copy(
+                            isConfigBusy = false,
+                            actionMessage = result.message.takeIf { result.ok },
+                            errorMessage = result.message.takeUnless { result.ok },
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isConfigBusy = false, errorMessage = "Zotero 连接测试失败：${error.message ?: "未知错误"}") }
+                }
+        }
+    }
+
+    fun testLlmConfig() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isConfigBusy = true, errorMessage = null) }
+            runCatching { paperRepository.testLlmConfig() }
+                .onSuccess { result ->
+                    _uiState.update {
+                        it.copy(
+                            isConfigBusy = false,
+                            actionMessage = result.message.takeIf { result.ok },
+                            errorMessage = result.message.takeUnless { result.ok },
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isConfigBusy = false, errorMessage = "大模型连接测试失败：${error.message ?: "未知错误"}") }
+                }
+        }
     }
 
     fun hideAboutDialog() {
@@ -193,10 +327,14 @@ class SettingsViewModel(
                             zoteroConfigured = status.zoteroConfigured,
                             zoteroUserId = status.zoteroUserId,
                             zoteroLibraryType = status.zoteroLibraryType,
+                            zoteroApiKeyMasked = status.zoteroApiKeyMasked,
                             zoteroTargetCollectionName = status.zoteroTargetCollectionName,
                             zoteroTargetCollectionKey = status.zoteroTargetCollectionKey,
                             zoteroTargetCollectionStatus = status.zoteroTargetCollectionStatus,
                             llmConfigured = status.llmConfigured,
+                            llmBaseUrl = status.llmBaseUrl,
+                            llmModel = status.llmModel,
+                            llmApiKeyMasked = status.llmApiKeyMasked,
                             integrationStatusFailed = false,
                             actionMessage = "配置状态已刷新",
                             errorMessage = null,
@@ -214,6 +352,23 @@ class SettingsViewModel(
                 }
         }
     }
+}
+
+private fun SettingsUiState.applyIntegrationStatus(status: com.xivdaily.app.data.model.IntegrationConfigStatus): SettingsUiState {
+    return copy(
+        zoteroConfigured = status.zoteroConfigured,
+        zoteroUserId = status.zoteroUserId,
+        zoteroLibraryType = status.zoteroLibraryType,
+        zoteroApiKeyMasked = status.zoteroApiKeyMasked,
+        zoteroTargetCollectionName = status.zoteroTargetCollectionName,
+        zoteroTargetCollectionKey = status.zoteroTargetCollectionKey,
+        zoteroTargetCollectionStatus = status.zoteroTargetCollectionStatus,
+        llmConfigured = status.llmConfigured,
+        llmBaseUrl = status.llmBaseUrl,
+        llmModel = status.llmModel,
+        llmApiKeyMasked = status.llmApiKeyMasked,
+        integrationStatusFailed = false,
+    )
 }
 
 private fun themeModeLabel(themeMode: String): String {

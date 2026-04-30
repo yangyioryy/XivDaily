@@ -3,6 +3,7 @@ package com.xivdaily.app.ui.viewmodel
 import com.xivdaily.app.data.datastore.UserPreferences
 import com.xivdaily.app.data.datastore.UserPreferencesRepositoryContract
 import com.xivdaily.app.data.model.FavoritePaperItem
+import com.xivdaily.app.data.model.ConfigTestResult
 import com.xivdaily.app.data.model.HomePaperResult
 import com.xivdaily.app.data.model.IntegrationConfigStatus
 import com.xivdaily.app.data.model.PaperItem
@@ -55,6 +56,8 @@ internal open class FakePaperRepository(
     var trendError: Throwable? = null
     val savedFavoriteIds: MutableList<String> = mutableListOf()
     val deletedFavoriteIds: MutableList<String> = mutableListOf()
+    val savedZoteroConfigs: MutableList<List<String?>> = mutableListOf()
+    val savedLlmConfigs: MutableList<List<String?>> = mutableListOf()
 
     override suspend fun listHomePapers(keyword: String?, category: String?, days: Int?): HomePaperResult {
         listRequests.add(Triple(keyword, category, days))
@@ -89,11 +92,38 @@ internal open class FakePaperRepository(
         zoteroConfigured = true,
         zoteroUserId = "12345678",
         zoteroLibraryType = "user",
+        zoteroApiKeyMasked = "***1234",
         zoteroTargetCollectionName = "XivDaily",
         zoteroTargetCollectionKey = "COLL1234",
         zoteroTargetCollectionStatus = "ready",
         llmConfigured = true,
+        llmBaseUrl = "https://api.example.test/v1",
+        llmModel = "gpt-test",
+        llmApiKeyMasked = "***5678",
     )
+
+    override suspend fun saveZoteroConfig(
+        userId: String?,
+        libraryType: String,
+        apiKey: String?,
+        targetCollectionName: String,
+    ): IntegrationConfigStatus {
+        savedZoteroConfigs += listOf(userId, libraryType, apiKey, targetCollectionName)
+        return getIntegrationConfigStatus()
+    }
+
+    override suspend fun saveLlmConfig(baseUrl: String, apiKey: String?, model: String): IntegrationConfigStatus {
+        savedLlmConfigs += listOf(baseUrl, apiKey, model)
+        return getIntegrationConfigStatus()
+    }
+
+    override suspend fun testZoteroConfig(): ConfigTestResult {
+        return ConfigTestResult(ok = true, status = "ready", message = "Zotero 配置字段已填写，可以发起连接测试。")
+    }
+
+    override suspend fun testLlmConfig(): ConfigTestResult {
+        return ConfigTestResult(ok = true, status = "ready", message = "大模型配置字段已填写，可以发起摘要与翻译请求。")
+    }
 }
 
 internal fun samplePaper(id: String = "2401.00001"): PaperItem {

@@ -3,6 +3,7 @@ package com.xivdaily.app.data.repository
 import com.xivdaily.app.data.local.FavoritePaperDao
 import com.xivdaily.app.data.local.FavoritePaperEntity
 import com.xivdaily.app.data.model.FavoritePaperItem
+import com.xivdaily.app.data.model.ConfigTestResult
 import com.xivdaily.app.data.model.HomePaperResult
 import com.xivdaily.app.data.model.IntegrationConfigStatus
 import com.xivdaily.app.data.model.PaperItem
@@ -10,8 +11,10 @@ import com.xivdaily.app.data.model.TrendSummary
 import com.xivdaily.app.data.model.TrendSummaryItem
 import com.xivdaily.app.data.remote.ApiService
 import com.xivdaily.app.data.remote.BibtexExportRequestDto
+import com.xivdaily.app.data.remote.LlmConfigSaveRequestDto
 import com.xivdaily.app.data.remote.PaperDto
 import com.xivdaily.app.data.remote.TranslationRequestDto
+import com.xivdaily.app.data.remote.ZoteroConfigSaveRequestDto
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -28,6 +31,10 @@ interface PaperRepositoryContract {
     suspend fun syncPaperToZotero(paper: PaperItem): PaperItem
     suspend fun exportBibtex(paperIds: List<String>): String
     suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus
+    suspend fun saveZoteroConfig(userId: String?, libraryType: String, apiKey: String?, targetCollectionName: String): IntegrationConfigStatus
+    suspend fun saveLlmConfig(baseUrl: String, apiKey: String?, model: String): IntegrationConfigStatus
+    suspend fun testZoteroConfig(): ConfigTestResult
+    suspend fun testLlmConfig(): ConfigTestResult
 }
 
 class PaperRepository(
@@ -123,17 +130,59 @@ class PaperRepository(
     }
 
     override suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus {
-        val ai = apiService.getAiConfigStatus()
+        val config = apiService.getIntegrationConfig()
         val zotero = apiService.getZoteroConfigStatus()
         return IntegrationConfigStatus(
             zoteroConfigured = zotero.configured,
-            zoteroUserId = zotero.userId,
-            zoteroLibraryType = zotero.libraryType,
+            zoteroUserId = config.zotero.userId,
+            zoteroLibraryType = config.zotero.libraryType,
+            zoteroApiKeyMasked = config.zotero.apiKey.masked,
             zoteroTargetCollectionName = zotero.targetCollectionName,
             zoteroTargetCollectionKey = zotero.targetCollectionKey,
             zoteroTargetCollectionStatus = zotero.targetCollectionStatus,
-            llmConfigured = ai.configured,
+            llmConfigured = config.llm.apiKey.configured,
+            llmBaseUrl = config.llm.baseUrl,
+            llmModel = config.llm.model,
+            llmApiKeyMasked = config.llm.apiKey.masked,
         )
+    }
+
+    override suspend fun saveZoteroConfig(
+        userId: String?,
+        libraryType: String,
+        apiKey: String?,
+        targetCollectionName: String,
+    ): IntegrationConfigStatus {
+        apiService.saveZoteroConfig(
+            ZoteroConfigSaveRequestDto(
+                userId = userId,
+                libraryType = libraryType,
+                apiKey = apiKey,
+                targetCollectionName = targetCollectionName,
+            )
+        )
+        return getIntegrationConfigStatus()
+    }
+
+    override suspend fun saveLlmConfig(baseUrl: String, apiKey: String?, model: String): IntegrationConfigStatus {
+        apiService.saveLlmConfig(
+            LlmConfigSaveRequestDto(
+                baseUrl = baseUrl,
+                apiKey = apiKey,
+                model = model,
+            )
+        )
+        return getIntegrationConfigStatus()
+    }
+
+    override suspend fun testZoteroConfig(): ConfigTestResult {
+        val result = apiService.testZoteroConfig()
+        return ConfigTestResult(ok = result.ok, status = result.status, message = result.message)
+    }
+
+    override suspend fun testLlmConfig(): ConfigTestResult {
+        val result = apiService.testLlmConfig()
+        return ConfigTestResult(ok = result.ok, status = result.status, message = result.message)
     }
 
     private fun PaperDto.toPaperItem(): PaperItem {
