@@ -187,4 +187,6 @@ D:\AndroidSdk\platform-tools\adb.exe shell am start -n com.xivdaily.app/.MainAct
 
 ## 📄 License
 
-当前仓库尚未单独放置 License 文件。
+本项目采用 Apache License 2.0 开源协议，详见 [LICENSE](./LICENSE)。
+
+Apache-2.0 允许使用、修改和分发项目代码，并包含明确的专利授权与免责声明。
