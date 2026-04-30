@@ -20,7 +20,7 @@ fun AppRoot() {
         factory = viewModelFactory {
             SettingsViewModel(
                 preferencesRepository = app.container.userPreferencesRepository,
-                paperRepository = app.container.paperRepository,
+                configRepository = app.container.paperRepository,
             )
         }
     )

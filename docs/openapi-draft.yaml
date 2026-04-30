@@ -11,6 +11,7 @@ tags:
   - name: Health
   - name: Papers
   - name: AI
+  - name: Config
   - name: Zotero
 paths:
   /health:
@@ -35,35 +36,37 @@ paths:
           name: keyword
           schema:
             type: string
-          description: 搜索关键词
+          description: 搜索关键词；未传 days 时会触发全 arXiv 搜索。
         - in: query
           name: category
           schema:
             type: string
-          description: arXiv 分类，如 cs.CV
+          description: arXiv 分类，如 cs.CV。
         - in: query
           name: days
-          required: true
+          required: false
           schema:
             type: integer
             minimum: 1
             maximum: 30
-          description: 回溯天数
+          description: 可选回溯天数；无关键词缺省为 7，有关键词缺省为 null。
         - in: query
           name: page
-          required: true
+          required: false
           schema:
             type: integer
             minimum: 1
-          description: 页码
+            default: 1
+          description: 页码。
         - in: query
           name: pageSize
-          required: true
+          required: false
           schema:
             type: integer
             minimum: 1
             maximum: 50
-          description: 每页数量
+            default: 10
+          description: 每页数量，后端内部字段名为 page_size。
       responses:
         "200":
           description: 查询成功
@@ -74,25 +77,26 @@ paths:
   /summaries/trends:
     get:
       tags: [AI]
-      summary: 生成当前时间窗口趋势摘要
+      summary: 生成首页趋势摘要
       operationId: getTrendSummary
       parameters:
         - in: query
           name: category
           schema:
             type: string
-          description: 聚焦领域
+          description: 聚焦领域。
         - in: query
           name: days
-          required: true
+          required: false
           schema:
             type: integer
             minimum: 1
             maximum: 30
-          description: 回溯天数
+            default: 7
+          description: 兼容旧客户端；当前后端固定按最近 3 天生成并返回 days=3。
       responses:
         "200":
-          description: 生成成功
+          description: 生成成功或降级成功
           content:
             application/json:
               schema:
@@ -110,15 +114,99 @@ paths:
               $ref: "#/components/schemas/TranslationRequest"
       responses:
         "200":
-          description: 翻译成功
+          description: 翻译成功或降级成功
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TranslationTask"
+  /ai/config/status:
+    get:
+      tags: [AI]
+      summary: 获取大模型兼容配置状态
+      operationId: getAiConfigStatus
+      responses:
+        "200":
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiConfigStatus"
+  /config/integrations:
+    get:
+      tags: [Config]
+      summary: 读取设置页集成配置
+      operationId: readIntegrations
+      responses:
+        "200":
+          description: 获取成功，敏感字段只返回脱敏状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationConfigRead"
+  /config/zotero:
+    put:
+      tags: [Config]
+      summary: 保存 Zotero 配置
+      operationId: saveZoteroConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZoteroConfigSaveRequest"
+      responses:
+        "200":
+          description: 保存成功，返回脱敏后的完整集成配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationConfigRead"
+  /config/zotero/test:
+    post:
+      tags: [Config]
+      summary: 测试 Zotero 配置填写状态
+      operationId: testZoteroConfig
+      responses:
+        "200":
+          description: 测试结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigTestResult"
+  /config/llm:
+    put:
+      tags: [Config]
+      summary: 保存大模型配置
+      operationId: saveLlmConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LlmConfigSaveRequest"
+      responses:
+        "200":
+          description: 保存成功，返回脱敏后的完整集成配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationConfigRead"
+  /config/llm/test:
+    post:
+      tags: [Config]
+      summary: 测试大模型配置填写状态
+      operationId: testLlmConfig
+      responses:
+        "200":
+          description: 测试结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigTestResult"
   /zotero/config/status:
     get:
       tags: [Zotero]
-      summary: 获取 Zotero 配置状态
+      summary: 获取 Zotero 兼容配置状态
       operationId: getZoteroConfigStatus
       responses:
         "200":
@@ -138,7 +226,7 @@ paths:
           required: true
           schema:
             type: string
-          description: 论文唯一标识
+          description: 论文唯一标识。
       responses:
         "200":
           description: 同步状态已返回
@@ -178,7 +266,7 @@ components:
           type: string
     PaperQuery:
       type: object
-      required: [days, page, page_size]
+      required: [page, page_size]
       properties:
         keyword:
           type: string
@@ -188,10 +276,16 @@ components:
           nullable: true
         days:
           type: integer
+          nullable: true
+          minimum: 1
+          maximum: 30
         page:
           type: integer
+          minimum: 1
         page_size:
           type: integer
+          minimum: 1
+          maximum: 50
     Paper:
       type: object
       required:
@@ -284,6 +378,7 @@ components:
           nullable: true
         days:
           type: integer
+          description: 当前固定返回 3。
         generated_at:
           type: string
           format: date-time
@@ -297,6 +392,7 @@ components:
           type: boolean
         status:
           type: string
+          enum: [success, degraded]
         warning:
           type: string
           nullable: true
@@ -328,6 +424,94 @@ components:
         warning:
           type: string
           nullable: true
+    AiConfigStatus:
+      type: object
+      required: [configured]
+      properties:
+        configured:
+          type: boolean
+    SecretFieldState:
+      type: object
+      required: [configured]
+      properties:
+        configured:
+          type: boolean
+        masked:
+          type: string
+          nullable: true
+          description: 脱敏展示值，例如 ***1234。
+    ZoteroConfigRead:
+      type: object
+      required: [library_type, api_key, target_collection_name]
+      properties:
+        user_id:
+          type: string
+          nullable: true
+        library_type:
+          type: string
+          default: user
+        api_key:
+          $ref: "#/components/schemas/SecretFieldState"
+        target_collection_name:
+          type: string
+          default: XivDaily
+    LlmConfigRead:
+      type: object
+      required: [base_url, api_key, model]
+      properties:
+        base_url:
+          type: string
+        api_key:
+          $ref: "#/components/schemas/SecretFieldState"
+        model:
+          type: string
+    IntegrationConfigRead:
+      type: object
+      required: [zotero, llm]
+      properties:
+        zotero:
+          $ref: "#/components/schemas/ZoteroConfigRead"
+        llm:
+          $ref: "#/components/schemas/LlmConfigRead"
+    ZoteroConfigSaveRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          nullable: true
+        library_type:
+          type: string
+          default: user
+        api_key:
+          type: string
+          nullable: true
+          description: 为空或 null 时保留已有密钥。
+        target_collection_name:
+          type: string
+          default: XivDaily
+    LlmConfigSaveRequest:
+      type: object
+      properties:
+        base_url:
+          type: string
+          default: https://api.openai.com/v1
+        api_key:
+          type: string
+          nullable: true
+          description: 为空或 null 时保留已有密钥。
+        model:
+          type: string
+          default: gpt-5.4
+    ConfigTestResult:
+      type: object
+      required: [ok, status, message]
+      properties:
+        ok:
+          type: boolean
+        status:
+          type: string
+        message:
+          type: string
     ZoteroConfigStatus:
       type: object
       required: [configured, library_type, target_collection_name, target_collection_status]
@@ -349,25 +533,6 @@ components:
           enum: [not_configured, ready, created, error]
         warning:
           type: string
-          nullable: true
-    SyncRecord:
-      type: object
-      required: [paper_id, status, synced_at]
-      properties:
-        paper_id:
-          type: string
-        status:
-          type: string
-          enum: [synced, failed]
-        zotero_item_key:
-          type: string
-          nullable: true
-        message:
-          type: string
-          nullable: true
-        synced_at:
-          type: string
-          format: date-time
           nullable: true
     ZoteroSyncResult:
       type: object

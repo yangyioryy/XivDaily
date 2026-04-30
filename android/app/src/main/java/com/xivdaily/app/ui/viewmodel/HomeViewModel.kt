@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xivdaily.app.data.datastore.UserPreferencesRepositoryContract
 import com.xivdaily.app.data.model.PaperItem
-import com.xivdaily.app.data.repository.PaperRepositoryContract
+import com.xivdaily.app.data.repository.HomePaperRepositoryContract
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
-    private val repository: PaperRepositoryContract,
+    private val repository: HomePaperRepositoryContract,
     private val preferencesRepository: UserPreferencesRepositoryContract,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())

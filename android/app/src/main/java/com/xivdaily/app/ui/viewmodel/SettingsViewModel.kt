@@ -3,7 +3,7 @@ package com.xivdaily.app.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xivdaily.app.data.datastore.UserPreferencesRepositoryContract
-import com.xivdaily.app.data.repository.PaperRepositoryContract
+import com.xivdaily.app.data.repository.IntegrationConfigRepositoryContract
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val preferencesRepository: UserPreferencesRepositoryContract,
-    private val paperRepository: PaperRepositoryContract,
+    private val configRepository: IntegrationConfigRepositoryContract,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -163,7 +163,7 @@ class SettingsViewModel(
             val current = _uiState.value
             _uiState.update { it.copy(isConfigBusy = true, errorMessage = null) }
             runCatching {
-                paperRepository.saveZoteroConfig(
+                configRepository.saveZoteroConfig(
                     userId = current.zoteroUserIdDraft.trim().ifBlank { null },
                     libraryType = current.zoteroLibraryTypeDraft.trim().ifBlank { "user" },
                     apiKey = current.zoteroApiKeyDraft.trim().ifBlank { null },
@@ -189,7 +189,7 @@ class SettingsViewModel(
             val current = _uiState.value
             _uiState.update { it.copy(isConfigBusy = true, errorMessage = null) }
             runCatching {
-                paperRepository.saveLlmConfig(
+                configRepository.saveLlmConfig(
                     baseUrl = current.llmBaseUrlDraft.trim().ifBlank { "https://api.openai.com/v1" },
                     apiKey = current.llmApiKeyDraft.trim().ifBlank { null },
                     model = current.llmModelDraft.trim().ifBlank { "gpt-5.4" },
@@ -212,7 +212,7 @@ class SettingsViewModel(
     fun testZoteroConfig() {
         viewModelScope.launch {
             _uiState.update { it.copy(isConfigBusy = true, errorMessage = null) }
-            runCatching { paperRepository.testZoteroConfig() }
+            runCatching { configRepository.testZoteroConfig() }
                 .onSuccess { result ->
                     _uiState.update {
                         it.copy(
@@ -231,7 +231,7 @@ class SettingsViewModel(
     fun testLlmConfig() {
         viewModelScope.launch {
             _uiState.update { it.copy(isConfigBusy = true, errorMessage = null) }
-            runCatching { paperRepository.testLlmConfig() }
+            runCatching { configRepository.testLlmConfig() }
                 .onSuccess { result ->
                     _uiState.update {
                         it.copy(
@@ -322,7 +322,7 @@ class SettingsViewModel(
 
     fun refreshIntegrationStatus() {
         viewModelScope.launch {
-            runCatching { paperRepository.getIntegrationConfigStatus() }
+            runCatching { configRepository.getIntegrationConfigStatus() }
                 .onSuccess { status ->
                     _uiState.update {
                         it.copy(

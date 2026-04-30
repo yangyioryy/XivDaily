@@ -2,7 +2,7 @@ package com.xivdaily.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.xivdaily.app.data.repository.PaperRepositoryContract
+import com.xivdaily.app.data.repository.FavoritePaperRepositoryContract
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class LibraryViewModel(private val repository: PaperRepositoryContract) : ViewModel() {
+class LibraryViewModel(private val repository: FavoritePaperRepositoryContract) : ViewModel() {
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 

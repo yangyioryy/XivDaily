@@ -19,23 +19,36 @@ import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-interface PaperRepositoryContract {
+// 按 UI 使用场景拆分契约，避免 ViewModel 依赖不属于自己的远端能力。
+interface HomePaperRepositoryContract {
     suspend fun listHomePapers(keyword: String?, category: String?, days: Int?): HomePaperResult
     suspend fun getTrendSummary(category: String?): TrendSummary
     suspend fun translatePaper(paper: PaperItem): PaperItem
-    fun observeFavorites(): Flow<List<FavoritePaperItem>>
     suspend fun saveFavorite(paper: PaperItem)
+    suspend fun deleteFavorite(paperId: String)
+    suspend fun syncPaperToZotero(paper: PaperItem): PaperItem
+}
+
+interface FavoritePaperRepositoryContract {
+    fun observeFavorites(): Flow<List<FavoritePaperItem>>
     suspend fun deleteFavorite(paperId: String)
     suspend fun deleteFavorites(paperIds: List<String>)
     suspend fun syncFavoriteToZotero(paperId: String): PaperItem
-    suspend fun syncPaperToZotero(paper: PaperItem): PaperItem
     suspend fun exportBibtex(paperIds: List<String>): String
+}
+
+interface IntegrationConfigRepositoryContract {
     suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus
     suspend fun saveZoteroConfig(userId: String?, libraryType: String, apiKey: String?, targetCollectionName: String): IntegrationConfigStatus
     suspend fun saveLlmConfig(baseUrl: String, apiKey: String?, model: String): IntegrationConfigStatus
     suspend fun testZoteroConfig(): ConfigTestResult
     suspend fun testLlmConfig(): ConfigTestResult
 }
+
+interface PaperRepositoryContract :
+    HomePaperRepositoryContract,
+    FavoritePaperRepositoryContract,
+    IntegrationConfigRepositoryContract
 
 class PaperRepository(
     private val apiService: ApiService,
