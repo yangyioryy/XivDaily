@@ -132,6 +132,7 @@ fun AppNavGraph(
                     onSyncToZotero = homeViewModel::syncToZotero,
                     onToggleSummary = homeViewModel::toggleSummaryExpanded,
                     onDismissSummary = homeViewModel::dismissSummary,
+                    onRefresh = homeViewModel::refreshFeed,
                 )
             }
             composable("library") {

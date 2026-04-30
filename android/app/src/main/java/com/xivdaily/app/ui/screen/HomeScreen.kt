@@ -25,9 +25,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.Button
@@ -76,6 +81,7 @@ fun HomeScreen(
     onSyncToZotero: (PaperItem) -> Unit,
     onToggleSummary: () -> Unit,
     onDismissSummary: () -> Unit,
+    onRefresh: () -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
     val uriHandler = LocalUriHandler.current
@@ -137,12 +143,14 @@ fun HomeScreen(
         }
         item {
             SectionHeader(
-                title = if (uiState.isLoading) "论文加载中..." else "今日论文",
+                title = if (uiState.isLoading) "论文加载中..." else "论文列表",
                 subtitle = if (uiState.isSearchActive) {
                     "全 arXiv 搜索：${uiState.searchKeyword}，分类过滤：${uiState.selectedCategory}"
                 } else {
                     "围绕 ${uiState.selectedCategory} 的最新研究流"
                 },
+                actionLabel = "刷新",
+                onAction = onRefresh,
             )
         }
         if (uiState.papers.isEmpty()) {
@@ -183,24 +191,10 @@ private fun HomeHeroSection(uiState: HomeUiState) {
         ) {
             Text(
                 text = "首页",
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.primaryContainer,
-            ) {
-                Text(
-                    text = if (uiState.isSearchActive) {
-                        "${uiState.selectedCategory} · 全 arXiv 搜索"
-                    } else {
-                        "${uiState.selectedCategory} · ${formatDays(uiState.selectedDays)}"
-                    },
-                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.xs),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
+            LeadingPill(icon = Icons.Rounded.Notifications)
         }
         Text(
             text = if (uiState.isSearchActive) {
@@ -224,81 +218,56 @@ private fun ExploreControlCard(
     onDaysSelect: (Int) -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
-    Card(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(spacing.md),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+        OutlinedTextField(
+            value = uiState.searchKeywordDraft,
+            onValueChange = onKeywordChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("搜索论文、作者、关键词") },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { onKeywordSubmit() }),
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = "搜索",
+                )
+            },
+            trailingIcon = {
+                TextButton(onClick = onKeywordSubmit) {
+                    Text("搜索")
+                }
+            },
+        )
+        FilterBlock(
+            title = "领域",
+            values = uiState.categories,
+            selected = uiState.selectedCategory,
+            labelMapper = { it },
+            onClick = onCategorySelect,
+        )
+        if (uiState.isSearchActive) {
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.secondaryContainer,
             ) {
-                LeadingPill(icon = Icons.Rounded.Search)
-                Column {
-                    Text(
-                        text = "搜索与筛选",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = "像参考稿一样，把筛选入口收成一组轻量操作。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            OutlinedTextField(
-                value = uiState.searchKeywordDraft,
-                onValueChange = onKeywordChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("搜索论文、作者、关键词") },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onKeywordSubmit() }),
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = "搜索",
-                    )
-                },
-                trailingIcon = {
-                    TextButton(onClick = onKeywordSubmit) {
-                        Text("搜索")
-                    }
-                },
-            )
-            FilterBlock(
-                title = "领域",
-                values = uiState.categories,
-                selected = uiState.selectedCategory,
-                labelMapper = { it },
-                onClick = onCategorySelect,
-            )
-            if (uiState.isSearchActive) {
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                ) {
-                    Text(
-                        text = "关键词搜索覆盖全 arXiv；领域只做结果过滤，时间 Pills 只影响无关键词列表。",
-                        modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
-            } else {
-                FilterBlock(
-                    title = "时间",
-                    values = uiState.dayOptions,
-                    selected = uiState.selectedDays,
-                    labelMapper = { formatDays(it) },
-                    onClick = onDaysSelect,
+                Text(
+                    text = "关键词搜索覆盖全 arXiv；领域只做结果过滤，时间 Pills 只影响无关键词列表。",
+                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
+        } else {
+            FilterBlock(
+                title = "时间",
+                values = uiState.dayOptions,
+                selected = uiState.selectedDays,
+                labelMapper = { formatDays(it) },
+                onClick = onDaysSelect,
+            )
         }
     }
 }
@@ -313,8 +282,8 @@ private fun TrendSummaryCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier
@@ -339,9 +308,7 @@ private fun TrendSummaryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                TextButton(onClick = onDismissSummary) {
-                    Text("关闭")
-                }
+                TextButton(onClick = onDismissSummary) { Text("关闭") }
             }
             if (uiState.isSummaryLoading) {
                 Text(
@@ -374,10 +341,7 @@ private fun TrendSummaryCard(
                 )
                 return@Column
             }
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.secondaryContainer,
-            ) {
+            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)) {
                 Text(
                     text = summary.intro,
                     modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
@@ -397,9 +361,9 @@ private fun TrendSummaryCard(
                         uiState.papers.firstOrNull { it.id == paperId }?.title
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
                         ) {
                             StatusDot(color = XivDailyInfo)
                             Text(
@@ -486,11 +450,24 @@ private fun HomePaperCard(
                     modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
                     verticalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
-                    Text(
-                        text = paper.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Text(
+                            text = paper.title,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Icon(
+                            imageVector = if (paper.favoriteState) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                            contentDescription = if (paper.favoriteState) "已收藏" else "未收藏",
+                            tint = XivDailyWarning,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                     Text(
                         text = paper.authors.joinToString(", "),
                         style = MaterialTheme.typography.bodySmall,
@@ -507,20 +484,6 @@ private fun HomePaperCard(
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
-                    Text(
-                        text = paper.translatedSummary ?: paper.summary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = if (paper.zoteroSyncState == "synced") {
-                            "点击查看原文，双击快速收藏，左滑移出当前流"
-                        } else {
-                            "点击查看原文，双击快速收藏，右滑同步，左滑移出当前流"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
                         ActionButton(
                             icon = Icons.Rounded.Translate,
@@ -670,18 +633,37 @@ private fun EmptyStateCard(
 private fun SectionHeader(
     title: String,
     subtitle: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
 ) {
-    Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (actionLabel != null && onAction != null) {
+            TextButton(onClick = onAction) {
+                Icon(
+                    imageVector = Icons.Rounded.Refresh,
+                    contentDescription = actionLabel,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.size(MaterialTheme.xivSpacing.xs))
+                Text(actionLabel)
+            }
+        }
     }
 }
 

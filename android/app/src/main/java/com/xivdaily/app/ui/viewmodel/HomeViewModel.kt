@@ -61,6 +61,11 @@ class HomeViewModel(
         }
     }
 
+    fun refreshFeed() {
+        refreshPapers()
+        refreshTrendSummary()
+    }
+
     fun toggleSummaryExpanded() {
         _uiState.update { it.copy(summaryExpanded = !it.summaryExpanded) }
     }
