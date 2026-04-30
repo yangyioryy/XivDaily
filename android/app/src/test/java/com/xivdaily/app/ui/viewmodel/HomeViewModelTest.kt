@@ -159,6 +159,32 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun translatePaper_tracksPerPaperStateAndSkipsAlreadyTranslatedPaper() {
+        runTest {
+            val repository = FakePaperRepository().apply {
+                homePapers += samplePaper()
+            }
+            val viewModel = HomeViewModel(repository, FakePreferencesRepository())
+            advanceUntilIdle()
+            val paper = viewModel.uiState.value.papers.single()
+
+            viewModel.translatePaper(paper)
+            advanceUntilIdle()
+
+            val translated = viewModel.uiState.value.papers.single()
+            assertEquals("translated", translated.translatedSummary)
+            assertTrue(viewModel.uiState.value.translatingPaperIds.isEmpty())
+            assertEquals(listOf(paper.id), repository.translationRequests)
+
+            viewModel.translatePaper(translated)
+            advanceUntilIdle()
+
+            assertEquals(listOf(paper.id), repository.translationRequests)
+            assertEquals("已显示中文翻译", viewModel.uiState.value.actionMessage?.text)
+        }
+    }
+
+    @Test
     fun toggleFavorite_actionMessageClearsAfterTimeout() {
         runTest {
             val repository = FakePaperRepository().apply {

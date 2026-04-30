@@ -91,18 +91,40 @@ class HomeViewModel(
     }
 
     fun translatePaper(paper: PaperItem) {
+        if (!paper.translatedSummary.isNullOrBlank()) {
+            showActionMessage("已显示中文翻译")
+            return
+        }
+        if (paper.id in _uiState.value.translatingPaperIds) {
+            return
+        }
         viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    translatingPaperIds = it.translatingPaperIds + paper.id,
+                    translationErrors = it.translationErrors - paper.id,
+                )
+            }
             runCatching { repository.translatePaper(paper) }
                 .onSuccess { translated ->
                     _uiState.update { state ->
                         state.copy(
                             papers = state.papers.map { if (it.id == translated.id) translated else it },
+                            translatingPaperIds = state.translatingPaperIds - paper.id,
                             errorMessage = null,
                         )
                     }
                     showActionMessage("摘要翻译已完成")
                 }
-                .onFailure { error -> setError(mapUserFriendlyError("摘要翻译暂时不可用", error)) }
+                .onFailure { error ->
+                    val message = mapUserFriendlyError("摘要翻译暂时不可用", error)
+                    _uiState.update {
+                        it.copy(
+                            translatingPaperIds = it.translatingPaperIds - paper.id,
+                            translationErrors = it.translationErrors + (paper.id to message),
+                        )
+                    }
+                }
         }
     }
 

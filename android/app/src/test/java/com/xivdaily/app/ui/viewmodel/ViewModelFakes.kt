@@ -60,6 +60,7 @@ internal open class FakePaperRepository(
     var trendError: Throwable? = null
     val savedFavoriteIds: MutableList<String> = mutableListOf()
     val deletedFavoriteIds: MutableList<String> = mutableListOf()
+    val translationRequests: MutableList<String> = mutableListOf()
     val savedZoteroConfigs: MutableList<List<String?>> = mutableListOf()
     val savedLlmConfigs: MutableList<List<String?>> = mutableListOf()
 
@@ -79,7 +80,10 @@ internal open class FakePaperRepository(
         return TrendSummary(intro = "intro", items = emptyList(), status = "success", warning = null)
     }
 
-    override suspend fun translatePaper(paper: PaperItem): PaperItem = paper.copy(translatedSummary = "translated")
+    override suspend fun translatePaper(paper: PaperItem): PaperItem {
+        translationRequests += paper.id
+        return paper.copy(translatedSummary = "translated")
+    }
     override fun observeFavorites(): Flow<List<FavoritePaperItem>> = favoritesFlow
     override suspend fun saveFavorite(paper: PaperItem) {
         savedFavoriteIds += paper.id

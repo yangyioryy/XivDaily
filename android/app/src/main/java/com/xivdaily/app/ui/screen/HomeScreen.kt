@@ -158,6 +158,8 @@ fun HomeScreen(
             items(uiState.papers, key = { it.id }) { paper ->
                 HomePaperCard(
                     paper = paper,
+                    isTranslating = paper.id in uiState.translatingPaperIds,
+                    translationError = uiState.translationErrors[paper.id],
                     onOpenPaper = { uriHandler.openUri(paper.sourceUrl) },
                     onDismiss = { onDismissPaper(paper) },
                     onTranslate = { onTranslate(paper) },
@@ -415,6 +417,8 @@ private fun TrendSummaryCard(
 @OptIn(ExperimentalFoundationApi::class)
 private fun HomePaperCard(
     paper: PaperItem,
+    isTranslating: Boolean,
+    translationError: String?,
     onOpenPaper: () -> Unit,
     onDismiss: () -> Unit,
     onTranslate: () -> Unit,
@@ -499,6 +503,11 @@ private fun HomePaperCard(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
+                    }
+                    when {
+                        isTranslating -> TranslationStateBlock(text = "摘要翻译中...")
+                        translationError != null -> TranslationStateBlock(text = translationError)
+                        !paper.translatedSummary.isNullOrBlank() -> BilingualSummaryBlock(paper = paper)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
                         ActionButton(
@@ -592,6 +601,49 @@ private data class SwipeHintVisual(
     val text: String,
     val alignment: Alignment,
 )
+
+@Composable
+private fun TranslationStateBlock(text: String) {
+    val spacing = MaterialTheme.xivSpacing
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
+}
+
+@Composable
+private fun BilingualSummaryBlock(paper: PaperItem) {
+    val spacing = MaterialTheme.xivSpacing
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+        Text(
+            text = "中文翻译",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = paper.translatedSummary.orEmpty(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = "Original Abstract",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = paper.summary,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
 
 @Composable
 private fun InlineMessageCard(
