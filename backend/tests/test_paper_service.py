@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -96,9 +97,16 @@ class FailingArxivClient:
         raise httpx.HTTPStatusError("rate limited", request=request, response=response)
 
 
+class SlowArxivClient(FakeArxivClient):
+    async def search(self, category: str | None, keyword: str | None, max_results: int) -> list[dict[str, object]]:
+        await asyncio.sleep(0.01)
+        return await super().search(category, keyword, max_results)
+
+
 @pytest.mark.anyio("asyncio")
 async def test_list_papers_filters_dedupes_and_caches() -> None:
     PaperService._shared_cache.clear()
+    PaperService._shared_inflight.clear()
     fake_client = FakeArxivClient()
     service = PaperService(arxiv_client=fake_client)
     query = PaperQuery(category="cs.CV", keyword="vision", days=3, page=1, page_size=10)
@@ -119,6 +127,7 @@ async def test_list_papers_filters_dedupes_and_caches() -> None:
 @pytest.mark.anyio("asyncio")
 async def test_list_papers_reuses_shared_cache_across_service_instances() -> None:
     PaperService._shared_cache.clear()
+    PaperService._shared_inflight.clear()
     fake_client = FakeArxivClient()
     first_service = PaperService(arxiv_client=fake_client)
     second_service = PaperService(arxiv_client=fake_client)
@@ -135,6 +144,7 @@ async def test_list_papers_reuses_shared_cache_across_service_instances() -> Non
 @pytest.mark.anyio("asyncio")
 async def test_list_papers_returns_empty_result_when_arxiv_is_rate_limited_without_cache() -> None:
     PaperService._shared_cache.clear()
+    PaperService._shared_inflight.clear()
     service = PaperService(arxiv_client=FailingArxivClient())
     query = PaperQuery(category="cs.LG", keyword="rate-limit-case", days=3, page=1, page_size=10)
 
@@ -151,6 +161,7 @@ async def test_list_papers_returns_empty_result_when_arxiv_is_rate_limited_witho
 @pytest.mark.anyio("asyncio")
 async def test_list_papers_marks_time_window_filtered_empty_state() -> None:
     PaperService._shared_cache.clear()
+    PaperService._shared_inflight.clear()
     service = PaperService(arxiv_client=TimeWindowArxivClient())
     query = PaperQuery(category="cs.AI", keyword="omibench", days=3, page=1, page_size=10)
 
@@ -166,6 +177,7 @@ async def test_list_papers_marks_time_window_filtered_empty_state() -> None:
 @pytest.mark.anyio("asyncio")
 async def test_list_papers_keeps_cross_category_keyword_hit_when_time_window_is_wide_enough() -> None:
     PaperService._shared_cache.clear()
+    PaperService._shared_inflight.clear()
     service = PaperService(arxiv_client=TimeWindowArxivClient())
     query = PaperQuery(category="cs.AI", keyword="omibench", days=30, page=1, page_size=10)
 
@@ -183,6 +195,7 @@ async def test_list_papers_keeps_cross_category_keyword_hit_when_time_window_is_
 @pytest.mark.anyio("asyncio")
 async def test_list_papers_keeps_cross_category_hits_when_within_time_window() -> None:
     PaperService._shared_cache.clear()
+    PaperService._shared_inflight.clear()
     service = PaperService(arxiv_client=TimeWindowArxivClient())
     query = PaperQuery(category="cs.CL", keyword=None, days=3, page=1, page_size=10)
 
@@ -197,6 +210,7 @@ async def test_list_papers_keeps_cross_category_hits_when_within_time_window() -
 @pytest.mark.anyio("asyncio")
 async def test_keyword_search_uses_full_arxiv_recall_and_skips_time_window_by_default() -> None:
     PaperService._shared_cache.clear()
+    PaperService._shared_inflight.clear()
     client = TimeWindowArxivClient()
     service = PaperService(arxiv_client=client)
     query = PaperQuery(category="cs.AI", keyword="omibench", days=None, page=1, page_size=10)
@@ -211,3 +225,37 @@ async def test_keyword_search_uses_full_arxiv_recall_and_skips_time_window_by_de
     assert result.empty_reason is None
     assert client.requests[0][0] is None
     assert client.requests[0][1] == "omibench"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_feed_cache_reuses_raw_items_when_only_days_changes() -> None:
+    PaperService._shared_cache.clear()
+    PaperService._shared_inflight.clear()
+    client = FakeArxivClient()
+    service = PaperService(arxiv_client=client)
+
+    first = await service.list_papers(PaperQuery(category="cs.CV", keyword=None, days=3, page=1, page_size=10))
+    second = await service.list_papers(PaperQuery(category="cs.CV", keyword=None, days=30, page=1, page_size=10))
+
+    assert first.total == 1
+    assert second.total == 2
+    assert client.calls == 1
+
+
+@pytest.mark.anyio("asyncio")
+async def test_same_cache_key_concurrent_requests_share_one_arxiv_call() -> None:
+    PaperService._shared_cache.clear()
+    PaperService._shared_inflight.clear()
+    client = SlowArxivClient()
+    first_service = PaperService(arxiv_client=client)
+    second_service = PaperService(arxiv_client=client)
+    query = PaperQuery(category="cs.CV", keyword=None, days=3, page=1, page_size=10)
+
+    first, second = await asyncio.gather(
+        first_service.list_papers(query),
+        second_service.list_papers(query),
+    )
+
+    assert first.total == 1
+    assert second.total == 1
+    assert client.calls == 1

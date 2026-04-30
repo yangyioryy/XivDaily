@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -33,6 +34,7 @@ class PaperService:
 
     # FastAPI 会频繁创建服务实例，这里共享缓存才能真正跨请求限流。
     _shared_cache: dict[tuple[str, str], CacheEntry] = {}
+    _shared_inflight: dict[tuple[str, str], asyncio.Task[list[dict[str, object]]]] = {}
 
     def __init__(self, arxiv_client: ArxivClient | None = None) -> None:
         self.settings = get_settings()
@@ -73,8 +75,14 @@ class PaperService:
         max_results = max(query.page * query.page_size * 3, 100)
         # 关键词搜索先面向全 arXiv 召回，再在服务层按分类过滤，避免交叉分类论文被 cat AND all 误杀。
         request_category = None if normalized_keyword else normalized_category
+        task = self._shared_inflight.get(cache_key)
+        owner = False
+        if task is None:
+            task = asyncio.create_task(self._fetch_raw_items(request_category, normalized_keyword, max_results))
+            self._shared_inflight[cache_key] = task
+            owner = True
         try:
-            items = await self.arxiv_client.search(request_category, normalized_keyword, max_results)
+            items = await task
         except httpx.HTTPError as exc:
             if cached is not None:
                 logger.warning("arXiv 请求失败，回退到过期缓存: %s", exc)
@@ -90,9 +98,20 @@ class PaperService:
                 status="unavailable",
                 warning="arXiv 请求暂时不可用，请稍后重试。",
             )
+        finally:
+            if owner and self._shared_inflight.get(cache_key) is task:
+                self._shared_inflight.pop(cache_key, None)
 
         self._cache[cache_key] = CacheEntry(created_at=monotonic(), items=items)
         return LoadResult(items=items, status="ok")
+
+    async def _fetch_raw_items(
+        self,
+        category: str | None,
+        keyword: str | None,
+        max_results: int,
+    ) -> list[dict[str, object]]:
+        return await self.arxiv_client.search(category, keyword, max_results)
 
     def _filter_by_category(self, papers: list[Paper], category: str | None) -> list[Paper]:
         if not category:
