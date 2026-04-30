@@ -326,29 +326,6 @@ fun SettingsScreen(
                 Text(text = "刷新配置状态", style = MaterialTheme.typography.labelLarge)
             }
         }
-        item {
-            Button(
-                onClick = {},
-                enabled = false,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = spacing.xl),
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    contentColor = XivDailyDanger,
-                ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(XivDailyDanger.copy(alpha = 0.4f)),
-                ),
-            ) {
-                Text(
-                    text = "退出登录（即将开放）",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = XivDailyDanger,
-                )
-            }
-        }
     }
 }
 
@@ -410,11 +387,7 @@ private fun ProfileCard(
                     )
                 }
                 Text(
-                    text = if (avatarImageUri.isNullOrBlank()) {
-                        avatarPresetToSubtitle(avatarPreset)
-                    } else {
-                        "已使用本地图片头像"
-                    },
+                    text = "本地研究档案 · ${if (avatarImageUri.isNullOrBlank()) avatarPresetToSubtitle(avatarPreset) else "已使用本地图片头像"}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -769,13 +742,8 @@ private fun SettingsHeroSection() {
     ) {
         Text(
             text = "设置",
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-            text = "把偏好、集成和资料卡收成更接近参考图的轻量设置页。",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
