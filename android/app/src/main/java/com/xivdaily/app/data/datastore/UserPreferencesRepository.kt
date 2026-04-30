@@ -17,6 +17,7 @@ data class UserPreferences(
     val hasSeenOnboarding: Boolean = false,
     val displayName: String = "XivDaily Reader",
     val avatarPreset: String = "study",
+    val avatarImageUri: String? = null,
 )
 
 interface UserPreferencesRepositoryContract {
@@ -27,6 +28,7 @@ interface UserPreferencesRepositoryContract {
     suspend fun setHasSeenOnboarding(hasSeen: Boolean)
     suspend fun setDisplayName(displayName: String)
     suspend fun setAvatarPreset(avatarPreset: String)
+    suspend fun setAvatarImageUri(uri: String?)
 }
 
 class UserPreferencesRepository(private val context: Context) : UserPreferencesRepositoryContract {
@@ -36,6 +38,7 @@ class UserPreferencesRepository(private val context: Context) : UserPreferencesR
     private val hasSeenOnboardingKey = androidx.datastore.preferences.core.booleanPreferencesKey("has_seen_onboarding")
     private val displayNameKey = stringPreferencesKey("display_name")
     private val avatarPresetKey = stringPreferencesKey("avatar_preset")
+    private val avatarImageUriKey = stringPreferencesKey("avatar_image_uri")
 
     override val preferences: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
         UserPreferences(
@@ -45,6 +48,7 @@ class UserPreferencesRepository(private val context: Context) : UserPreferencesR
             hasSeenOnboarding = preferences[hasSeenOnboardingKey] ?: false,
             displayName = preferences[displayNameKey] ?: "XivDaily Reader",
             avatarPreset = preferences[avatarPresetKey] ?: "study",
+            avatarImageUri = preferences[avatarImageUriKey],
         )
     }
 
@@ -70,5 +74,15 @@ class UserPreferencesRepository(private val context: Context) : UserPreferencesR
 
     override suspend fun setAvatarPreset(avatarPreset: String) {
         context.dataStore.edit { it[avatarPresetKey] = avatarPreset }
+    }
+
+    override suspend fun setAvatarImageUri(uri: String?) {
+        context.dataStore.edit { preferences ->
+            if (uri.isNullOrBlank()) {
+                preferences.remove(avatarImageUriKey)
+            } else {
+                preferences[avatarImageUriKey] = uri
+            }
+        }
     }
 }

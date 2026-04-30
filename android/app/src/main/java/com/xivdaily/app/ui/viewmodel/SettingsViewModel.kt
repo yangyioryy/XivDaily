@@ -31,6 +31,7 @@ class SettingsViewModel(
                         hasSeenOnboarding = preferences.hasSeenOnboarding,
                         displayName = preferences.displayName,
                         avatarPreset = preferences.avatarPreset,
+                        avatarImageUri = preferences.avatarImageUri,
                     )
                 }
             }
@@ -272,11 +273,12 @@ class SettingsViewModel(
         _uiState.update { it.copy(isProfileDialogVisible = false, isProfileEditorVisible = false) }
     }
 
-    fun updateProfile(displayName: String, avatarPreset: String) {
+    fun updateProfile(displayName: String, avatarPreset: String, avatarImageUri: String?) {
         viewModelScope.launch {
             val normalizedName = displayName.trim().ifBlank { "XivDaily Reader" }
             preferencesRepository.setDisplayName(normalizedName)
             preferencesRepository.setAvatarPreset(avatarPreset)
+            preferencesRepository.setAvatarImageUri(avatarImageUri)
             _uiState.update {
                 it.copy(
                     actionMessage = "个人资料已保存",

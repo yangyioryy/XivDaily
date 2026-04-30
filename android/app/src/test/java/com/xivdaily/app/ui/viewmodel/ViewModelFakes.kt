@@ -42,6 +42,10 @@ internal class FakePreferencesRepository(
     override suspend fun setAvatarPreset(avatarPreset: String) {
         state.value = state.value.copy(avatarPreset = avatarPreset)
     }
+
+    override suspend fun setAvatarImageUri(uri: String?) {
+        state.value = state.value.copy(avatarImageUri = uri)
+    }
 }
 
 internal open class FakePaperRepository(

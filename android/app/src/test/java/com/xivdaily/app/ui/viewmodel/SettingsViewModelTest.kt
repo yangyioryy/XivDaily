@@ -124,11 +124,12 @@ class SettingsViewModelTest {
             advanceUntilIdle()
 
             viewModel.showProfileDialog()
-            viewModel.updateProfile("Ada Researcher", "orbit")
+            viewModel.updateProfile("Ada Researcher", "orbit", "content://avatar")
             advanceUntilIdle()
 
             assertEquals("Ada Researcher", viewModel.uiState.value.displayName)
             assertEquals("orbit", viewModel.uiState.value.avatarPreset)
+            assertEquals("content://avatar", viewModel.uiState.value.avatarImageUri)
             assertEquals("个人资料已保存", viewModel.uiState.value.actionMessage)
             assertTrue(!viewModel.uiState.value.isProfileDialogVisible)
         }

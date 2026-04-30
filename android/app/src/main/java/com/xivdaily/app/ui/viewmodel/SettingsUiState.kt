@@ -7,6 +7,7 @@ data class SettingsUiState(
     val hasSeenOnboarding: Boolean = false,
     val displayName: String = "XivDaily Reader",
     val avatarPreset: String = "study",
+    val avatarImageUri: String? = null,
     val language: String = "zh-CN",
     val zoteroConfigured: Boolean = false,
     val zoteroUserId: String? = null,

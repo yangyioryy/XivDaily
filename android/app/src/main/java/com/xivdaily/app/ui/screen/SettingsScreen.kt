@@ -1,9 +1,15 @@
 package com.xivdaily.app.ui.screen
 
+import android.content.Intent
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +49,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,7 +58,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -95,7 +106,7 @@ fun SettingsScreen(
     onHideAboutDialog: () -> Unit,
     onShowProfileDialog: () -> Unit,
     onHideProfileDialog: () -> Unit,
-    onUpdateProfile: (String, String) -> Unit,
+    onUpdateProfile: (String, String, String?) -> Unit,
     onShowClearCacheDialog: () -> Unit,
     onHideClearCacheDialog: () -> Unit,
     onConfirmClearCache: () -> Unit,
@@ -143,6 +154,7 @@ fun SettingsScreen(
             ProfileCard(
                 displayName = uiState.displayName,
                 avatarPreset = uiState.avatarPreset,
+                avatarImageUri = uiState.avatarImageUri,
                 onClick = onShowProfileDialog,
             )
         }
@@ -344,6 +356,7 @@ fun SettingsScreen(
 private fun ProfileCard(
     displayName: String,
     avatarPreset: String,
+    avatarImageUri: String?,
     onClick: () -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
@@ -371,10 +384,9 @@ private fun ProfileCard(
                     .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = avatarPresetToGlyph(avatarPreset),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                AvatarImageOrFallback(
+                    avatarImageUri = avatarImageUri,
+                    fallbackGlyph = avatarPresetToGlyph(avatarPreset),
                 )
             }
             Column(
@@ -398,7 +410,11 @@ private fun ProfileCard(
                     )
                 }
                 Text(
-                    text = avatarPresetToSubtitle(avatarPreset),
+                    text = if (avatarImageUri.isNullOrBlank()) {
+                        avatarPresetToSubtitle(avatarPreset)
+                    } else {
+                        "已使用本地图片头像"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -409,6 +425,39 @@ private fun ProfileCard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+@Composable
+private fun AvatarImageOrFallback(
+    avatarImageUri: String?,
+    fallbackGlyph: String,
+) {
+    val context = LocalContext.current
+    var imageBitmap by remember(avatarImageUri) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(avatarImageUri) {
+        imageBitmap = avatarImageUri?.let { value ->
+            runCatching {
+                context.contentResolver.openInputStream(Uri.parse(value))?.use { input ->
+                    BitmapFactory.decodeStream(input)?.asImageBitmap()
+                }
+            }.getOrNull()
+        }
+    }
+    val bitmap = imageBitmap
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = "用户头像",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Text(
+            text = fallbackGlyph,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
     }
 }
 
@@ -840,7 +889,7 @@ private fun SettingsDialogs(
     onHideUpdateDialog: () -> Unit,
     onHideAboutDialog: () -> Unit,
     onHideProfileDialog: () -> Unit,
-    onUpdateProfile: (String, String) -> Unit,
+    onUpdateProfile: (String, String, String?) -> Unit,
     onHideClearCacheDialog: () -> Unit,
     onConfirmClearCache: () -> Unit,
 ) {
@@ -880,6 +929,7 @@ private fun SettingsDialogs(
         ProfileEditorDialog(
             displayName = uiState.displayName,
             avatarPreset = uiState.avatarPreset,
+            avatarImageUri = uiState.avatarImageUri,
             onDismiss = onHideProfileDialog,
             onConfirm = onUpdateProfile,
         )
@@ -1106,11 +1156,22 @@ private fun MessageDialog(
 private fun ProfileEditorDialog(
     displayName: String,
     avatarPreset: String,
+    avatarImageUri: String?,
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit,
+    onConfirm: (String, String, String?) -> Unit,
 ) {
+    val context = LocalContext.current
     var draftName by remember(displayName) { mutableStateOf(displayName) }
     var draftAvatar by remember(avatarPreset) { mutableStateOf(avatarPreset) }
+    var draftAvatarUri by remember(avatarImageUri) { mutableStateOf(avatarImageUri) }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            draftAvatarUri = uri.toString()
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("编辑个人资料") },
@@ -1141,10 +1202,23 @@ private fun ProfileEditorDialog(
                         )
                     }
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { imagePicker.launch(arrayOf("image/*")) }) {
+                        Text(if (draftAvatarUri.isNullOrBlank()) "上传头像" else "更换头像")
+                    }
+                    TextButton(onClick = { draftAvatarUri = null }) {
+                        Text("移除图片")
+                    }
+                }
+                Text(
+                    text = draftAvatarUri?.let { "已选择本地图片头像" } ?: "未选择图片时使用头像预设",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(draftName, draftAvatar) }) {
+            TextButton(onClick = { onConfirm(draftName, draftAvatar, draftAvatarUri) }) {
                 Text("保存")
             }
         },
