@@ -148,6 +148,7 @@ fun AppNavGraph(
                     onDeleteSelected = libraryViewModel::deleteSelectedFavorites,
                     onSyncFavorite = libraryViewModel::syncFavoriteToZotero,
                     onExportSelected = libraryViewModel::exportSelectedBibtex,
+                    onSelectAll = libraryViewModel::selectAll,
                 )
             }
             composable("settings") {

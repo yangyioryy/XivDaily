@@ -41,6 +41,11 @@ class LibraryViewModel(private val repository: PaperRepositoryContract) : ViewMo
         _uiState.update { it.copy(selectedPaperIds = emptySet(), isBatchMode = false) }
     }
 
+    fun selectAll(paperIds: List<String>) {
+        val next = paperIds.toSet()
+        _uiState.update { it.copy(selectedPaperIds = next, isBatchMode = next.isNotEmpty()) }
+    }
+
     fun changeSyncFilter(filter: String) {
         _uiState.update { it.copy(syncFilter = filter) }
     }
