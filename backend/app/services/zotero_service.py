@@ -118,7 +118,9 @@ class ZoteroService:
             response = await self.zotero_client.create_item(payload)
             item_key = self._extract_item_key(response) or item_key
             visibility = await self._verify_item_visibility(item_key, str(target_collection["key"]))
-            message = "同步成功。" if visibility["status"] == "verified" else "同步请求已提交，但条目暂未在目标集合中确认可见。"
+            if visibility["status"] == "missing_from_collection":
+                visibility = await self._repair_item_collection_membership(item_key, str(target_collection["key"]))
+            message = "同步成功，已归档到目标集合。" if visibility["status"] == "verified" else "同步请求已提交，但条目暂未在目标集合中确认可见。"
             record = self._upsert_record(db, paper_id, status="synced", zotero_item_key=item_key, message=message)
             return self._build_sync_result(
                 record=record,
@@ -207,6 +209,26 @@ class ZoteroService:
         return {
             "status": "missing_from_collection",
             "message": "同步请求成功，但未在目标集合中读取到该条目。",
+        }
+
+    async def _repair_item_collection_membership(self, item_key: str, collection_key: str) -> dict[str, str]:
+        try:
+            await self.zotero_client.add_item_to_collection(item_key, collection_key)
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "status": "missing_from_collection",
+                "message": f"已创建条目，但补偿归档到目标集合失败：{exc}",
+            }
+
+        repaired = await self._verify_item_visibility(item_key, collection_key)
+        if repaired["status"] == "verified":
+            return {
+                "status": "verified",
+                "message": "已通过补偿归档确认条目出现在目标集合中。",
+            }
+        return {
+            "status": repaired["status"],
+            "message": f"已尝试补偿归档，但仍未确认集合可见：{repaired['message']}",
         }
 
     def _extract_item_key(self, response: dict[str, object]) -> str | None:

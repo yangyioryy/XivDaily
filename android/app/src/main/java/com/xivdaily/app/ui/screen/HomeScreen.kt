@@ -80,6 +80,7 @@ fun HomeScreen(
     onFavorite: (PaperItem) -> Unit,
     onSyncToZotero: (PaperItem) -> Unit,
     onToggleSummary: () -> Unit,
+    onTogglePaperAbstract: (String) -> Unit,
     onDismissSummary: () -> Unit,
     onRefresh: () -> Unit,
 ) {
@@ -160,8 +161,10 @@ fun HomeScreen(
                     paper = paper,
                     isTranslating = paper.id in uiState.translatingPaperIds,
                     translationError = uiState.translationErrors[paper.id],
+                    isAbstractExpanded = paper.id in uiState.expandedAbstractPaperIds,
                     onOpenPaper = { uriHandler.openUri(paper.sourceUrl) },
                     onDismiss = { onDismissPaper(paper) },
+                    onToggleAbstract = { onTogglePaperAbstract(paper.id) },
                     onTranslate = { onTranslate(paper) },
                     onFavorite = { onFavorite(paper) },
                     onSyncToZotero = { onSyncToZotero(paper) },
@@ -414,13 +417,15 @@ private fun TrendSummaryCard(
 }
 
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 private fun HomePaperCard(
     paper: PaperItem,
     isTranslating: Boolean,
     translationError: String?,
+    isAbstractExpanded: Boolean,
     onOpenPaper: () -> Unit,
     onDismiss: () -> Unit,
+    onToggleAbstract: () -> Unit,
     onTranslate: () -> Unit,
     onFavorite: () -> Unit,
     onSyncToZotero: () -> Unit,
@@ -504,17 +509,39 @@ private fun HomePaperCard(
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
-                    when {
-                        isTranslating -> TranslationStateBlock(text = "摘要翻译中...")
-                        translationError != null -> TranslationStateBlock(text = translationError)
-                        !paper.translatedSummary.isNullOrBlank() -> BilingualSummaryBlock(paper = paper)
+                    AnimatedVisibility(
+                        visible = isAbstractExpanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                            if (paper.translatedSummary.isNullOrBlank()) {
+                                OriginalSummaryBlock(paper = paper)
+                            } else {
+                                BilingualSummaryBlock(paper = paper)
+                            }
+                            when {
+                                isTranslating -> TranslationStateBlock(text = "摘要翻译中...")
+                                translationError != null -> TranslationStateBlock(text = translationError)
+                            }
+                        }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+                        verticalArrangement = Arrangement.spacedBy(spacing.xs),
+                    ) {
                         ActionButton(
-                            icon = Icons.Rounded.Translate,
-                            label = "翻译",
-                            onClick = onTranslate,
+                            icon = Icons.Rounded.ChevronRight,
+                            label = if (isAbstractExpanded) "收起摘要" else "展开摘要",
+                            onClick = onToggleAbstract,
                         )
+                        if (isAbstractExpanded) {
+                            ActionButton(
+                                icon = Icons.Rounded.Translate,
+                                label = "翻译",
+                                onClick = onTranslate,
+                            )
+                        }
                         ActionButton(
                             icon = Icons.Rounded.BookmarkBorder,
                             label = if (paper.favoriteState) "取消收藏" else "收藏",
@@ -614,6 +641,23 @@ private fun TranslationStateBlock(text: String) {
             modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
+}
+
+@Composable
+private fun OriginalSummaryBlock(paper: PaperItem) {
+    val spacing = MaterialTheme.xivSpacing
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+        Text(
+            text = "Original Abstract",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = paper.summary,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

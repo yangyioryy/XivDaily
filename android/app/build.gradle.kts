@@ -7,6 +7,8 @@ plugins {
 
 val releaseBackendBaseUrl = providers.gradleProperty("xivdaily.releaseBaseUrl")
     .orElse("https://api.xivdaily.invalid/")
+val debugBackendBaseUrl = providers.gradleProperty("xivdaily.debugBaseUrl")
+    .orElse("http://10.0.2.2:8000/")
 
 android {
     namespace = "com.xivdaily.app"
@@ -29,7 +31,7 @@ android {
     buildTypes {
         debug {
             // 本地联调只允许通过 debug 构建访问模拟器映射出来的宿主机服务。
-            buildConfigField("String", "BACKEND_BASE_URL", "\"http://10.0.2.2:8000/\"")
+            buildConfigField("String", "BACKEND_BASE_URL", "\"${debugBackendBaseUrl.get()}\"")
         }
         release {
             isMinifyEnabled = false

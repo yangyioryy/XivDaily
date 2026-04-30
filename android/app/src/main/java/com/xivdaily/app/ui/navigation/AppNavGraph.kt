@@ -131,6 +131,7 @@ fun AppNavGraph(
                     onFavorite = homeViewModel::toggleFavorite,
                     onSyncToZotero = homeViewModel::syncToZotero,
                     onToggleSummary = homeViewModel::toggleSummaryExpanded,
+                    onTogglePaperAbstract = homeViewModel::togglePaperAbstract,
                     onDismissSummary = homeViewModel::dismissSummary,
                     onRefresh = homeViewModel::refreshFeed,
                 )

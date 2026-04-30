@@ -71,6 +71,8 @@ class FakeZoteroClient:
         self.collection_key = collection_key
         self.last_item_payload: dict[str, object] | None = None
         self.item_visible = True
+        self.repair_makes_item_visible = False
+        self.collection_repairs: list[tuple[str, str]] = []
         self.settings = type("Settings", (), {"zotero_user_id": "12345", "zotero_library_type": "user"})()
 
     def is_configured(self) -> bool:
@@ -94,6 +96,11 @@ class FakeZoteroClient:
 
     async def is_item_in_collection(self, item_key: str, collection_key: str) -> bool:
         return self.item_visible
+
+    async def add_item_to_collection(self, item_key: str, collection_key: str) -> None:
+        self.collection_repairs.append((item_key, collection_key))
+        if self.repair_makes_item_visible:
+            self.item_visible = True
 
 
 def build_session() -> Session:
@@ -175,7 +182,24 @@ async def test_sync_paper_is_idempotent_after_success() -> None:
 
 
 @pytest.mark.anyio("asyncio")
-async def test_sync_paper_reports_missing_visibility_when_item_not_found_in_collection() -> None:
+async def test_sync_paper_repairs_collection_membership_when_visibility_is_missing() -> None:
+    db = build_session()
+    client = FakeZoteroClient(configured=True)
+    client.item_visible = False
+    client.repair_makes_item_visible = True
+    service = ZoteroService(zotero_client=client, paper_service=FakePaperService())
+
+    result = await service.sync_paper(db, "2401.00001")
+
+    assert result.status == "synced"
+    assert result.visibility_status == "verified"
+    assert result.message == "同步成功，已归档到目标集合。"
+    assert result.visibility_message == "已通过补偿归档确认条目出现在目标集合中。"
+    assert client.collection_repairs == [("ABCD1234", "COLL1234")]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_sync_paper_reports_missing_visibility_when_repair_still_fails() -> None:
     db = build_session()
     client = FakeZoteroClient(configured=True)
     client.item_visible = False
@@ -186,7 +210,7 @@ async def test_sync_paper_reports_missing_visibility_when_item_not_found_in_coll
     assert result.status == "synced"
     assert result.visibility_status == "missing_from_collection"
     assert "暂未在目标集合中确认可见" in (result.message or "")
-    assert "未在目标集合中读取到该条目" in (result.visibility_message or "")
+    assert "已尝试补偿归档" in (result.visibility_message or "")
 
 
 @pytest.mark.anyio("asyncio")

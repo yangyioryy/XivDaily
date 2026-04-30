@@ -70,6 +70,17 @@ class HomeViewModel(
         _uiState.update { it.copy(summaryExpanded = !it.summaryExpanded) }
     }
 
+    fun togglePaperAbstract(paperId: String) {
+        _uiState.update { state ->
+            val nextExpanded = if (paperId in state.expandedAbstractPaperIds) {
+                state.expandedAbstractPaperIds - paperId
+            } else {
+                state.expandedAbstractPaperIds + paperId
+            }
+            state.copy(expandedAbstractPaperIds = nextExpanded)
+        }
+    }
+
     fun dismissSummary() {
         _uiState.update { it.copy(dismissedSummary = true) }
     }
@@ -91,6 +102,10 @@ class HomeViewModel(
     }
 
     fun translatePaper(paper: PaperItem) {
+        if (paper.id !in _uiState.value.expandedAbstractPaperIds) {
+            showActionMessage("请先展开摘要")
+            return
+        }
         if (!paper.translatedSummary.isNullOrBlank()) {
             showActionMessage("已显示中文翻译")
             return

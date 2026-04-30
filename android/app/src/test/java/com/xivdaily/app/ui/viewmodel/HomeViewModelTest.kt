@@ -171,6 +171,17 @@ class HomeViewModelTest {
             viewModel.translatePaper(paper)
             advanceUntilIdle()
 
+            assertTrue(repository.translationRequests.isEmpty())
+            assertEquals("请先展开摘要", viewModel.uiState.value.actionMessage?.text)
+
+            viewModel.togglePaperAbstract(paper.id)
+            runCurrent()
+
+            assertTrue(paper.id in viewModel.uiState.value.expandedAbstractPaperIds)
+
+            viewModel.translatePaper(paper)
+            advanceUntilIdle()
+
             val translated = viewModel.uiState.value.papers.single()
             assertEquals("translated", translated.translatedSummary)
             assertTrue(viewModel.uiState.value.translatingPaperIds.isEmpty())

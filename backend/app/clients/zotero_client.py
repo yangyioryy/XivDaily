@@ -83,6 +83,27 @@ class ZoteroClient:
                 return True
         return False
 
+    async def add_item_to_collection(self, item_key: str, collection_key: str) -> None:
+        item = await self._get_item(item_key)
+        data = item.get("data")
+        if not isinstance(data, dict):
+            raise ValueError("未能读取 Zotero 条目 data 字段。")
+
+        raw_collections = data.get("collections")
+        collections = [str(value) for value in raw_collections] if isinstance(raw_collections, list) else []
+        if collection_key in collections:
+            return
+        collections.append(collection_key)
+
+        version = data.get("version") or item.get("version")
+        headers = self._write_headers(secrets.token_hex(16))
+        if version is not None:
+            headers["If-Unmodified-Since-Version"] = str(version)
+        url = f"{self.settings.zotero_base_url}/{self._library_prefix()}/items/{item_key}"
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.patch(url, json={"collections": collections}, headers=headers)
+            response.raise_for_status()
+
     def _library_prefix(self) -> str:
         resource = "groups" if self.settings.zotero_library_type == "group" else "users"
         return f"{resource}/{self.settings.zotero_user_id}"
@@ -98,6 +119,16 @@ class ZoteroClient:
         headers["Zotero-Write-Token"] = write_token
         headers["Content-Type"] = "application/json"
         return headers
+
+    async def _get_item(self, item_key: str) -> dict[str, object]:
+        url = f"{self.settings.zotero_base_url}/{self._library_prefix()}/items/{item_key}"
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.get(url, headers=self._default_headers())
+            response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("Zotero 条目读取结果格式异常。")
+        return payload
 
     def _normalize_collection(self, raw_collection: object) -> dict[str, str] | None:
         if not isinstance(raw_collection, dict):

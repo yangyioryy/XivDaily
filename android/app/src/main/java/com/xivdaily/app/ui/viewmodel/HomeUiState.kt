@@ -21,6 +21,7 @@ data class HomeUiState(
     val listStatus: String = "ok",
     val listWarning: String? = null,
     val emptyReason: String? = null,
+    val expandedAbstractPaperIds: Set<String> = emptySet(),
     val trendSummary: TrendSummary? = null,
     val trendErrorMessage: String? = null,
     val summaryExpanded: Boolean = true,
