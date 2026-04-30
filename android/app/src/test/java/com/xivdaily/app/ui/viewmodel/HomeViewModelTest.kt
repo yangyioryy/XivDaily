@@ -108,7 +108,7 @@ class HomeViewModelTest {
 
             assertTrue(viewModel.uiState.value.papers.isEmpty())
             assertTrue(repository.deletedFavoriteIds.isEmpty())
-            assertEquals("已从当前流移出，收藏库保留不变", viewModel.uiState.value.actionMessage?.text)
+            assertEquals("已忽视，收藏库保留不变", viewModel.uiState.value.actionMessage?.text)
         }
     }
 
@@ -173,7 +173,7 @@ class HomeViewModelTest {
             viewModel.toggleFavorite(paper)
             runCurrent()
 
-            assertEquals("已加入收藏库", viewModel.uiState.value.actionMessage?.text)
+            assertEquals("已收藏", viewModel.uiState.value.actionMessage?.text)
             assertEquals(listOf(paper.id), repository.savedFavoriteIds)
 
             advanceTimeBy(2600L)

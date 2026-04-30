@@ -85,94 +85,110 @@ fun HomeScreen(
 ) {
     val spacing = MaterialTheme.xivSpacing
     val uriHandler = LocalUriHandler.current
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = spacing.md),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
-        item {
-            Spacer(modifier = Modifier.height(spacing.xs))
-            HomeHeroSection(uiState = uiState)
-        }
-        item {
-            ExploreControlCard(
-                uiState = uiState,
-                onKeywordChange = onKeywordChange,
-                onKeywordSubmit = onKeywordSubmit,
-                onCategorySelect = onCategorySelect,
-                onDaysSelect = onDaysSelect,
-            )
-        }
-        if (!uiState.dismissedSummary) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(spacing.lg),
+        ) {
             item {
-                TrendSummaryCard(
+                Spacer(modifier = Modifier.height(spacing.xs))
+                HomeHeroSection(uiState = uiState)
+            }
+            item {
+                ExploreControlCard(
                     uiState = uiState,
-                    onToggleSummary = onToggleSummary,
-                    onDismissSummary = onDismissSummary,
+                    onKeywordChange = onKeywordChange,
+                    onKeywordSubmit = onKeywordSubmit,
+                    onCategorySelect = onCategorySelect,
+                    onDaysSelect = onDaysSelect,
                 )
             }
-        }
-        uiState.actionMessage?.let { message ->
+            if (!uiState.dismissedSummary) {
+                item {
+                    TrendSummaryCard(
+                        uiState = uiState,
+                        onToggleSummary = onToggleSummary,
+                        onDismissSummary = onDismissSummary,
+                    )
+                }
+            }
+            uiState.errorMessage?.let { message ->
+                item {
+                    InlineMessageCard(
+                        message = message,
+                        background = MaterialTheme.colorScheme.tertiaryContainer,
+                        foreground = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                }
+            }
+            uiState.listWarning?.let { warning ->
+                item {
+                    InlineMessageCard(
+                        message = warning,
+                        background = MaterialTheme.colorScheme.secondaryContainer,
+                        foreground = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            }
             item {
-                InlineMessageCard(
-                    message = message.text,
-                    background = MaterialTheme.colorScheme.primaryContainer,
-                    foreground = MaterialTheme.colorScheme.onPrimaryContainer,
+                SectionHeader(
+                    title = if (uiState.isLoading) "论文加载中..." else "论文列表",
+                    subtitle = if (uiState.isSearchActive) {
+                        "全 arXiv 搜索：${uiState.searchKeyword}，分类过滤：${uiState.selectedCategory}"
+                    } else {
+                        "围绕 ${uiState.selectedCategory} 的最新研究流"
+                    },
+                    actionLabel = "刷新",
+                    onAction = onRefresh,
                 )
             }
-        }
-        uiState.errorMessage?.let { message ->
+            if (uiState.papers.isEmpty()) {
+                item {
+                    EmptyStateCard(
+                        title = resolveEmptyTitle(uiState),
+                        subtitle = resolveEmptySubtitle(uiState),
+                    )
+                }
+            }
+            items(uiState.papers, key = { it.id }) { paper ->
+                HomePaperCard(
+                    paper = paper,
+                    onOpenPaper = { uriHandler.openUri(paper.sourceUrl) },
+                    onDismiss = { onDismissPaper(paper) },
+                    onTranslate = { onTranslate(paper) },
+                    onFavorite = { onFavorite(paper) },
+                    onSyncToZotero = { onSyncToZotero(paper) },
+                )
+            }
             item {
-                InlineMessageCard(
-                    message = message,
-                    background = MaterialTheme.colorScheme.tertiaryContainer,
-                    foreground = MaterialTheme.colorScheme.onTertiaryContainer,
-                )
+                Spacer(modifier = Modifier.height(spacing.xl))
             }
         }
-        uiState.listWarning?.let { warning ->
-            item {
-                InlineMessageCard(
-                    message = warning,
-                    background = MaterialTheme.colorScheme.secondaryContainer,
-                    foreground = MaterialTheme.colorScheme.onSecondaryContainer,
+        AnimatedVisibility(
+            visible = uiState.actionMessage != null,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = spacing.lg),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.inverseSurface,
+                tonalElevation = spacing.xs,
+            ) {
+                Text(
+                    text = uiState.actionMessage?.text.orEmpty(),
+                    modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
                 )
             }
-        }
-        item {
-            SectionHeader(
-                title = if (uiState.isLoading) "论文加载中..." else "论文列表",
-                subtitle = if (uiState.isSearchActive) {
-                    "全 arXiv 搜索：${uiState.searchKeyword}，分类过滤：${uiState.selectedCategory}"
-                } else {
-                    "围绕 ${uiState.selectedCategory} 的最新研究流"
-                },
-                actionLabel = "刷新",
-                onAction = onRefresh,
-            )
-        }
-        if (uiState.papers.isEmpty()) {
-            item {
-                EmptyStateCard(
-                    title = resolveEmptyTitle(uiState),
-                    subtitle = resolveEmptySubtitle(uiState),
-                )
-            }
-        }
-        items(uiState.papers, key = { it.id }) { paper ->
-            HomePaperCard(
-                paper = paper,
-                onOpenPaper = { uriHandler.openUri(paper.sourceUrl) },
-                onDismiss = { onDismissPaper(paper) },
-                onTranslate = { onTranslate(paper) },
-                onFavorite = { onFavorite(paper) },
-                onSyncToZotero = { onSyncToZotero(paper) },
-            )
-        }
-        item {
-            Spacer(modifier = Modifier.height(spacing.xl))
         }
     }
 }

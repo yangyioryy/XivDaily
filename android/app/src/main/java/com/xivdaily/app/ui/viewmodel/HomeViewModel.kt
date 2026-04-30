@@ -83,9 +83,9 @@ class HomeViewModel(
             )
         }
         val message = if (paper.favoriteState) {
-            "已从当前流移出，收藏库保留不变"
+            "已忽视，收藏库保留不变"
         } else {
-            "已从当前流移出"
+            "已忽视"
         }
         showActionMessage(message)
     }
@@ -123,7 +123,7 @@ class HomeViewModel(
                         errorMessage = null,
                     )
                 }
-                showActionMessage(if (updated.favoriteState) "已加入收藏库" else "已取消收藏")
+                showActionMessage(if (updated.favoriteState) "已收藏" else "已取消收藏")
             }.onFailure { error -> setError(mapUserFriendlyError("收藏操作暂时失败", error)) }
         }
     }
