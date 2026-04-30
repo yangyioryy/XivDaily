@@ -50,6 +50,45 @@ kotlin {
     jvmToolchain(17)
 }
 
+val debugUnitTestAsciiClasspathRoot = gradle.gradleUserHomeDir
+    .resolve("caches/xivdaily/unit-test-classpath/${project.name}/debug")
+
+val prepareDebugUnitTestAsciiClasspath by tasks.registering(org.gradle.api.tasks.Copy::class) {
+    dependsOn(
+        "compileDebugUnitTestKotlin",
+        "processDebugUnitTestJavaRes",
+        "bundleDebugClassesToRuntimeJar",
+    )
+    into(debugUnitTestAsciiClasspathRoot)
+    from(layout.buildDirectory.dir("tmp/kotlin-classes/debugUnitTest")) {
+        into("test-classes")
+    }
+    from(layout.buildDirectory.dir("intermediates/java_res/debugUnitTest/processDebugUnitTestJavaRes/out")) {
+        into("test-resources")
+    }
+    from(
+        layout.buildDirectory.file(
+            "intermediates/runtime_app_classes_jar/debug/bundleDebugClassesToRuntimeJar/classes.jar"
+        )
+    ) {
+        into("app-classes")
+        rename { "app-classes.jar" }
+    }
+}
+
+gradle.projectsEvaluated {
+    tasks.named<org.gradle.api.tasks.testing.Test>("testDebugUnitTest") {
+        dependsOn(prepareDebugUnitTestAsciiClasspath)
+        // Windows JDK 读取 Gradle worker classpath 参数文件时会把中文项目路径解码错。
+        testClassesDirs = files(debugUnitTestAsciiClasspathRoot.resolve("test-classes"))
+        classpath = files(
+            debugUnitTestAsciiClasspathRoot.resolve("test-classes"),
+            debugUnitTestAsciiClasspathRoot.resolve("test-resources"),
+            debugUnitTestAsciiClasspathRoot.resolve("app-classes/app-classes.jar"),
+        ) + (classpath ?: files())
+    }
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.10.01")
     implementation(composeBom)

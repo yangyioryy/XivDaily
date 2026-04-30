@@ -169,7 +169,7 @@ class HomeViewModelTest {
             val paper = viewModel.uiState.value.papers.single()
 
             viewModel.translatePaper(paper)
-            advanceUntilIdle()
+            runCurrent()
 
             assertTrue(repository.translationRequests.isEmpty())
             assertEquals("请先展开摘要", viewModel.uiState.value.actionMessage?.text)
@@ -188,7 +188,7 @@ class HomeViewModelTest {
             assertEquals(listOf(paper.id), repository.translationRequests)
 
             viewModel.translatePaper(translated)
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals(listOf(paper.id), repository.translationRequests)
             assertEquals("已显示中文翻译", viewModel.uiState.value.actionMessage?.text)
