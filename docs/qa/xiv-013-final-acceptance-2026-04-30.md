@@ -83,21 +83,83 @@ BUILD FAILED in 42s
 执行：
 
 ```powershell
-adb devices
+D:\AndroidSdk\platform-tools\adb.exe devices -l
 ```
 
 结果：
 
 ```text
-adb : The term 'adb' is not recognized as the name of a cmdlet, function, script file,
-or operable program.
+emulator-5554 device product:sdk_gphone64_x86_64 model:sdk_gphone64_x86_64 device:emu64xa
 ```
+
+补测时间：2026-04-30 17:49:32 +08:00
+
+### 设备环境
+
+- ADB 路径：`D:\AndroidSdk\platform-tools\adb.exe`
+- 设备：`emulator-5554`
+- Android 版本：`14`
+- 分辨率：`1080x2400`
+- 密度：`420`
+
+### 安装与启动
+
+命令：
+
+```powershell
+.\gradlew.bat :app:assembleDebug --no-daemon --console=plain
+D:\AndroidSdk\platform-tools\adb.exe install -r android/app/build/outputs/apk/debug/app-debug.apk
+D:\AndroidSdk\platform-tools\adb.exe shell am start -n com.xivdaily.app/.MainActivity
+```
+
+结果：
+
+```text
+BUILD SUCCESSFUL in 52s
+Performing Streamed Install
+Success
+Starting: Intent { cmp=com.xivdaily.app/.MainActivity }
+```
+
+### 截图证据
+
+截图目录：`docs/qa/xiv-013-device-screenshots/`
+
+- `home.png`：首页，包含搜索区、领域/时间筛选、AI 趋势简报和底部导航。
+- `library.png`：收藏库，包含同步状态筛选、黄色星标、同步 Zotero 和删除按钮。
+- `settings.png`：设置页，包含本地头像、默认偏好、Zotero 配置和大模型配置入口。
+- `zotero-dialog.png`：Zotero 配置弹窗，包含 User ID、个人库/群组库、API Key、目标集合、测试/取消/保存按钮。
+- `llm-dialog.png`：大模型 API 配置弹窗，包含 Base URL、Model、API Key、测试/取消/保存按钮。
+
+### 后端联通
+
+临时启动后端：
+
+```powershell
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+后端日志确认模拟器访问过：
+
+```text
+GET /config/integrations HTTP/1.1 200 OK
+GET /summaries/trends?category=cs.CV&days=3 HTTP/1.1 200 OK
+GET /papers?category=cs.CV&days=3&page=1&pageSize=20 HTTP/1.1 200 OK
+GET /zotero/config/status HTTP/1.1 200 OK
+```
+
+### 稳定性检查
+
+- `pidof com.xivdaily.app` 返回进程号 `10878`。
+- `dumpsys window` 显示当前焦点为 `com.xivdaily.app/com.xivdaily.app.MainActivity`。
+- 最近 300 行 `logcat` 未出现 `FATAL EXCEPTION`。
 
 结论：
 
-- 当前环境没有可用 `adb` 命令，无法自动安装 APK、拉起模拟器或采集三页 UI 截图。
-- 因此“模拟器截图逐页对比参考图”“手势/头像 URI/配置表单端到端操作”本轮标记为受限验收，未声明已通过。
-- 可验证的静态与编译闭环已经完成：三页 Compose 代码参与 `compileDebugKotlin`，配置 DTO 与 Repository 契约参与编译。
+- 三页主界面已在模拟器真实启动并截图。
+- 设置页 Zotero 和大模型配置表单均可打开，表单字段和测试/保存按钮可见。
+- 本轮仍未验证外部图片选择器的头像 URI 重启恢复，因为该流程需要人工选择本地图片并重启应用观察权限持久化。
+- 本轮未执行破坏性真实配置覆盖；表单保存/测试接口已由后端自动化测试覆盖。
 
 ## 3. 代码与文档一致性
 
@@ -115,5 +177,5 @@ or operable program.
 ## 4. 最终风险
 
 - Android JVM 单测仍受 `ClassNotFoundException` 基线阻塞，无法给出 ViewModel 单测通过结论。
-- 当前环境缺少 `adb`，无法给出模拟器截图、滑动手势、头像 URI 重启恢复和设置表单真实设备操作结论。
+- ADB 模拟器截图已补充；头像 URI 重启恢复仍需要人工选择本地图片后复测。
 - 后端配置测试接口当前只校验字段填写状态，不向外部 Zotero/LLM 发送真实连通性探测。
