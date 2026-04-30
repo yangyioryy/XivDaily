@@ -1,6 +1,6 @@
 def build_trend_prompt(days: int, category: str | None, paper_snippets: list[str]) -> str:
     focus = category or "全部关注领域"
-    joined = "\n".join(paper_snippets[:12])
+    joined = "\n".join(paper_snippets[:10])
     return (
         f"你是科研论文趋势分析助手。请基于最近 {days} 天、领域 {focus} 的论文，"
         "总结最多 3 个研究趋势，并严格输出 JSON。\n"

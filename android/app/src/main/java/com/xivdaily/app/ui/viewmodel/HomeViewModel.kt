@@ -185,11 +185,21 @@ class HomeViewModel(
             _uiState.update { it.copy(isSummaryLoading = true) }
             runCatching { repository.getTrendSummary(current.selectedCategory) }
                 .onSuccess { summary ->
-                    _uiState.update { it.copy(trendSummary = summary, isSummaryLoading = false, errorMessage = null) }
+                    _uiState.update {
+                        it.copy(
+                            trendSummary = summary,
+                            trendErrorMessage = null,
+                            isSummaryLoading = false,
+                        )
+                    }
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(isSummaryLoading = false) }
-                    setError(mapUserFriendlyError("趋势摘要暂时不可用", error))
+                    _uiState.update {
+                        it.copy(
+                            isSummaryLoading = false,
+                            trendErrorMessage = mapUserFriendlyError("趋势摘要暂时不可用", error),
+                        )
+                    }
                 }
         }
     }

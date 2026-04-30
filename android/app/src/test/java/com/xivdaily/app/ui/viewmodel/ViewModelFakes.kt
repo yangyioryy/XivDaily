@@ -52,6 +52,7 @@ internal open class FakePaperRepository(
     var homePaperStatus: String = "ok"
     var homePaperWarning: String? = null
     var homePaperEmptyReason: String? = null
+    var trendError: Throwable? = null
     val savedFavoriteIds: MutableList<String> = mutableListOf()
     val deletedFavoriteIds: MutableList<String> = mutableListOf()
 
@@ -67,6 +68,7 @@ internal open class FakePaperRepository(
 
     override suspend fun getTrendSummary(category: String?): TrendSummary {
         trendRequests += category
+        trendError?.let { throw it }
         return TrendSummary(intro = "intro", items = emptyList(), status = "success", warning = null)
     }
 

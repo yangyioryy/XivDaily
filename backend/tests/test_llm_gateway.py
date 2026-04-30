@@ -83,4 +83,28 @@ async def test_complete_degrades_after_retries(monkeypatch: pytest.MonkeyPatch) 
 
     assert attempts["count"] == 3
     assert result.status == "degraded"
-    assert result.warning == "大模型调用失败，已使用本地降级结果。"
+    assert result.warning == "大模型请求超时，已使用本地降级结果。"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_complete_maps_auth_failure_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+    gateway = build_gateway(monkeypatch)
+
+    class UnauthorizedClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]):
+            request = httpx.Request("POST", url)
+            response = httpx.Response(status_code=401, request=request, text="unauthorized")
+            raise httpx.HTTPStatusError("unauthorized", request=request, response=response)
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: UnauthorizedClient())
+
+    result = await gateway.complete("hello", task_name="trend_summary")
+
+    assert result.status == "degraded"
+    assert result.warning == "大模型鉴权失败，请检查 API Key 或模型权限。"

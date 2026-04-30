@@ -21,6 +21,7 @@ class FakeGateway:
 
     async def complete(self, prompt: str, task_name: str) -> LlmResult:
         self.calls += 1
+        self.last_prompt = prompt
         return LlmResult(text=self.text, status=self.status, warning=self.warning)
 
 
@@ -31,19 +32,22 @@ class FakePaperService:
     async def list_papers(self, query: PaperQuery) -> PaperListResponse:
         self.requests.append(query)
         now = datetime.now(UTC)
-        paper = Paper(
-            id="2401.00001",
-            title="Vision Trend",
-            authors=["A. Author"],
-            summary="A paper about vision trends.",
-            published_at=now,
-            updated_at=now,
-            categories=["cs.CV"],
-            primary_category="cs.CV",
-            source_url="https://arxiv.org/abs/2401.00001",
-            pdf_url="https://arxiv.org/pdf/2401.00001",
-        )
-        return PaperListResponse(query=query, items=[paper], page=1, page_size=10, total=1, has_more=False)
+        papers = [
+            Paper(
+                id=f"2401.000{index}",
+                title=f"Vision Trend {index}",
+                authors=["A. Author"],
+                summary="A paper about vision trends. " * 10,
+                published_at=now,
+                updated_at=now,
+                categories=["cs.CV"],
+                primary_category="cs.CV",
+                source_url=f"https://arxiv.org/abs/2401.000{index}",
+                pdf_url=f"https://arxiv.org/pdf/2401.000{index}",
+            )
+            for index in range(1, 10)
+        ]
+        return PaperListResponse(query=query, items=papers, page=1, page_size=query.page_size, total=len(papers), has_more=False)
 
 
 def build_session() -> Session:
@@ -69,8 +73,9 @@ async def test_generate_trend_summary_degrades_without_model() -> None:
 
     assert result.status == "degraded"
     assert result.warning == "no key"
-    assert result.items[0].representative_paper_ids == ["2401.00001"]
+    assert result.items[0].representative_paper_ids == ["2401.0001"]
     assert paper_service.requests[0].days == 3
+    assert paper_service.requests[0].page_size == 8
 
 
 @pytest.mark.anyio("asyncio")
@@ -110,6 +115,22 @@ async def test_generate_trend_summary_hits_cache_without_second_llm_call() -> No
     assert gateway.calls == 1
     assert len(paper_service.requests) == 1
     assert db.get(TrendSummaryCacheModel, next(iter([row.cache_key for row in db.query(TrendSummaryCacheModel).all()]))) is not None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_generate_trend_summary_truncates_prompt_input() -> None:
+    db = build_session()
+    gateway = FakeGateway(status="degraded", warning="no key")
+    paper_service = FakePaperService()
+    service = AiService(db=db, llm_gateway=gateway, paper_service=paper_service)
+
+    await service.generate_trend_summary("cs.CV", 3)
+
+    prompt = gateway.last_prompt
+    assert "2401.0008" in prompt
+    assert "2401.0009" not in prompt
+    assert "cs.CV" in prompt
+    assert "A paper about vision trends. " * 5 not in prompt
 
 
 @pytest.mark.anyio("asyncio")

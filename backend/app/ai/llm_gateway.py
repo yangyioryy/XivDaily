@@ -35,6 +35,7 @@ class LlmGateway:
         }
         headers = {"Authorization": f"Bearer {self.settings.llm_api_key}"}
         started = monotonic()
+        last_warning: str | None = None
 
         for attempt in range(1, 4):
             try:
@@ -48,10 +49,28 @@ class LlmGateway:
                 )
                 return LlmResult(text=content, status="success")
             except Exception as exc:  # noqa: BLE001
+                last_warning = self._map_warning(exc)
                 # 失败响应可能带上游 URL 或账号信息，接口只返回通用提示，细节留在受控日志。
                 logger.warning(
                     "llm_call_failed",
                     extra={"task_name": task_name, "attempt": attempt, "error_type": type(exc).__name__},
                 )
 
-        return LlmResult(text="", status="degraded", warning="大模型调用失败，已使用本地降级结果。")
+        return LlmResult(text="", status="degraded", warning=last_warning or "大模型调用失败，已使用本地降级结果。")
+
+    def _map_warning(self, exc: Exception) -> str:
+        message = str(exc).lower()
+        if isinstance(exc, httpx.TimeoutException) or "timeout" in message:
+            return "大模型请求超时，已使用本地降级结果。"
+        if isinstance(exc, httpx.HTTPStatusError):
+            status_code = exc.response.status_code
+            if status_code in {401, 403}:
+                return "大模型鉴权失败，请检查 API Key 或模型权限。"
+            response_text = exc.response.text.lower()
+            if "context" in response_text or "token" in response_text:
+                return "大模型上下文长度超限，已使用本地降级结果。"
+        if "context" in message or "token" in message:
+            return "大模型上下文长度超限，已使用本地降级结果。"
+        if isinstance(exc, httpx.RequestError):
+            return "大模型网络请求失败，已使用本地降级结果。"
+        return "大模型调用失败，已使用本地降级结果。"

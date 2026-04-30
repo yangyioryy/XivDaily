@@ -20,6 +20,7 @@ data class HomeUiState(
     val listWarning: String? = null,
     val emptyReason: String? = null,
     val trendSummary: TrendSummary? = null,
+    val trendErrorMessage: String? = null,
     val summaryExpanded: Boolean = true,
     val dismissedSummary: Boolean = false,
     val isLoading: Boolean = false,

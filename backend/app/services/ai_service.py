@@ -34,9 +34,12 @@ class AiService:
         if cached is not None:
             return cached
 
-        paper_query = PaperQuery(category=category, keyword=None, days=fixed_days, page=1, page_size=10)
+        paper_query = PaperQuery(category=category, keyword=None, days=fixed_days, page=1, page_size=TREND_MAX_PAPERS)
         papers = (await self.paper_service.list_papers(paper_query)).items
-        snippets = [f"{paper.id} | {paper.title} | {paper.summary[:160]}" for paper in papers]
+        snippets = [
+            f"{paper.id} | {paper.title} | {paper.primary_category} | {paper.summary[:TREND_SUMMARY_CHARS]}"
+            for paper in papers[:TREND_MAX_PAPERS]
+        ]
         result = await self.llm_gateway.complete(build_trend_prompt(fixed_days, category, snippets), task_name="trend_summary")
         fallback_items = self._build_fallback_trends(papers)
 
@@ -232,3 +235,5 @@ class AiService:
 
 
 FIXED_TREND_DAYS = 3
+TREND_MAX_PAPERS = 8
+TREND_SUMMARY_CHARS = 100

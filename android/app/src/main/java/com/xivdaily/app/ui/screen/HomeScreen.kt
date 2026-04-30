@@ -351,6 +351,20 @@ private fun TrendSummaryCard(
                 )
                 return@Column
             }
+            uiState.trendErrorMessage?.let { message ->
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                }
+                return@Column
+            }
             val summary = uiState.trendSummary
             if (summary == null) {
                 Text(

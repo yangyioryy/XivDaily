@@ -138,6 +138,27 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun trendSummaryFailure_staysInsideTrendStateAndKeepsPaperListVisible() {
+        runTest {
+            val repository = FakePaperRepository().apply {
+                homePapers += samplePaper()
+                trendError = IllegalStateException("context length exceeded")
+            }
+            val preferences = FakePreferencesRepository()
+
+            val viewModel = HomeViewModel(repository, preferences)
+            advanceUntilIdle()
+
+            assertEquals(1, viewModel.uiState.value.papers.size)
+            assertNull(viewModel.uiState.value.errorMessage)
+            assertEquals(
+                "趋势摘要暂时不可用，请稍后再试。",
+                viewModel.uiState.value.trendErrorMessage,
+            )
+        }
+    }
+
+    @Test
     fun toggleFavorite_actionMessageClearsAfterTimeout() {
         runTest {
             val repository = FakePaperRepository().apply {
