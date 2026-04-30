@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 interface PaperRepositoryContract {
-    suspend fun listHomePapers(keyword: String?, category: String?, days: Int): HomePaperResult
+    suspend fun listHomePapers(keyword: String?, category: String?, days: Int?): HomePaperResult
     suspend fun getTrendSummary(category: String?): TrendSummary
     suspend fun translatePaper(paper: PaperItem): PaperItem
     fun observeFavorites(): Flow<List<FavoritePaperItem>>
@@ -34,7 +34,7 @@ class PaperRepository(
     private val apiService: ApiService,
     private val favoritePaperDao: FavoritePaperDao,
 ) : PaperRepositoryContract {
-    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int): HomePaperResult {
+    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int?): HomePaperResult {
         val response = apiService.listPapers(
             keyword = keyword?.takeIf { it.isNotBlank() },
             category = category,

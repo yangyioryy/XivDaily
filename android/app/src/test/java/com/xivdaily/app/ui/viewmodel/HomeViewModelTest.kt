@@ -65,7 +65,29 @@ class HomeViewModelTest {
             advanceUntilIdle()
 
             assertEquals("diffusion", viewModel.uiState.value.searchKeyword)
-            assertEquals(Triple("diffusion", "cs.CV", 3), repository.listRequests.last())
+            assertTrue(viewModel.uiState.value.isSearchActive)
+            assertEquals(Triple("diffusion", "cs.CV", null), repository.listRequests.last())
+        }
+    }
+
+    @Test
+    fun selectDays_doesNotRefreshWhenKeywordSearchIsActive() {
+        runTest {
+            val repository = FakePaperRepository()
+            val preferences = FakePreferencesRepository()
+
+            val viewModel = HomeViewModel(repository, preferences)
+            advanceUntilIdle()
+            viewModel.updateKeyword("omibench")
+            viewModel.submitKeyword()
+            advanceUntilIdle()
+            repository.listRequests.clear()
+
+            viewModel.selectDays(30)
+            advanceUntilIdle()
+
+            assertEquals(30, viewModel.uiState.value.selectedDays)
+            assertTrue(repository.listRequests.isEmpty())
         }
     }
 

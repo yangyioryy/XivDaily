@@ -32,7 +32,7 @@ class PaperService:
     """论文查询服务，负责缓存、去重、时间窗过滤和分页。"""
 
     # FastAPI 会频繁创建服务实例，这里共享缓存才能真正跨请求限流。
-    _shared_cache: dict[tuple[str | None, str | None], CacheEntry] = {}
+    _shared_cache: dict[tuple[str, str], CacheEntry] = {}
 
     def __init__(self, arxiv_client: ArxivClient | None = None) -> None:
         self.settings = get_settings()
@@ -43,12 +43,13 @@ class PaperService:
         load_result = await self._load_raw_items(query)
         raw_items = load_result.items
         normalized = [self._to_paper(item) for item in raw_items]
-        filtered = self._filter_by_time_window(normalized, query.days)
+        category_filtered = self._filter_by_category(normalized, query.category)
+        filtered = self._filter_by_time_window(category_filtered, query.days)
         filtered = self._dedupe(filtered)
         start = (query.page - 1) * query.page_size
         end = start + query.page_size
         page_items = filtered[start:end]
-        empty_reason = self._resolve_empty_reason(raw_items, filtered, load_result.status)
+        empty_reason = self._resolve_empty_reason(raw_items, category_filtered, filtered, load_result.status, query.days)
         return PaperListResponse(
             query=query,
             items=page_items,
@@ -62,14 +63,18 @@ class PaperService:
         )
 
     async def _load_raw_items(self, query: PaperQuery) -> LoadResult:
-        cache_key = (query.category, query.keyword)
+        normalized_keyword = self._normalize(query.keyword)
+        normalized_category = self._normalize(query.category)
+        cache_key = self._build_cache_key(normalized_category, normalized_keyword)
         cached = self._cache.get(cache_key)
         if cached and monotonic() - cached.created_at < self.settings.arxiv_cache_ttl_seconds:
             return LoadResult(items=cached.items, status="ok")
 
         max_results = max(query.page * query.page_size * 3, 100)
+        # 关键词搜索先面向全 arXiv 召回，再在服务层按分类过滤，避免交叉分类论文被 cat AND all 误杀。
+        request_category = None if normalized_keyword else normalized_category
         try:
-            items = await self.arxiv_client.search(query.category, query.keyword, max_results)
+            items = await self.arxiv_client.search(request_category, normalized_keyword, max_results)
         except httpx.HTTPError as exc:
             if cached is not None:
                 logger.warning("arXiv 请求失败，回退到过期缓存: %s", exc)
@@ -89,7 +94,14 @@ class PaperService:
         self._cache[cache_key] = CacheEntry(created_at=monotonic(), items=items)
         return LoadResult(items=items, status="ok")
 
-    def _filter_by_time_window(self, papers: list[Paper], days: int) -> list[Paper]:
+    def _filter_by_category(self, papers: list[Paper], category: str | None) -> list[Paper]:
+        if not category:
+            return papers
+        return [paper for paper in papers if category in paper.categories]
+
+    def _filter_by_time_window(self, papers: list[Paper], days: int | None) -> list[Paper]:
+        if days is None:
+            return papers
         cutoff = datetime.now(UTC) - timedelta(days=days)
         return [paper for paper in papers if paper.published_at >= cutoff]
 
@@ -125,15 +137,19 @@ class PaperService:
     def _resolve_empty_reason(
         self,
         raw_items: list[dict[str, object]],
+        category_filtered: list[Paper],
         filtered: list[Paper],
         load_status: str,
+        days: int | None,
     ) -> str | None:
         if filtered:
             return None
         if load_status == "unavailable":
             return None
+        if raw_items and not category_filtered:
+            return "no_results"
         if raw_items:
-            return "time_window_filtered"
+            return "time_window_filtered" if days is not None else "no_results"
         return "no_results"
 
     def _resolve_response_status(self, load_status: str, filtered: list[Paper]) -> str:
@@ -141,9 +157,18 @@ class PaperService:
             return load_status
         return "empty" if not filtered else "ok"
 
-    def _build_warning(self, days: int, load_warning: str | None, empty_reason: str | None) -> str | None:
+    def _build_warning(self, days: int | None, load_warning: str | None, empty_reason: str | None) -> str | None:
         if load_warning:
             return load_warning
-        if empty_reason == "time_window_filtered":
+        if empty_reason == "time_window_filtered" and days is not None:
             return f"当前 {days} 天时间窗内暂无结果，可以尝试切换到 7 天或 30 天。"
         return None
+
+    def _build_cache_key(self, category: str | None, keyword: str | None) -> tuple[str, str]:
+        if keyword:
+            return ("search", keyword)
+        return ("feed", category or "cs.CV")
+
+    def _normalize(self, value: str | None) -> str | None:
+        normalized = (value or "").strip()
+        return normalized or None

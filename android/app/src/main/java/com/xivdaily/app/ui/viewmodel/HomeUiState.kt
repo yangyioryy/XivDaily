@@ -26,4 +26,7 @@ data class HomeUiState(
     val isSummaryLoading: Boolean = false,
     val actionMessage: HomeActionMessage? = null,
     val errorMessage: String? = null,
-)
+) {
+    val isSearchActive: Boolean
+        get() = searchKeyword.isNotBlank()
+}

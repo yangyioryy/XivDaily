@@ -56,7 +56,9 @@ class HomeViewModel(
 
     fun selectDays(days: Int) {
         _uiState.update { it.copy(selectedDays = days) }
-        refreshPapers()
+        if (!_uiState.value.isSearchActive) {
+            refreshPapers()
+        }
     }
 
     fun toggleSummaryExpanded() {
@@ -152,10 +154,13 @@ class HomeViewModel(
             val current = _uiState.value
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching {
+                val keyword = current.searchKeyword.takeIf { it.isNotBlank() }
+                // 有关键词时后端按全 arXiv 搜索处理，时间窗只服务无关键词首页流。
+                val days = if (keyword == null) current.selectedDays else null
                 repository.listHomePapers(
-                    keyword = current.searchKeyword.takeIf { it.isNotBlank() },
+                    keyword = keyword,
                     category = current.selectedCategory,
-                    days = current.selectedDays,
+                    days = days,
                 )
             }.onSuccess { result ->
                 _uiState.update {

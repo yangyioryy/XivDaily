@@ -12,7 +12,7 @@ interface ApiService {
     suspend fun listPapers(
         @Query("keyword") keyword: String?,
         @Query("category") category: String?,
-        @Query("days") days: Int,
+        @Query("days") days: Int?,
         @Query("page") page: Int,
         @Query("pageSize") pageSize: Int,
     ): PaperListDto
@@ -55,7 +55,7 @@ data class PaperListDto(
 data class PaperQueryDto(
     val keyword: String?,
     val category: String?,
-    val days: Int,
+    val days: Int?,
     val page: Int,
     @Json(name = "page_size") val pageSize: Int,
 )

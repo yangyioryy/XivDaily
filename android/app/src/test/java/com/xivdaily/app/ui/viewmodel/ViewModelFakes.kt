@@ -46,7 +46,7 @@ internal class FakePreferencesRepository(
 internal open class FakePaperRepository(
     private val favoritesFlow: Flow<List<FavoritePaperItem>> = flowOf(emptyList()),
 ) : PaperRepositoryContract {
-    var listRequests: MutableList<Triple<String?, String?, Int>> = mutableListOf()
+    var listRequests: MutableList<Triple<String?, String?, Int?>> = mutableListOf()
     val trendRequests: MutableList<String?> = mutableListOf()
     val homePapers: MutableList<PaperItem> = mutableListOf()
     var homePaperStatus: String = "ok"
@@ -55,7 +55,7 @@ internal open class FakePaperRepository(
     val savedFavoriteIds: MutableList<String> = mutableListOf()
     val deletedFavoriteIds: MutableList<String> = mutableListOf()
 
-    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int): HomePaperResult {
+    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int?): HomePaperResult {
         listRequests.add(Triple(keyword, category, days))
         return HomePaperResult(
             items = homePapers.toList(),

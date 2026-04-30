@@ -138,7 +138,11 @@ fun HomeScreen(
         item {
             SectionHeader(
                 title = if (uiState.isLoading) "论文加载中..." else "今日论文",
-                subtitle = "围绕 ${uiState.selectedCategory} 的最新研究流",
+                subtitle = if (uiState.isSearchActive) {
+                    "全 arXiv 搜索：${uiState.searchKeyword}，分类过滤：${uiState.selectedCategory}"
+                } else {
+                    "围绕 ${uiState.selectedCategory} 的最新研究流"
+                },
             )
         }
         if (uiState.papers.isEmpty()) {
@@ -187,7 +191,11 @@ private fun HomeHeroSection(uiState: HomeUiState) {
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 Text(
-                    text = "${uiState.selectedCategory} · ${formatDays(uiState.selectedDays)}",
+                    text = if (uiState.isSearchActive) {
+                        "${uiState.selectedCategory} · 全 arXiv 搜索"
+                    } else {
+                        "${uiState.selectedCategory} · ${formatDays(uiState.selectedDays)}"
+                    },
                     modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.xs),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -195,7 +203,11 @@ private fun HomeHeroSection(uiState: HomeUiState) {
             }
         }
         Text(
-            text = "围绕当天筛选范围快速浏览、收藏和同步论文。",
+            text = if (uiState.isSearchActive) {
+                "正在全 arXiv 搜索“${uiState.searchKeyword}”，时间筛选不会缩小搜索范围。"
+            } else {
+                "围绕当天筛选范围快速浏览、收藏和同步论文。"
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -266,13 +278,27 @@ private fun ExploreControlCard(
                 labelMapper = { it },
                 onClick = onCategorySelect,
             )
-            FilterBlock(
-                title = "时间",
-                values = uiState.dayOptions,
-                selected = uiState.selectedDays,
-                labelMapper = { formatDays(it) },
-                onClick = onDaysSelect,
-            )
+            if (uiState.isSearchActive) {
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Text(
+                        text = "关键词搜索覆盖全 arXiv；领域只做结果过滤，时间 Pills 只影响无关键词列表。",
+                        modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            } else {
+                FilterBlock(
+                    title = "时间",
+                    values = uiState.dayOptions,
+                    selected = uiState.selectedDays,
+                    labelMapper = { formatDays(it) },
+                    onClick = onDaysSelect,
+                )
+            }
         }
     }
 }

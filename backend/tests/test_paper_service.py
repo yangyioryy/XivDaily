@@ -37,7 +37,11 @@ class FakeArxivClient:
 
 
 class TimeWindowArxivClient:
+    def __init__(self) -> None:
+        self.requests: list[tuple[str | None, str | None, int]] = []
+
     async def search(self, category: str | None, keyword: str | None, max_results: int) -> list[dict[str, object]]:
+        self.requests.append((category, keyword, max_results))
         now = datetime.now(UTC)
         recent = now - timedelta(days=2)
         older = now - timedelta(days=7)
@@ -188,3 +192,22 @@ async def test_list_papers_keeps_cross_category_hits_when_within_time_window() -
     assert result.items[0].id == "2604.25914v1"
     assert result.status == "ok"
     assert result.empty_reason is None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_keyword_search_uses_full_arxiv_recall_and_skips_time_window_by_default() -> None:
+    PaperService._shared_cache.clear()
+    client = TimeWindowArxivClient()
+    service = PaperService(arxiv_client=client)
+    query = PaperQuery(category="cs.AI", keyword="omibench", days=None, page=1, page_size=10)
+
+    result = await service.list_papers(query)
+
+    assert result.total == 1
+    assert result.items[0].id == "2604.20806v1"
+    assert result.items[0].categories == ["cs.CV", "cs.AI", "cs.CL"]
+    assert result.status == "ok"
+    assert result.warning is None
+    assert result.empty_reason is None
+    assert client.requests[0][0] is None
+    assert client.requests[0][1] == "omibench"

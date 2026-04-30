@@ -22,7 +22,7 @@ class Paper(BaseModel):
 class PaperQuery(BaseModel):
     keyword: str | None = Field(default=None, description="关键词")
     category: str | None = Field(default=None, description="分类")
-    days: int = Field(ge=1, le=30, description="回溯天数")
+    days: int | None = Field(default=None, ge=1, le=30, description="回溯天数；关键词全库搜索时可为空")
     page: int = Field(ge=1, description="页码")
     page_size: int = Field(ge=1, le=50, description="每页数量")
 
