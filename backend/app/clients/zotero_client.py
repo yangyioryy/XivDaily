@@ -45,7 +45,7 @@ class ZoteroClient:
         return {"name": target_name, "key": created_key, "created": True}
 
     async def find_collection_by_name(self, collection_name: str) -> dict[str, str] | None:
-        url = f"{self.settings.zotero_base_url}/{self._library_prefix()}/collections/top"
+        url = f"{self.settings.zotero_base_url}/{self._library_prefix()}/collections"
         headers = self._default_headers()
         params: dict[str, object] | None = {"limit": 100}
         async with httpx.AsyncClient(timeout=20) as client:
@@ -65,6 +65,7 @@ class ZoteroClient:
         headers = self._write_headers(secrets.token_hex(16))
         url = f"{self.settings.zotero_base_url}/{self._library_prefix()}/collections"
         # Zotero 写接口要求以数组提交可编辑 JSON，这里保持和 items 写入协议一致。
+        # 未指定 parentCollection 时会创建顶层 Web 集合，桌面 Zotero 需要账号同步后刷新可见。
         payload = [{"name": collection_name}]
         async with httpx.AsyncClient(timeout=20) as client:
             response = await client.post(url, json=payload, headers=headers)
