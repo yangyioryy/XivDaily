@@ -47,6 +47,14 @@ private data class BottomTab(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
 )
 
+private val topLevelTabRoutes = setOf("home", "library", "chat", "settings")
+
+internal fun isBottomTabSelected(currentRoute: String?, tabRoute: String): Boolean =
+    currentRoute == tabRoute || currentRoute?.startsWith("$tabRoute/") == true
+
+internal fun shouldRestoreBottomTabBackStack(currentRoute: String?): Boolean =
+    currentRoute == null || currentRoute in topLevelTabRoutes
+
 @Composable
 fun AppNavGraph(
     settingsViewModel: SettingsViewModel,
@@ -74,16 +82,19 @@ fun AppNavGraph(
             ) {
                 tabs.forEach { tab ->
                     val selected = currentDestination?.hierarchy?.any {
-                        it.route == tab.route || it.route?.startsWith("${tab.route}/") == true
+                        isBottomTabSelected(it.route, tab.route)
                     } == true
                     NavigationBarItem(
                         selected = selected,
                         onClick = {
+                            val restoreTabState = shouldRestoreBottomTabBackStack(currentDestination?.route)
                             navController.navigate(tab.route) {
                                 launchSingleTop = true
-                                restoreState = true
+                                // 从 chat/{paperId} 这类详情页切回底部 tab 时禁用恢复栈，
+                                // 避免 library tab 恢复到刚才的论文对话页。
+                                restoreState = restoreTabState
                                 popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
+                                    saveState = restoreTabState
                                 }
                             }
                         },
