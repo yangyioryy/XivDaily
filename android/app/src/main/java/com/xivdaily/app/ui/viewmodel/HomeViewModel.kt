@@ -28,8 +28,18 @@ class HomeViewModel(
         preferencesRepository.preferences
             .onEach { preferences ->
                 _uiState.update {
+                    val availableTags = it.categories + preferences.customTags
+                    val preferredCategory = preferences.defaultCategory.takeIf { category -> category in availableTags }
+                        ?: it.categories.firstOrNull()
+                        ?: "cs.CV"
+                    val nextCategory = if (it.selectedCategory in preferences.customTags) {
+                        it.selectedCategory
+                    } else {
+                        preferredCategory
+                    }
                     it.copy(
-                        selectedCategory = preferences.defaultCategory,
+                        selectedCategory = nextCategory,
+                        customTags = preferences.customTags,
                         selectedDays = preferences.defaultDays,
                     )
                 }
@@ -48,10 +58,89 @@ class HomeViewModel(
         refreshPapers()
     }
 
+    fun exitSearch() {
+        _uiState.update { it.copy(searchKeyword = "", searchKeywordDraft = "") }
+        refreshPapers()
+    }
+
     fun selectCategory(category: String) {
-        _uiState.update { it.copy(selectedCategory = category, dismissedSummary = false) }
+        _uiState.update { it.copy(selectedCategory = category, tagPendingDeletion = null, dismissedSummary = false) }
         refreshPapers()
         refreshTrendSummary()
+    }
+
+    fun showAddTagDialog() {
+        _uiState.update { it.copy(isAddTagDialogVisible = true, customTagDraft = "", tagPendingDeletion = null) }
+    }
+
+    fun hideAddTagDialog() {
+        _uiState.update { it.copy(isAddTagDialogVisible = false, customTagDraft = "") }
+    }
+
+    fun updateCustomTagDraft(value: String) {
+        _uiState.update { it.copy(customTagDraft = value) }
+    }
+
+    fun addCustomTag() {
+        val normalizedTag = normalizeCustomTag(_uiState.value.customTagDraft)
+        if (normalizedTag.isBlank()) {
+            showActionMessage("请输入标签名称")
+            return
+        }
+        val current = _uiState.value
+        if (normalizedTag in current.categories || normalizedTag in current.customTags) {
+            showActionMessage("标签已存在")
+            return
+        }
+        viewModelScope.launch {
+            val nextTags = current.customTags + normalizedTag
+            preferencesRepository.setCustomTags(nextTags)
+            _uiState.update {
+                it.copy(
+                    customTags = nextTags,
+                    selectedCategory = normalizedTag,
+                    isAddTagDialogVisible = false,
+                    customTagDraft = "",
+                    tagPendingDeletion = null,
+                )
+            }
+            refreshPapers()
+            refreshTrendSummary()
+            showActionMessage("已添加标签：$normalizedTag")
+        }
+    }
+
+    fun markTagPendingDeletion(tag: String) {
+        if (tag !in _uiState.value.customTags) {
+            return
+        }
+        _uiState.update { it.copy(tagPendingDeletion = tag) }
+    }
+
+    fun clearTagPendingDeletion() {
+        _uiState.update { it.copy(tagPendingDeletion = null) }
+    }
+
+    fun deleteCustomTag(tag: String) {
+        if (tag !in _uiState.value.customTags) {
+            return
+        }
+        viewModelScope.launch {
+            val state = _uiState.value
+            val nextTags = state.customTags - tag
+            val fallbackCategory = state.categories.firstOrNull() ?: "cs.CV"
+            preferencesRepository.setCustomTags(nextTags)
+            _uiState.update {
+                it.copy(
+                    customTags = nextTags,
+                    selectedCategory = if (state.selectedCategory == tag) fallbackCategory else state.selectedCategory,
+                    tagPendingDeletion = null,
+                )
+            }
+            refreshPapers()
+            refreshTrendSummary()
+            showActionMessage("已删除标签：$tag")
+        }
     }
 
     fun selectDays(days: Int) {
@@ -196,12 +285,16 @@ class HomeViewModel(
             val current = _uiState.value
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching {
-                val keyword = current.searchKeyword.takeIf { it.isNotBlank() }
+                // 自定义标签保留 chip 里的短横线写法，但查询时转成空格，更贴近 arXiv 关键词搜索。
+                val keyword = current.searchKeyword
+                    .takeIf { it.isNotBlank() }
+                    ?: current.selectedCategory.takeIf { current.isCustomTag(it) }?.toCustomTagSearchKeyword()
+                val category = current.selectedCategory.takeUnless { current.isCustomTag(it) }
                 // 有关键词时后端按全 arXiv 搜索处理，时间窗只服务无关键词首页流。
                 val days = if (keyword == null) current.selectedDays else null
                 repository.listHomePapers(
                     keyword = keyword,
-                    category = current.selectedCategory,
+                    category = category,
                     days = days,
                 )
             }.onSuccess { result ->
@@ -225,7 +318,8 @@ class HomeViewModel(
         viewModelScope.launch {
             val current = _uiState.value
             _uiState.update { it.copy(isSummaryLoading = true) }
-            runCatching { repository.getTrendSummary(current.selectedCategory) }
+            val summaryCategory = current.selectedCategory.takeUnless { current.isCustomTag(it) }
+            runCatching { repository.getTrendSummary(summaryCategory) }
                 .onSuccess { summary ->
                     _uiState.update {
                         it.copy(
@@ -270,6 +364,14 @@ class HomeViewModel(
     private companion object {
         const val ACTION_MESSAGE_TIMEOUT_MS = 2500L
     }
+}
+
+private fun normalizeCustomTag(value: String): String {
+    return value.trim().replace(Regex("\\s+"), "-").lowercase()
+}
+
+private fun String.toCustomTagSearchKeyword(): String {
+    return replace(Regex("[-_]+"), " ").replace(Regex("\\s+"), " ").trim()
 }
 
 private fun mapUserFriendlyError(prefix: String, error: Throwable): String {

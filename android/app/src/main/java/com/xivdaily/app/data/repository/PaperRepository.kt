@@ -6,12 +6,18 @@ import com.xivdaily.app.data.model.FavoritePaperItem
 import com.xivdaily.app.data.model.ConfigTestResult
 import com.xivdaily.app.data.model.HomePaperResult
 import com.xivdaily.app.data.model.IntegrationConfigStatus
+import com.xivdaily.app.data.model.PaperChatMessage
+import com.xivdaily.app.data.model.PaperChatResult
+import com.xivdaily.app.data.model.PaperChatUsedPaper
 import com.xivdaily.app.data.model.PaperItem
 import com.xivdaily.app.data.model.TrendSummary
 import com.xivdaily.app.data.model.TrendSummaryItem
 import com.xivdaily.app.data.remote.ApiService
 import com.xivdaily.app.data.remote.BibtexExportRequestDto
 import com.xivdaily.app.data.remote.LlmConfigSaveRequestDto
+import com.xivdaily.app.data.remote.PaperChatMessageDto
+import com.xivdaily.app.data.remote.PaperChatPaperDto
+import com.xivdaily.app.data.remote.PaperChatRequestDto
 import com.xivdaily.app.data.remote.PaperDto
 import com.xivdaily.app.data.remote.TranslationRequestDto
 import com.xivdaily.app.data.remote.ZoteroConfigSaveRequestDto
@@ -45,10 +51,16 @@ interface IntegrationConfigRepositoryContract {
     suspend fun testLlmConfig(): ConfigTestResult
 }
 
+interface PaperChatRepositoryContract {
+    fun observeFavorites(): Flow<List<FavoritePaperItem>>
+    suspend fun chatWithPapers(papers: List<PaperItem>, messages: List<PaperChatMessage>): PaperChatResult
+}
+
 interface PaperRepositoryContract :
     HomePaperRepositoryContract,
     FavoritePaperRepositoryContract,
-    IntegrationConfigRepositoryContract
+    IntegrationConfigRepositoryContract,
+    PaperChatRepositoryContract
 
 class PaperRepository(
     private val apiService: ApiService,
@@ -140,6 +152,37 @@ class PaperRepository(
 
     override suspend fun exportBibtex(paperIds: List<String>): String {
         return apiService.exportBibtex(BibtexExportRequestDto(paperIds)).content
+    }
+
+    override suspend fun chatWithPapers(papers: List<PaperItem>, messages: List<PaperChatMessage>): PaperChatResult {
+        val dto = apiService.chatWithPapers(
+            PaperChatRequestDto(
+                papers = papers.map { paper ->
+                    PaperChatPaperDto(
+                        paperId = paper.id,
+                        title = paper.title,
+                        summary = paper.summary,
+                        pdfUrl = paper.pdfUrl,
+                        sourceUrl = paper.sourceUrl,
+                    )
+                },
+                messages = messages.map { PaperChatMessageDto(role = it.role, content = it.content) },
+            )
+        )
+        return PaperChatResult(
+            answer = dto.answer,
+            status = dto.status,
+            warning = dto.warning,
+            usedPapers = dto.usedPapers.map {
+                PaperChatUsedPaper(
+                    paperId = it.paperId,
+                    title = it.title,
+                    status = it.status,
+                    contextChars = it.contextChars,
+                    warning = it.warning,
+                )
+            },
+        )
     }
 
     override suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus {

@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.ai.llm_gateway import LlmResult
 from app.db.base import Base
 from app.models.trend_summary_cache import TrendSummaryCacheModel
-from app.schemas.ai import TranslationRequest
+from app.schemas.ai import PaperChatPaper, PaperChatRequest, PaperChatMessage, TranslationRequest
 from app.schemas.paper import Paper, PaperListResponse, PaperQuery
 from app.services.ai_service import AiService
+from app.services.paper_text_service import PaperTextResult
 
 
 class FakeGateway:
@@ -22,6 +23,11 @@ class FakeGateway:
     async def complete(self, prompt: str, task_name: str) -> LlmResult:
         self.calls += 1
         self.last_prompt = prompt
+        return LlmResult(text=self.text, status=self.status, warning=self.warning)
+
+    async def chat(self, messages: list[dict[str, str]], task_name: str) -> LlmResult:
+        self.calls += 1
+        self.last_messages = messages
         return LlmResult(text=self.text, status=self.status, warning=self.warning)
 
 
@@ -48,6 +54,22 @@ class FakePaperService:
             for index in range(1, 10)
         ]
         return PaperListResponse(query=query, items=papers, page=1, page_size=query.page_size, total=len(papers), has_more=False)
+
+
+class FakePaperTextService:
+    def __init__(self, status: str = "full_text", text: str = "FULL TEXT", warning: str | None = None) -> None:
+        self.status = status
+        self.text = text
+        self.warning = warning
+
+    async def extract_text(self, paper: PaperChatPaper) -> PaperTextResult:
+        return PaperTextResult(
+            paper_id=paper.paper_id,
+            title=paper.title,
+            text=self.text,
+            status=self.status,
+            warning=self.warning,
+        )
 
 
 def build_session() -> Session:
@@ -93,6 +115,62 @@ async def test_translate_summary_returns_fallback_when_model_unavailable() -> No
     assert result.status == "degraded"
     assert "Original summary" in result.translated_summary
     assert result.warning == "timeout"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_chat_with_papers_uses_extracted_full_text_context() -> None:
+    gateway = FakeGateway(status="success", text="这篇论文提出了一个机器人策略。")
+    service = AiService(
+        db=build_session(),
+        llm_gateway=gateway,
+        paper_service=FakePaperService(),
+        paper_text_service=FakePaperTextService(text="FULL TEXT ABOUT EMBODIED AI"),
+    )
+
+    result = await service.chat_with_papers(
+        PaperChatRequest(
+            papers=[
+                PaperChatPaper(
+                    paper_id="2401.00001",
+                    title="Embodied AI Paper",
+                    summary="summary",
+                    pdf_url="https://arxiv.org/pdf/2401.00001",
+                )
+            ],
+            messages=[PaperChatMessage(role="user", content="这篇论文的核心贡献是什么？")],
+        )
+    )
+
+    assert result.status == "success"
+    assert result.used_papers[0].status == "full_text"
+    assert "FULL TEXT ABOUT EMBODIED AI" in gateway.last_messages[1]["content"]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_chat_with_papers_marks_summary_fallback_as_degraded() -> None:
+    service = AiService(
+        db=build_session(),
+        llm_gateway=FakeGateway(status="success", text="基于摘要回答。"),
+        paper_service=FakePaperService(),
+        paper_text_service=FakePaperTextService(status="summary_fallback", text="summary only", warning="PDF 读取失败"),
+    )
+
+    result = await service.chat_with_papers(
+        PaperChatRequest(
+            papers=[
+                PaperChatPaper(
+                    paper_id="2401.00002",
+                    title="Fallback Paper",
+                    summary="summary",
+                    pdf_url="https://arxiv.org/pdf/2401.00002",
+                )
+            ],
+            messages=[PaperChatMessage(role="user", content="总结一下")],
+        )
+    )
+
+    assert result.status == "degraded"
+    assert result.warning == "PDF 读取失败"
 
 
 @pytest.mark.anyio("asyncio")

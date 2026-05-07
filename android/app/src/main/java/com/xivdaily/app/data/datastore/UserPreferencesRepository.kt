@@ -12,6 +12,7 @@ private val Context.dataStore by preferencesDataStore(name = "user_preferences")
 
 data class UserPreferences(
     val defaultCategory: String = "cs.CV",
+    val customTags: List<String> = emptyList(),
     val defaultDays: Int = 3,
     val themeMode: String = "light",
     val hasSeenOnboarding: Boolean = false,
@@ -23,6 +24,7 @@ data class UserPreferences(
 interface UserPreferencesRepositoryContract {
     val preferences: Flow<UserPreferences>
     suspend fun setDefaultCategory(category: String)
+    suspend fun setCustomTags(tags: List<String>)
     suspend fun setDefaultDays(days: Int)
     suspend fun setThemeMode(themeMode: String)
     suspend fun setHasSeenOnboarding(hasSeen: Boolean)
@@ -33,6 +35,7 @@ interface UserPreferencesRepositoryContract {
 
 class UserPreferencesRepository(private val context: Context) : UserPreferencesRepositoryContract {
     private val defaultCategoryKey = stringPreferencesKey("default_category")
+    private val customTagsKey = stringPreferencesKey("custom_tags")
     private val defaultDaysKey = intPreferencesKey("default_days")
     private val themeModeKey = stringPreferencesKey("theme_mode")
     private val hasSeenOnboardingKey = androidx.datastore.preferences.core.booleanPreferencesKey("has_seen_onboarding")
@@ -43,6 +46,7 @@ class UserPreferencesRepository(private val context: Context) : UserPreferencesR
     override val preferences: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
         UserPreferences(
             defaultCategory = preferences[defaultCategoryKey] ?: "cs.CV",
+            customTags = decodeCustomTags(preferences[customTagsKey]),
             defaultDays = preferences[defaultDaysKey] ?: 3,
             themeMode = preferences[themeModeKey] ?: "light",
             hasSeenOnboarding = preferences[hasSeenOnboardingKey] ?: false,
@@ -54,6 +58,21 @@ class UserPreferencesRepository(private val context: Context) : UserPreferencesR
 
     override suspend fun setDefaultCategory(category: String) {
         context.dataStore.edit { it[defaultCategoryKey] = category }
+    }
+
+    override suspend fun setCustomTags(tags: List<String>) {
+        val encoded = tags
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString(CUSTOM_TAG_SEPARATOR)
+        context.dataStore.edit { preferences ->
+            if (encoded.isBlank()) {
+                preferences.remove(customTagsKey)
+            } else {
+                preferences[customTagsKey] = encoded
+            }
+        }
     }
 
     override suspend fun setDefaultDays(days: Int) {
@@ -84,5 +103,18 @@ class UserPreferencesRepository(private val context: Context) : UserPreferencesR
                 preferences[avatarImageUriKey] = uri
             }
         }
+    }
+
+    private fun decodeCustomTags(raw: String?): List<String> {
+        return raw
+            ?.split(CUSTOM_TAG_SEPARATOR)
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?.distinct()
+            .orEmpty()
+    }
+
+    private companion object {
+        const val CUSTOM_TAG_SEPARATOR = "\n"
     }
 }

@@ -5,11 +5,13 @@ from datetime import UTC, datetime
 from datetime import timedelta
 
 from app.ai.llm_gateway import LlmGateway
-from app.ai.prompts import build_translation_prompt, build_trend_prompt
+from app.ai.prompts import build_paper_chat_messages, build_translation_prompt, build_trend_prompt
+from app.core.config import get_settings
 from app.models.trend_summary_cache import TrendSummaryCacheModel
-from app.schemas.ai import TranslationRequest, TranslationTask, TrendSummary, TrendSummaryItem
+from app.schemas.ai import PaperChatRequest, PaperChatResponse, PaperChatUsedPaper, TranslationRequest, TranslationTask, TrendSummary, TrendSummaryItem
 from app.schemas.paper import PaperQuery
 from app.services.paper_service import PaperService
+from app.services.paper_text_service import PaperTextService
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -22,10 +24,13 @@ class AiService:
         db: Session,
         llm_gateway: LlmGateway | None = None,
         paper_service: PaperService | None = None,
+        paper_text_service: PaperTextService | None = None,
     ) -> None:
         self.db = db
+        self.settings = get_settings()
         self.llm_gateway = llm_gateway or LlmGateway()
         self.paper_service = paper_service or PaperService()
+        self.paper_text_service = paper_text_service or PaperTextService()
 
     async def generate_trend_summary(self, category: str | None, days: int) -> TrendSummary:
         fixed_days = FIXED_TREND_DAYS
@@ -91,6 +96,58 @@ class AiService:
             warning=result.warning,
         )
 
+    async def chat_with_papers(self, request: PaperChatRequest) -> PaperChatResponse:
+        text_results = [await self.paper_text_service.extract_text(paper) for paper in request.papers]
+        used_papers: list[PaperChatUsedPaper] = []
+        paper_contexts: list[str] = []
+        for result in text_results:
+            context = result.text[: self.settings.paper_chat_context_chars_per_paper]
+            used_papers.append(
+                PaperChatUsedPaper(
+                    paper_id=result.paper_id,
+                    title=result.title,
+                    status=result.status,
+                    context_chars=len(context),
+                    warning=result.warning,
+                )
+            )
+            if context:
+                # 每篇论文独立截断，避免多论文对话把模型上下文一次性撑爆。
+                paper_contexts.append(
+                    f"论文 ID：{result.paper_id}\n标题：{result.title}\n上下文来源：{result.status}\n内容：\n{context}"
+                )
+
+        if not paper_contexts:
+            return PaperChatResponse(
+                answer="没有可用于对话的论文全文或摘要内容，请重新选择带有 arXiv PDF 的收藏论文。",
+                status="degraded",
+                created_at=datetime.now(UTC),
+                used_papers=used_papers,
+                warning="未能读取任何论文上下文。",
+            )
+
+        messages = build_paper_chat_messages(paper_contexts, [message.model_dump() for message in request.messages])
+        result = await self.llm_gateway.chat(messages, task_name="paper_chat")
+        context_warnings = [paper.warning for paper in used_papers if paper.warning]
+        context_warning = "；".join(context_warnings) if context_warnings else None
+
+        if result.status == "success":
+            return PaperChatResponse(
+                answer=result.text.strip(),
+                status="degraded" if context_warning else "success",
+                created_at=datetime.now(UTC),
+                used_papers=used_papers,
+                warning=context_warning,
+            )
+
+        return PaperChatResponse(
+            answer=self._fallback_paper_chat_answer(request, used_papers),
+            status="degraded",
+            created_at=datetime.now(UTC),
+            used_papers=used_papers,
+            warning=result.warning or context_warning,
+        )
+
     def _build_fallback_trends(self, papers: list) -> list[TrendSummaryItem]:
         if not papers:
             return [
@@ -116,6 +173,15 @@ class AiService:
 
     def _fallback_translation(self, source_summary: str) -> str:
         return f"模型暂不可用，当前返回原摘要作为降级结果：{source_summary}"
+
+    def _fallback_paper_chat_answer(self, request: PaperChatRequest, used_papers: list[PaperChatUsedPaper]) -> str:
+        selected_titles = "、".join(paper.title for paper in used_papers if paper.context_chars > 0)
+        last_question = next((message.content for message in reversed(request.messages) if message.role == "user"), "")
+        return (
+            "模型暂不可用，暂时无法完成全文问答。"
+            f"已读取的论文材料包括：{selected_titles or '无'}。"
+            f"你刚才的问题是：{last_question}"
+        )
 
     def _build_cache_window(self, category: str | None) -> tuple[str, datetime, datetime]:
         window_end = datetime.now(UTC)

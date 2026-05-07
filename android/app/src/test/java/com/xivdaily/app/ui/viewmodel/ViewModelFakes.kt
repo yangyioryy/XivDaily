@@ -6,6 +6,9 @@ import com.xivdaily.app.data.model.FavoritePaperItem
 import com.xivdaily.app.data.model.ConfigTestResult
 import com.xivdaily.app.data.model.HomePaperResult
 import com.xivdaily.app.data.model.IntegrationConfigStatus
+import com.xivdaily.app.data.model.PaperChatMessage
+import com.xivdaily.app.data.model.PaperChatResult
+import com.xivdaily.app.data.model.PaperChatUsedPaper
 import com.xivdaily.app.data.model.PaperItem
 import com.xivdaily.app.data.model.TrendSummary
 import com.xivdaily.app.data.repository.PaperRepositoryContract
@@ -21,6 +24,10 @@ internal class FakePreferencesRepository(
 
     override suspend fun setDefaultCategory(category: String) {
         state.value = state.value.copy(defaultCategory = category)
+    }
+
+    override suspend fun setCustomTags(tags: List<String>) {
+        state.value = state.value.copy(customTags = tags)
     }
 
     override suspend fun setDefaultDays(days: Int) {
@@ -63,6 +70,21 @@ internal open class FakePaperRepository(
     val translationRequests: MutableList<String> = mutableListOf()
     val savedZoteroConfigs: MutableList<List<String?>> = mutableListOf()
     val savedLlmConfigs: MutableList<List<String?>> = mutableListOf()
+    val paperChatRequests: MutableList<Pair<List<String>, List<PaperChatMessage>>> = mutableListOf()
+    var paperChatResult: PaperChatResult = PaperChatResult(
+        answer = "chat answer",
+        status = "success",
+        warning = null,
+        usedPapers = listOf(
+            PaperChatUsedPaper(
+                paperId = "2401.00001",
+                title = "Test Paper",
+                status = "full_text",
+                contextChars = 128,
+                warning = null,
+            )
+        ),
+    )
 
     override suspend fun listHomePapers(keyword: String?, category: String?, days: Int?): HomePaperResult {
         listRequests.add(Triple(keyword, category, days))
@@ -96,6 +118,10 @@ internal open class FakePaperRepository(
     override suspend fun syncFavoriteToZotero(paperId: String): PaperItem = samplePaper(paperId)
     override suspend fun syncPaperToZotero(paper: PaperItem): PaperItem = paper.copy(zoteroSyncState = "synced")
     override suspend fun exportBibtex(paperIds: List<String>): String = "@misc{demo}"
+    override suspend fun chatWithPapers(papers: List<PaperItem>, messages: List<PaperChatMessage>): PaperChatResult {
+        paperChatRequests += papers.map { it.id } to messages
+        return paperChatResult
+    }
     override suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus = IntegrationConfigStatus(
         zoteroConfigured = true,
         zoteroUserId = "12345678",

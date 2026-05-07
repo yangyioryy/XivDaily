@@ -8,30 +8,30 @@ import androidx.compose.ui.unit.sp
 val XivDailyTypography = Typography(
     displaySmall = TextStyle(
         fontWeight = FontWeight.ExtraBold,
-        fontSize = 34.sp,
-        lineHeight = 40.sp,
-        letterSpacing = (-0.8).sp,
+        fontSize = 30.sp,
+        lineHeight = 36.sp,
+        letterSpacing = 0.sp,
     ),
     headlineLarge = TextStyle(
         fontWeight = FontWeight.ExtraBold,
-        fontSize = 30.sp,
-        lineHeight = 36.sp,
-        letterSpacing = (-0.5).sp,
+        fontSize = 27.sp,
+        lineHeight = 32.sp,
+        letterSpacing = 0.sp,
     ),
     headlineMedium = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize = 26.sp,
-        lineHeight = 32.sp,
-    ),
-    titleLarge = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
     ),
+    titleLarge = TextStyle(
+        fontWeight = FontWeight.Bold,
+        fontSize = 19.sp,
+        lineHeight = 25.sp,
+    ),
     titleMedium = TextStyle(
         fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        lineHeight = 24.sp,
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
     ),
     titleSmall = TextStyle(
         fontWeight = FontWeight.SemiBold,
@@ -55,8 +55,8 @@ val XivDailyTypography = Typography(
     ),
     labelLarge = TextStyle(
         fontWeight = FontWeight.Bold,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
     ),
     labelMedium = TextStyle(
         fontWeight = FontWeight.Medium,

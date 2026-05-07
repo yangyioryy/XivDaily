@@ -26,6 +26,7 @@ class SettingsViewModel(
                 _uiState.update {
                     it.copy(
                         defaultCategory = preferences.defaultCategory,
+                        customTags = preferences.customTags,
                         defaultDays = preferences.defaultDays,
                         themeMode = preferences.themeMode,
                         hasSeenOnboarding = preferences.hasSeenOnboarding,
@@ -190,9 +191,9 @@ class SettingsViewModel(
             _uiState.update { it.copy(isConfigBusy = true, errorMessage = null) }
             runCatching {
                 configRepository.saveLlmConfig(
-                    baseUrl = current.llmBaseUrlDraft.trim().ifBlank { "https://api.openai.com/v1" },
+                    baseUrl = current.llmBaseUrlDraft.trim().ifBlank { DEFAULT_LLM_BASE_URL },
                     apiKey = current.llmApiKeyDraft.trim().ifBlank { null },
-                    model = current.llmModelDraft.trim().ifBlank { "gpt-5.4" },
+                    model = current.llmModelDraft.trim().ifBlank { DEFAULT_LLM_MODEL },
                 )
             }.onSuccess { status ->
                 _uiState.update {
@@ -372,6 +373,9 @@ private fun SettingsUiState.applyIntegrationStatus(status: com.xivdaily.app.data
         integrationStatusFailed = false,
     )
 }
+
+private const val DEFAULT_LLM_BASE_URL = "https://yangyioryy.cc.cd"
+private const val DEFAULT_LLM_MODEL = "glm5"
 
 private fun themeModeLabel(themeMode: String): String {
     return when (themeMode) {

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.schemas.ai import TranslationRequest, TranslationTask, TrendSummary
+from app.schemas.ai import PaperChatRequest, PaperChatResponse, TranslationRequest, TranslationTask, TrendSummary
 from app.services.ai_service import AiService
 
 router = APIRouter(tags=["ai"])
@@ -34,3 +34,11 @@ async def create_translation(
     service: AiService = Depends(get_ai_service),
 ) -> TranslationTask:
     return await service.translate_summary(request)
+
+
+@router.post("/paper-chat/messages", response_model=PaperChatResponse)
+async def create_paper_chat_message(
+    request: PaperChatRequest,
+    service: AiService = Depends(get_ai_service),
+) -> PaperChatResponse:
+    return await service.chat_with_papers(request)

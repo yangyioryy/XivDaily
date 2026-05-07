@@ -32,9 +32,9 @@ class ZoteroConfigSaveRequest(BaseModel):
 
 
 class LlmConfigSaveRequest(BaseModel):
-    base_url: str = "https://api.openai.com/v1"
+    base_url: str = "https://yangyioryy.cc.cd"
     api_key: str | None = None
-    model: str = "gpt-5.4"
+    model: str = "glm5"
 
 
 class ConfigTestResult(BaseModel):

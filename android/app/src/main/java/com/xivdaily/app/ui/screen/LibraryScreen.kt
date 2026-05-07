@@ -76,7 +76,7 @@ fun LibraryScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
             item {
                 Spacer(modifier = Modifier.height(spacing.xs))
@@ -192,7 +192,7 @@ private fun LibraryHeroSection(
             Column {
                 Text(
                     text = "收藏库",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
@@ -249,7 +249,7 @@ private fun BoxScope.BatchBottomBar(
             .align(Alignment.BottomCenter)
             .fillMaxWidth()
             .padding(bottom = spacing.lg),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.inverseSurface,
         tonalElevation = spacing.sm,
     ) {
@@ -322,11 +322,11 @@ private fun ExportResultCard(content: String) {
     val spacing = MaterialTheme.xivSpacing
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
+            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.md),
             verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             Text(
@@ -356,18 +356,18 @@ private fun EmptyLibraryStateCard(
     val spacing = MaterialTheme.xivSpacing
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.xl),
+            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
             verticalArrangement = Arrangement.spacedBy(spacing.xs),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             LeadingPill(icon = Icons.Rounded.Bookmarks)
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
@@ -392,13 +392,13 @@ private fun FavoritePaperCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onToggleSelection),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
             modifier = Modifier
-                .padding(horizontal = spacing.md, vertical = spacing.lg)
+                .padding(horizontal = spacing.md, vertical = spacing.md)
                 .animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
@@ -410,7 +410,7 @@ private fun FavoritePaperCard(
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         text = favorite.paper.title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
@@ -511,7 +511,7 @@ private fun StatusPill(
 private fun LeadingPill(icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(32.dp)
             .background(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 shape = MaterialTheme.shapes.small,
@@ -522,7 +522,7 @@ private fun LeadingPill(icon: androidx.compose.ui.graphics.vector.ImageVector) {
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(16.dp),
         )
     }
 }

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from time import monotonic
+from typing import Literal
 
 import httpx
 
@@ -18,6 +19,9 @@ class LlmResult:
     warning: str | None = None
 
 
+ChatMessage = dict[str, Literal["system", "user", "assistant"] | str]
+
+
 class LlmGateway:
     """统一大模型网关，集中处理密钥、超时、重试和降级日志。"""
 
@@ -25,12 +29,15 @@ class LlmGateway:
         self.settings = get_settings()
 
     async def complete(self, prompt: str, task_name: str) -> LlmResult:
+        return await self.chat([{"role": "user", "content": prompt}], task_name=task_name)
+
+    async def chat(self, messages: list[ChatMessage], task_name: str) -> LlmResult:
         if not self.settings.llm_api_key:
             return LlmResult(text="", status="degraded", warning="未配置大模型 API Key，已使用本地降级结果。")
 
         payload = {
             "model": self.settings.llm_model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "temperature": 0.2,
         }
         headers = {"Authorization": f"Bearer {self.settings.llm_api_key}"}

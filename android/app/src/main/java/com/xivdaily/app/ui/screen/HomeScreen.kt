@@ -24,10 +24,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
@@ -39,8 +41,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -73,7 +77,15 @@ fun HomeScreen(
     uiState: HomeUiState,
     onKeywordChange: (String) -> Unit,
     onKeywordSubmit: () -> Unit,
+    onExitSearch: () -> Unit,
     onCategorySelect: (String) -> Unit,
+    onShowAddTagDialog: () -> Unit,
+    onHideAddTagDialog: () -> Unit,
+    onCustomTagDraftChange: (String) -> Unit,
+    onAddCustomTag: () -> Unit,
+    onTagLongPress: (String) -> Unit,
+    onClearTagPendingDeletion: () -> Unit,
+    onDeleteCustomTag: (String) -> Unit,
     onDaysSelect: (Int) -> Unit,
     onDismissPaper: (PaperItem) -> Unit,
     onTranslate: (PaperItem) -> Unit,
@@ -86,6 +98,13 @@ fun HomeScreen(
 ) {
     val spacing = MaterialTheme.xivSpacing
     val uriHandler = LocalUriHandler.current
+    AddTagDialog(
+        visible = uiState.isAddTagDialogVisible,
+        value = uiState.customTagDraft,
+        onValueChange = onCustomTagDraftChange,
+        onDismiss = onHideAddTagDialog,
+        onConfirm = onAddCustomTag,
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -94,7 +113,7 @@ fun HomeScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
             item {
                 Spacer(modifier = Modifier.height(spacing.xs))
@@ -105,7 +124,12 @@ fun HomeScreen(
                     uiState = uiState,
                     onKeywordChange = onKeywordChange,
                     onKeywordSubmit = onKeywordSubmit,
+                    onExitSearch = onExitSearch,
                     onCategorySelect = onCategorySelect,
+                    onShowAddTagDialog = onShowAddTagDialog,
+                    onTagLongPress = onTagLongPress,
+                    onClearTagPendingDeletion = onClearTagPendingDeletion,
+                    onDeleteCustomTag = onDeleteCustomTag,
                     onDaysSelect = onDaysSelect,
                 )
             }
@@ -183,7 +207,7 @@ fun HomeScreen(
             exit = fadeOut() + shrinkVertically(),
         ) {
             Surface(
-                shape = MaterialTheme.shapes.large,
+                shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.inverseSurface,
                 tonalElevation = spacing.xs,
             ) {
@@ -203,7 +227,7 @@ private fun HomeHeroSection(uiState: HomeUiState) {
     val spacing = MaterialTheme.xivSpacing
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(spacing.md),
+        verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -212,7 +236,7 @@ private fun HomeHeroSection(uiState: HomeUiState) {
         ) {
             Text(
                 text = "首页",
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
             )
             LeadingPill(icon = Icons.Rounded.Notifications)
@@ -223,7 +247,7 @@ private fun HomeHeroSection(uiState: HomeUiState) {
             } else {
                 "围绕当天筛选范围快速浏览、收藏和同步论文。"
             },
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -235,19 +259,25 @@ private fun ExploreControlCard(
     uiState: HomeUiState,
     onKeywordChange: (String) -> Unit,
     onKeywordSubmit: () -> Unit,
+    onExitSearch: () -> Unit,
     onCategorySelect: (String) -> Unit,
+    onShowAddTagDialog: () -> Unit,
+    onTagLongPress: (String) -> Unit,
+    onClearTagPendingDeletion: () -> Unit,
+    onDeleteCustomTag: (String) -> Unit,
     onDaysSelect: (Int) -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(spacing.md),
+        verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
         OutlinedTextField(
             value = uiState.searchKeywordDraft,
             onValueChange = onKeywordChange,
             modifier = Modifier.fillMaxWidth(),
             label = { Text("搜索论文、作者、关键词") },
+            singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onKeywordSubmit() }),
             leadingIcon = {
@@ -257,17 +287,32 @@ private fun ExploreControlCard(
                 )
             },
             trailingIcon = {
-                TextButton(onClick = onKeywordSubmit) {
-                    Text("搜索")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (uiState.isSearchActive) {
+                        IconButton(onClick = onExitSearch) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "退出搜索",
+                            )
+                        }
+                    }
+                    TextButton(onClick = onKeywordSubmit) {
+                        Text("搜索")
+                    }
                 }
             },
         )
-        FilterBlock(
+        TagFilterBlock(
             title = "领域",
-            values = uiState.categories,
+            values = uiState.allTags,
             selected = uiState.selectedCategory,
-            labelMapper = { it },
+            customTags = uiState.customTags,
+            pendingDeletionTag = uiState.tagPendingDeletion,
             onClick = onCategorySelect,
+            onLongClick = onTagLongPress,
+            onClearPending = onClearTagPendingDeletion,
+            onDelete = onDeleteCustomTag,
+            onAddClick = onShowAddTagDialog,
         )
         if (uiState.isSearchActive) {
             Surface(
@@ -282,6 +327,19 @@ private fun ExploreControlCard(
                 )
             }
         } else {
+            if (uiState.isCustomTagSelected) {
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Text(
+                        text = "自定义标签会用关键词在全 arXiv 召回论文，适合 embodied-ai 这类研究方向。",
+                        modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            }
             FilterBlock(
                 title = "时间",
                 values = uiState.dayOptions,
@@ -294,6 +352,49 @@ private fun ExploreControlCard(
 }
 
 @Composable
+private fun AddTagDialog(
+    visible: Boolean,
+    value: String,
+    onValueChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    if (!visible) {
+        return
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("添加自定义标签") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "输入研究方向，例如 embodied-ai。标签会作为关键词检索论文。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("标签名称") },
+                    singleLine = true,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("添加")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        },
+    )
+}
+
+@Composable
 private fun TrendSummaryCard(
     uiState: HomeUiState,
     onToggleSummary: () -> Unit,
@@ -302,15 +403,15 @@ private fun TrendSummaryCard(
     val spacing = MaterialTheme.xivSpacing
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier
-                .padding(horizontal = spacing.md, vertical = spacing.lg)
+                .padding(horizontal = spacing.md, vertical = spacing.md)
                 .animateContentSize(),
-            verticalArrangement = Arrangement.spacedBy(spacing.md),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -376,37 +477,37 @@ private fun TrendSummaryCard(
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically(),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(spacing.md)) {
-                summary.items.forEach { item ->
-                    val representativeTitles = item.representativePaperIds.mapNotNull { paperId ->
-                        uiState.papers.firstOrNull { it.id == paperId }?.title
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
-                        ) {
-                            StatusDot(color = XivDailyInfo)
-                            Text(
-                                text = "${item.rank}. ${item.trendTitle}",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    summary.items.forEach { item ->
+                        val representativeTitles = item.representativePaperIds.mapNotNull { paperId ->
+                            uiState.papers.firstOrNull { it.id == paperId }?.title
                         }
-                        Text(
-                            text = item.summary,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (representativeTitles.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+                            ) {
+                                StatusDot(color = XivDailyInfo)
+                                Text(
+                                    text = "${item.rank}. ${item.trendTitle}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
                             Text(
-                                text = "代表论文：${representativeTitles.joinToString(" / ")}",
-                                style = MaterialTheme.typography.labelMedium,
+                                text = item.summary,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            if (representativeTitles.isNotEmpty()) {
+                                Text(
+                                    text = "代表论文：${representativeTitles.joinToString(" / ")}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
-                }
                 }
             }
             TextButton(onClick = onToggleSummary) {
@@ -467,12 +568,12 @@ private fun HomePaperCard(
                         onClick = onOpenPaper,
                         onDoubleClick = onFavorite,
                     ),
-                shape = MaterialTheme.shapes.large,
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
+                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.md),
                     verticalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
                     Row(
@@ -483,14 +584,14 @@ private fun HomePaperCard(
                         Text(
                             text = paper.title,
                             modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Icon(
                             imageVector = if (paper.favoriteState) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                             contentDescription = if (paper.favoriteState) "已收藏" else "未收藏",
                             tint = XivDailyWarning,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                     Text(
@@ -599,8 +700,8 @@ private fun SwipeHintBackground(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(color = background, shape = MaterialTheme.shapes.large)
-            .padding(horizontal = spacing.md, vertical = spacing.lg),
+            .background(color = background, shape = MaterialTheme.shapes.medium)
+            .padding(horizontal = spacing.md, vertical = spacing.md),
         contentAlignment = alignment,
     ) {
         Row(
@@ -718,18 +819,18 @@ private fun EmptyStateCard(
     val spacing = MaterialTheme.xivSpacing
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.xl),
+            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.lg),
             verticalArrangement = Arrangement.spacedBy(spacing.xs),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             LeadingPill(icon = Icons.Rounded.AutoAwesome)
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
@@ -756,7 +857,7 @@ private fun SectionHeader(
         Column {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
@@ -840,11 +941,119 @@ private fun <T> FilterBlock(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@Composable
+private fun TagFilterBlock(
+    title: String,
+    values: List<String>,
+    selected: String,
+    customTags: List<String>,
+    pendingDeletionTag: String?,
+    onClick: (String) -> Unit,
+    onLongClick: (String) -> Unit,
+    onClearPending: () -> Unit,
+    onDelete: (String) -> Unit,
+    onAddClick: () -> Unit,
+) {
+    val spacing = MaterialTheme.xivSpacing
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+            verticalArrangement = Arrangement.spacedBy(spacing.xs),
+        ) {
+            values.forEach { tag ->
+                val isSelected = selected == tag
+                val pendingDeletion = pendingDeletionTag == tag
+                Surface(
+                    modifier = Modifier.combinedClickable(
+                        onClick = {
+                            if (pendingDeletion) {
+                                onClearPending()
+                            } else {
+                                onClick(tag)
+                            }
+                        },
+                        onLongClick = { onLongClick(tag) },
+                    ),
+                    shape = MaterialTheme.shapes.medium,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else if (pendingDeletion) {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                    tonalElevation = if (isSelected) 2.dp else 0.dp,
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = spacing.sm, vertical = spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+                    ) {
+                        Text(
+                            text = tag,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        )
+                        if (pendingDeletion && tag in customTags) {
+                            // 固定删除按钮尺寸，避免长按后 chip 宽度突然跳动。
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.errorContainer,
+                                        shape = MaterialTheme.shapes.extraSmall,
+                                    )
+                                    .combinedClickable(onClick = { onDelete(tag) }),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "-",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Surface(
+                modifier = Modifier.combinedClickable(onClick = onAddClick),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.sm, vertical = spacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = "添加标签",
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(text = "添加", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun LeadingPill(icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(32.dp)
             .background(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 shape = MaterialTheme.shapes.small,
@@ -855,7 +1064,7 @@ private fun LeadingPill(icon: androidx.compose.ui.graphics.vector.ImageVector) {
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(16.dp),
         )
     }
 }

@@ -71,6 +71,71 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun exitSearch_restoresCategoryAndTimeWindowFeed() {
+        runTest {
+            val repository = FakePaperRepository()
+            val viewModel = HomeViewModel(repository, FakePreferencesRepository())
+            advanceUntilIdle()
+            repository.listRequests.clear()
+
+            viewModel.updateKeyword("diffusion")
+            viewModel.submitKeyword()
+            advanceUntilIdle()
+
+            assertEquals(Triple("diffusion", "cs.CV", null), repository.listRequests.last())
+
+            viewModel.exitSearch()
+            advanceUntilIdle()
+
+            assertEquals("", viewModel.uiState.value.searchKeyword)
+            assertTrue(!viewModel.uiState.value.isSearchActive)
+            assertEquals(Triple(null, "cs.CV", 3), repository.listRequests.last())
+        }
+    }
+
+    @Test
+    fun addCustomTag_selectsTagAndUsesKeywordRecall() {
+        runTest {
+            val repository = FakePaperRepository()
+            val viewModel = HomeViewModel(repository, FakePreferencesRepository())
+            advanceUntilIdle()
+            repository.listRequests.clear()
+
+            viewModel.showAddTagDialog()
+            viewModel.updateCustomTagDraft("Embodied AI")
+            viewModel.addCustomTag()
+            advanceUntilIdle()
+
+            assertEquals(listOf("embodied-ai"), viewModel.uiState.value.customTags)
+            assertEquals("embodied-ai", viewModel.uiState.value.selectedCategory)
+            assertEquals(Triple("embodied ai", null, null), repository.listRequests.last())
+        }
+    }
+
+    @Test
+    fun deleteCustomTag_fallsBackToDefaultArxivCategory() {
+        runTest {
+            val repository = FakePaperRepository()
+            val preferences = FakePreferencesRepository(UserPreferences(customTags = listOf("embodied-ai")))
+            val viewModel = HomeViewModel(repository, preferences)
+            advanceUntilIdle()
+            repository.listRequests.clear()
+
+            viewModel.selectCategory("embodied-ai")
+            advanceUntilIdle()
+            assertEquals(Triple("embodied ai", null, null), repository.listRequests.last())
+
+            viewModel.markTagPendingDeletion("embodied-ai")
+            viewModel.deleteCustomTag("embodied-ai")
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.customTags.isEmpty())
+            assertEquals("cs.CV", viewModel.uiState.value.selectedCategory)
+            assertEquals(Triple(null, "cs.CV", 3), repository.listRequests.last())
+        }
+    }
+
+    @Test
     fun selectDays_doesNotRefreshWhenKeywordSearchIsActive() {
         runTest {
             val repository = FakePaperRepository()

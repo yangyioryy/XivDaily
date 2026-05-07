@@ -144,7 +144,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = spacing.md),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
         item {
             Spacer(modifier = Modifier.height(spacing.xs))
@@ -167,7 +167,7 @@ fun SettingsScreen(
                             icon = Icons.Rounded.Widgets,
                             title = "默认关注领域",
                             summary = uiState.defaultCategory,
-                            values = listOf("cs.CV", "cs.LG", "cs.AI", "cs.CL"),
+                            values = uiState.defaultCategoryOptions,
                             selectedValue = uiState.defaultCategory,
                             labelMapper = { it },
                             onValueClick = onUpdateDefaultCategory,
@@ -341,15 +341,15 @@ private fun ProfileCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize()
-                .padding(horizontal = spacing.md, vertical = spacing.lg),
+                .padding(horizontal = spacing.md, vertical = spacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
@@ -448,9 +448,9 @@ private fun SettingsSection(
         )
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
+            shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         ) {
             Column(
                 modifier = Modifier
@@ -600,7 +600,7 @@ private fun SettingsActionRow(
                     Modifier
                 }
             )
-            .padding(horizontal = spacing.md, vertical = spacing.md),
+            .padding(horizontal = spacing.md, vertical = spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
@@ -664,7 +664,7 @@ private fun IntegrationStatusRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = spacing.md, vertical = spacing.md),
+            .padding(horizontal = spacing.md, vertical = spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
@@ -742,7 +742,7 @@ private fun SettingsHeroSection() {
     ) {
         Text(
             text = "设置",
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onBackground,
         )
     }
@@ -756,7 +756,7 @@ private fun LeadingIcon(
 ) {
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(32.dp)
             .clip(MaterialTheme.shapes.small)
             .background(background),
         contentAlignment = Alignment.Center,
@@ -765,7 +765,7 @@ private fun LeadingIcon(
             imageVector = icon,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(16.dp),
         )
     }
 }
@@ -815,7 +815,7 @@ private fun zoteroCollectionBadge(uiState: SettingsUiState): String {
 private fun zoteroSubtitle(uiState: SettingsUiState): String {
     return when {
         uiState.integrationStatusFailed -> "状态刷新异常，请稍后重试"
-        uiState.zoteroConfigured -> "统一归档到 ${uiState.zoteroTargetCollectionName}"
+        uiState.zoteroConfigured -> "归档到 Zotero Web 集合 ${uiState.zoteroTargetCollectionName}"
         else -> "尚未连接参考文献库"
     }
 }
@@ -823,6 +823,7 @@ private fun zoteroSubtitle(uiState: SettingsUiState): String {
 private fun buildZoteroDetailMessage(uiState: SettingsUiState): String {
     return buildString {
         appendLine("配置状态：${if (uiState.zoteroConfigured) "已配置" else "未配置"}")
+        appendLine("同步位置：Zotero Web API 集合，不是本机 D:\\Zotero 文件夹")
         appendLine("目标集合：${uiState.zoteroTargetCollectionName}")
         appendLine("集合状态：${zoteroCollectionBadge(uiState)}")
         appendLine("库类型：${uiState.zoteroLibraryType ?: "未知"}")
@@ -960,6 +961,17 @@ private fun ZoteroConfigDialog(
         title = { Text("Zotero 配置") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Text(
+                        text = buildZoteroDetailMessage(uiState),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
                 OutlinedTextField(
                     value = uiState.zoteroUserIdDraft,
                     onValueChange = onUserIdChange,

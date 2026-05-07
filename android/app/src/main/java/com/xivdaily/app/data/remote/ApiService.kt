@@ -27,6 +27,9 @@ interface ApiService {
     @POST("translations")
     suspend fun translateSummary(@Body request: TranslationRequestDto): TranslationTaskDto
 
+    @POST("paper-chat/messages")
+    suspend fun chatWithPapers(@Body request: PaperChatRequestDto): PaperChatResponseDto
+
     @GET("ai/config/status")
     suspend fun getAiConfigStatus(): AiConfigStatusDto
 
@@ -116,6 +119,39 @@ data class TranslationTaskDto(
     @Json(name = "paper_id") val paperId: String,
     val status: String,
     @Json(name = "translated_summary") val translatedSummary: String,
+    val warning: String?,
+)
+
+data class PaperChatRequestDto(
+    val papers: List<PaperChatPaperDto>,
+    val messages: List<PaperChatMessageDto>,
+)
+
+data class PaperChatPaperDto(
+    @Json(name = "paper_id") val paperId: String,
+    val title: String,
+    val summary: String,
+    @Json(name = "pdf_url") val pdfUrl: String,
+    @Json(name = "source_url") val sourceUrl: String?,
+)
+
+data class PaperChatMessageDto(
+    val role: String,
+    val content: String,
+)
+
+data class PaperChatResponseDto(
+    val answer: String,
+    val status: String,
+    val warning: String?,
+    @Json(name = "used_papers") val usedPapers: List<PaperChatUsedPaperDto>,
+)
+
+data class PaperChatUsedPaperDto(
+    @Json(name = "paper_id") val paperId: String,
+    val title: String,
+    val status: String,
+    @Json(name = "context_chars") val contextChars: Int,
     val warning: String?,
 )
 

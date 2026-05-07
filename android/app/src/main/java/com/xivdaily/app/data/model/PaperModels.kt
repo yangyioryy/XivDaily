@@ -60,3 +60,23 @@ data class ConfigTestResult(
     val status: String,
     val message: String,
 )
+
+data class PaperChatMessage(
+    val role: String,
+    val content: String,
+)
+
+data class PaperChatUsedPaper(
+    val paperId: String,
+    val title: String,
+    val status: String,
+    val contextChars: Int,
+    val warning: String?,
+)
+
+data class PaperChatResult(
+    val answer: String,
+    val status: String,
+    val warning: String?,
+    val usedPapers: List<PaperChatUsedPaper>,
+)

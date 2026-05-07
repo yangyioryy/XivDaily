@@ -10,8 +10,12 @@ data class HomeActionMessage(
 
 data class HomeUiState(
     val categories: List<String> = listOf("cs.CV", "cs.LG", "cs.AI", "cs.CL"),
+    val customTags: List<String> = emptyList(),
     val dayOptions: List<Int> = listOf(1, 3, 7, 30),
     val selectedCategory: String = "cs.CV",
+    val tagPendingDeletion: String? = null,
+    val isAddTagDialogVisible: Boolean = false,
+    val customTagDraft: String = "",
     val selectedDays: Int = 3,
     val searchKeywordDraft: String = "",
     val searchKeyword: String = "",
@@ -31,6 +35,14 @@ data class HomeUiState(
     val actionMessage: HomeActionMessage? = null,
     val errorMessage: String? = null,
 ) {
+    val allTags: List<String>
+        get() = (categories + customTags).distinct()
+
     val isSearchActive: Boolean
         get() = searchKeyword.isNotBlank()
+
+    val isCustomTagSelected: Boolean
+        get() = selectedCategory in customTags
+
+    fun isCustomTag(tag: String): Boolean = tag in customTags
 }

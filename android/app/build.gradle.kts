@@ -6,7 +6,7 @@ plugins {
 }
 
 val releaseBackendBaseUrl = providers.gradleProperty("xivdaily.releaseBaseUrl")
-    .orElse("https://api.xivdaily.invalid/")
+    .orElse("https://beginnerforever.eu.cc/")
 val debugBackendBaseUrl = providers.gradleProperty("xivdaily.debugBaseUrl")
     .orElse("http://10.0.2.2:8000/")
 

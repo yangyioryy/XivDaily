@@ -17,3 +17,28 @@ def build_translation_prompt(source_summary: str, target_language: str) -> str:
         "要求术语准确、表达自然，不添加原文没有的信息。\n"
         f"摘要：\n{source_summary}"
     )
+
+
+def build_paper_chat_messages(paper_contexts: list[str], conversation: list[dict[str, str]]) -> list[dict[str, str]]:
+    joined_context = "\n\n---\n\n".join(paper_contexts)
+    normalized_conversation = "\n".join(
+        f"{message['role']}: {message['content']}" for message in conversation if message.get("content")
+    )
+    return [
+        {
+            "role": "system",
+            "content": (
+                "你是严谨的论文阅读助手。必须优先依据用户选择论文的全文内容回答，"
+                "不确定时直接说明证据不足；不要编造论文中没有的信息。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "以下是已截断到安全上下文长度的论文全文材料和对话历史。\n\n"
+                f"论文材料：\n{joined_context}\n\n"
+                f"对话历史：\n{normalized_conversation}\n\n"
+                "请用简体中文回答最后一个用户问题，并尽量点明依据来自哪篇论文。"
+            ),
+        },
+    ]

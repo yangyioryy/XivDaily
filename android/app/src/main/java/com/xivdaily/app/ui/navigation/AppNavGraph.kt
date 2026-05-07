@@ -2,6 +2,7 @@ package com.xivdaily.app.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material.icons.rounded.Tune
@@ -31,10 +32,12 @@ import com.xivdaily.app.R
 import com.xivdaily.app.XivDailyApplication
 import com.xivdaily.app.ui.screen.HomeScreen
 import com.xivdaily.app.ui.screen.LibraryScreen
+import com.xivdaily.app.ui.screen.PaperChatScreen
 import com.xivdaily.app.ui.screen.SettingsScreen
 import com.xivdaily.app.ui.theme.xivSpacing
 import com.xivdaily.app.ui.viewmodel.HomeViewModel
 import com.xivdaily.app.ui.viewmodel.LibraryViewModel
+import com.xivdaily.app.ui.viewmodel.PaperChatViewModel
 import com.xivdaily.app.ui.viewmodel.SettingsViewModel
 
 private data class BottomTab(
@@ -53,6 +56,7 @@ fun AppNavGraph(
     val tabs = listOf(
         BottomTab("home", R.string.tab_home, Icons.Rounded.AutoAwesome),
         BottomTab("library", R.string.tab_library, Icons.Rounded.Bookmarks),
+        BottomTab("chat", R.string.tab_chat, Icons.AutoMirrored.Rounded.Send),
         BottomTab("settings", R.string.tab_settings, Icons.Rounded.Tune),
     )
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -124,7 +128,15 @@ fun AppNavGraph(
                     uiState = uiState,
                     onKeywordChange = homeViewModel::updateKeyword,
                     onKeywordSubmit = homeViewModel::submitKeyword,
+                    onExitSearch = homeViewModel::exitSearch,
                     onCategorySelect = homeViewModel::selectCategory,
+                    onShowAddTagDialog = homeViewModel::showAddTagDialog,
+                    onHideAddTagDialog = homeViewModel::hideAddTagDialog,
+                    onCustomTagDraftChange = homeViewModel::updateCustomTagDraft,
+                    onAddCustomTag = homeViewModel::addCustomTag,
+                    onTagLongPress = homeViewModel::markTagPendingDeletion,
+                    onClearTagPendingDeletion = homeViewModel::clearTagPendingDeletion,
+                    onDeleteCustomTag = homeViewModel::deleteCustomTag,
                     onDaysSelect = homeViewModel::selectDays,
                     onDismissPaper = homeViewModel::dismissPaperFromFeed,
                     onTranslate = homeViewModel::translatePaper,
@@ -150,6 +162,19 @@ fun AppNavGraph(
                     onSyncFavorite = libraryViewModel::syncFavoriteToZotero,
                     onExportSelected = libraryViewModel::exportSelectedBibtex,
                     onSelectAll = libraryViewModel::selectAll,
+                )
+            }
+            composable("chat") {
+                val paperChatViewModel: PaperChatViewModel = viewModel(
+                    factory = viewModelFactory { PaperChatViewModel(app.container.paperRepository) }
+                )
+                val uiState by paperChatViewModel.uiState.collectAsState()
+                PaperChatScreen(
+                    uiState = uiState,
+                    onTogglePaperSelection = paperChatViewModel::togglePaperSelection,
+                    onInputChange = paperChatViewModel::updateInput,
+                    onSendMessage = paperChatViewModel::sendMessage,
+                    onClearConversation = paperChatViewModel::clearConversation,
                 )
             }
             composable("settings") {

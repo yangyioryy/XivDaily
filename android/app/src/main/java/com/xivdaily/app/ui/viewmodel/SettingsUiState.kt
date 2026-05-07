@@ -2,6 +2,7 @@ package com.xivdaily.app.ui.viewmodel
 
 data class SettingsUiState(
     val defaultCategory: String = "cs.CV",
+    val customTags: List<String> = emptyList(),
     val defaultDays: Int = 3,
     val themeMode: String = "light",
     val hasSeenOnboarding: Boolean = false,
@@ -17,8 +18,8 @@ data class SettingsUiState(
     val zoteroTargetCollectionKey: String? = null,
     val zoteroTargetCollectionStatus: String = "not_configured",
     val llmConfigured: Boolean = false,
-    val llmBaseUrl: String = "https://api.openai.com/v1",
-    val llmModel: String = "gpt-5.4",
+    val llmBaseUrl: String = "https://yangyioryy.cc.cd",
+    val llmModel: String = "glm5",
     val llmApiKeyMasked: String? = null,
     val integrationStatusFailed: Boolean = false,
     val isConfigBusy: Boolean = false,
@@ -26,9 +27,9 @@ data class SettingsUiState(
     val zoteroLibraryTypeDraft: String = "user",
     val zoteroApiKeyDraft: String = "",
     val zoteroTargetCollectionNameDraft: String = "XivDaily",
-    val llmBaseUrlDraft: String = "https://api.openai.com/v1",
+    val llmBaseUrlDraft: String = "https://yangyioryy.cc.cd",
     val llmApiKeyDraft: String = "",
-    val llmModelDraft: String = "gpt-5.4",
+    val llmModelDraft: String = "glm5",
     val isThemePickerVisible: Boolean = false,
     val isLanguagePickerVisible: Boolean = false,
     val isZoteroDetailDialogVisible: Boolean = false,
@@ -41,4 +42,7 @@ data class SettingsUiState(
     val cacheStatusText: String = "待清理",
     val actionMessage: String? = null,
     val errorMessage: String? = null,
-)
+) {
+    val defaultCategoryOptions: List<String>
+        get() = (listOf("cs.CV", "cs.LG", "cs.AI", "cs.CL") + customTags).distinct()
+}
