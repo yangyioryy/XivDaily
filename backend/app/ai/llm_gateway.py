@@ -39,16 +39,31 @@ class LlmGateway:
             "model": self.settings.llm_model,
             "messages": messages,
             "temperature": 0.2,
+            "stream": False,
         }
         headers = {"Authorization": f"Bearer {self.settings.llm_api_key}"}
         started = monotonic()
         last_warning: str | None = None
 
+        endpoints = self._chat_completion_urls()
         for attempt in range(1, 4):
             try:
                 async with httpx.AsyncClient(timeout=self.settings.llm_request_timeout_seconds) as client:
-                    response = await client.post(f"{self.settings.llm_base_url}/chat/completions", json=payload, headers=headers)
-                    response.raise_for_status()
+                    response = None
+                    last_http_error: httpx.HTTPStatusError | None = None
+                    for endpoint in endpoints:
+                        try:
+                            response = await client.post(endpoint, json=payload, headers=headers)
+                            response.raise_for_status()
+                            break
+                        except httpx.HTTPStatusError as exc:
+                            last_http_error = exc
+                            # 兼容用户只填写裸域名的 OpenAI 风格服务；404 时继续尝试备用路径。
+                            if exc.response.status_code == 404 and endpoint != endpoints[-1]:
+                                continue
+                            raise
+                    if response is None:
+                        raise last_http_error or RuntimeError("大模型响应为空")
                 content = response.json()["choices"][0]["message"]["content"]
                 logger.info(
                     "llm_call_success",
@@ -64,6 +79,12 @@ class LlmGateway:
                 )
 
         return LlmResult(text="", status="degraded", warning=last_warning or "大模型调用失败，已使用本地降级结果。")
+
+    def _chat_completion_urls(self) -> list[str]:
+        base_url = self.settings.llm_base_url.rstrip("/")
+        if base_url.endswith("/v1"):
+            return [f"{base_url}/chat/completions"]
+        return [f"{base_url}/v1/chat/completions", f"{base_url}/chat/completions"]
 
     def _map_warning(self, exc: Exception) -> str:
         message = str(exc).lower()
