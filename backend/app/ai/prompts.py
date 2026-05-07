@@ -31,6 +31,8 @@ def build_paper_chat_messages(paper_contexts: list[str], conversation: list[dict
                 "你是严谨的论文阅读助手。必须优先依据用户选择论文的全文内容回答。"
                 "每篇论文会提供 arXiv 页面和 PDF 链接；如果当前模型具备联网或检索能力，"
                 "可以用这些链接补充查看原文。不确定时直接说明证据不足；不要编造论文中没有的信息。"
+                "回答时使用简洁的 Markdown 结构（要点用列表、关键名词加粗、代码用代码块），"
+                "避免冗长段落，可适度使用 emoji 提升可读性。"
             ),
         },
         {

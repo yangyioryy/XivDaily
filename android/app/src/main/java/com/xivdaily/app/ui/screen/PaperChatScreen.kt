@@ -56,6 +56,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.markdownColor
+import com.mikepenz.markdown.m3.markdownTypography
 import com.xivdaily.app.data.model.FavoritePaperItem
 import com.xivdaily.app.data.model.PaperChatMessage
 import com.xivdaily.app.data.model.PaperChatUsedPaper
@@ -308,12 +311,22 @@ private fun ChatBubble(message: PaperChatMessage) {
             color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
             tonalElevation = if (isUser) 0.dp else 1.dp,
         ) {
-            Text(
-                text = message.content,
-                modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-            )
+            if (isUser) {
+                Text(
+                    text = message.content,
+                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+            } else {
+                // 模型回答常包含 Markdown 标记（标题、列表、加粗、代码块），用 Compose Markdown 渲染提升可读性。
+                Markdown(
+                    content = message.content,
+                    colors = markdownColor(text = MaterialTheme.colorScheme.onSurface),
+                    typography = markdownTypography(),
+                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                )
+            }
         }
     }
 }
@@ -362,6 +375,14 @@ private fun ChatInputBar(
                 text = value,
                 selection = TextRange(value.length),
             )
+        }
+    }
+
+    // sending=true 等价于 ViewModel 已接受发送（inputDraft 已被清空），
+    // 此处强制清空本地态以避免中文 IME composing 残留把文字回写。
+    LaunchedEffect(sending) {
+        if (sending && textFieldValue.text.isNotEmpty()) {
+            textFieldValue = TextFieldValue("")
         }
     }
 
