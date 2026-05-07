@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -116,6 +117,11 @@ fun PaperChatScreen(
             } else {
                 items(uiState.messages) { message ->
                     ChatBubble(message = message)
+                }
+            }
+            if (uiState.isSending) {
+                item {
+                    ThinkingBubble()
                 }
             }
         }
@@ -308,6 +314,35 @@ private fun ChatBubble(message: PaperChatMessage) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
             )
+        }
+    }
+}
+
+@Composable
+private fun ThinkingBubble() {
+    val spacing = MaterialTheme.xivSpacing
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        Surface(
+            modifier = Modifier.widthIn(max = 320.dp),
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 1.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Text(
+                    text = "正在思考中...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

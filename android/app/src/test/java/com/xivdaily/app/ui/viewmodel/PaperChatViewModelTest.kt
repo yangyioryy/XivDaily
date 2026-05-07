@@ -1,11 +1,15 @@
 package com.xivdaily.app.ui.viewmodel
 
 import com.xivdaily.app.data.model.FavoritePaperItem
+import com.xivdaily.app.data.model.PaperChatResult
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -32,6 +36,52 @@ class PaperChatViewModelTest {
             assertEquals("user", repository.paperChatRequests.single().second.single().role)
             assertEquals("chat answer", viewModel.uiState.value.messages.last().content)
             assertEquals("full_text", viewModel.uiState.value.usedPapers.single().status)
+        }
+    }
+
+    @Test
+    fun sendMessage_keepsSendingStateUntilResponseCompletes() {
+        runTest {
+            val favorites = listOf(FavoritePaperItem(samplePaper(), "2026-04-29T10:00:00Z"))
+            val repository = FakePaperRepository(flowOf(favorites))
+            val deferred = CompletableDeferred<PaperChatResult>()
+            repository.paperChatDeferred = deferred
+            val viewModel = PaperChatViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.togglePaperSelection("2401.00001")
+            viewModel.updateInput("请总结贡献")
+            viewModel.sendMessage()
+            runCurrent()
+
+            assertTrue(viewModel.uiState.value.isSending)
+            assertEquals("user", viewModel.uiState.value.messages.single().role)
+
+            deferred.complete(repository.paperChatResult)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isSending)
+            assertEquals("chat answer", viewModel.uiState.value.messages.last().content)
+        }
+    }
+
+    @Test
+    fun sendMessage_failureClearsSendingStateAndKeepsUserMessage() {
+        runTest {
+            val favorites = listOf(FavoritePaperItem(samplePaper(), "2026-04-29T10:00:00Z"))
+            val repository = FakePaperRepository(flowOf(favorites))
+            repository.paperChatError = RuntimeException("timeout")
+            val viewModel = PaperChatViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.togglePaperSelection("2401.00001")
+            viewModel.updateInput("请总结贡献")
+            viewModel.sendMessage()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isSending)
+            assertEquals("user", viewModel.uiState.value.messages.single().role)
+            assertEquals("论文对话请求超时，请稍后重试。", viewModel.uiState.value.errorMessage)
         }
     }
 

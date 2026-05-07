@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     llm_base_url: str = Field(default="https://yangyioryy.cc.cd", validation_alias="LLM_BASE_URL")
     llm_api_key: str | None = Field(default=None, validation_alias="LLM_API_KEY")
     llm_model: str = Field(default="glm5", validation_alias="LLM_MODEL")
-    llm_request_timeout_seconds: int = Field(default=30, validation_alias="LLM_REQUEST_TIMEOUT_SECONDS")
+    llm_request_timeout_seconds: int = Field(default=60, validation_alias="LLM_REQUEST_TIMEOUT_SECONDS")
     paper_pdf_timeout_seconds: int = Field(default=20, validation_alias="PAPER_PDF_TIMEOUT_SECONDS")
     paper_pdf_max_bytes: int = Field(default=15 * 1024 * 1024, validation_alias="PAPER_PDF_MAX_BYTES")
     paper_chat_context_chars_per_paper: int = Field(default=12000, validation_alias="PAPER_CHAT_CONTEXT_CHARS_PER_PAPER")

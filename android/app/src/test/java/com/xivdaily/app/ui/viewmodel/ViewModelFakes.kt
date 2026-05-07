@@ -12,6 +12,7 @@ import com.xivdaily.app.data.model.PaperChatUsedPaper
 import com.xivdaily.app.data.model.PaperItem
 import com.xivdaily.app.data.model.TrendSummary
 import com.xivdaily.app.data.repository.PaperRepositoryContract
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -71,6 +72,8 @@ internal open class FakePaperRepository(
     val savedZoteroConfigs: MutableList<List<String?>> = mutableListOf()
     val savedLlmConfigs: MutableList<List<String?>> = mutableListOf()
     val paperChatRequests: MutableList<Pair<List<String>, List<PaperChatMessage>>> = mutableListOf()
+    var paperChatDeferred: CompletableDeferred<PaperChatResult>? = null
+    var paperChatError: Throwable? = null
     var paperChatResult: PaperChatResult = PaperChatResult(
         answer = "chat answer",
         status = "success",
@@ -120,6 +123,8 @@ internal open class FakePaperRepository(
     override suspend fun exportBibtex(paperIds: List<String>): String = "@misc{demo}"
     override suspend fun chatWithPapers(papers: List<PaperItem>, messages: List<PaperChatMessage>): PaperChatResult {
         paperChatRequests += papers.map { it.id } to messages
+        paperChatError?.let { throw it }
+        paperChatDeferred?.let { return it.await() }
         return paperChatResult
     }
     override suspend fun getIntegrationConfigStatus(): IntegrationConfigStatus = IntegrationConfigStatus(
