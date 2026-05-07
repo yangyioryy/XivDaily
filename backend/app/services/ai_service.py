@@ -11,7 +11,7 @@ from app.models.trend_summary_cache import TrendSummaryCacheModel
 from app.schemas.ai import PaperChatRequest, PaperChatResponse, PaperChatUsedPaper, TranslationRequest, TranslationTask, TrendSummary, TrendSummaryItem
 from app.schemas.paper import PaperQuery
 from app.services.paper_service import PaperService
-from app.services.paper_text_service import PaperTextService
+from app.services.paper_text_service import PaperTextResult, PaperTextService
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -36,7 +36,7 @@ class AiService:
         fixed_days = FIXED_TREND_DAYS
         cache_key, window_start, window_end = self._build_cache_window(category)
         cached = self._load_cached_summary(cache_key)
-        if cached is not None:
+        if cached is not None and self._should_use_cached_summary(cached):
             return cached
 
         paper_query = PaperQuery(category=category, keyword=None, days=fixed_days, page=1, page_size=TREND_MAX_PAPERS)
@@ -100,7 +100,7 @@ class AiService:
         text_results = [await self.paper_text_service.extract_text(paper) for paper in request.papers]
         used_papers: list[PaperChatUsedPaper] = []
         paper_contexts: list[str] = []
-        for result in text_results:
+        for paper, result in zip(request.papers, text_results, strict=True):
             context = result.text[: self.settings.paper_chat_context_chars_per_paper]
             used_papers.append(
                 PaperChatUsedPaper(
@@ -111,11 +111,9 @@ class AiService:
                     warning=result.warning,
                 )
             )
-            if context:
-                # 每篇论文独立截断，避免多论文对话把模型上下文一次性撑爆。
-                paper_contexts.append(
-                    f"论文 ID：{result.paper_id}\n标题：{result.title}\n上下文来源：{result.status}\n内容：\n{context}"
-                )
+            if context or paper.source_url or paper.pdf_url:
+                # 每篇论文独立截断，同时保留 arXiv 链接，方便具备检索能力的模型补充查看原文。
+                paper_contexts.append(self._build_paper_chat_context(paper, result, context))
 
         if not paper_contexts:
             return PaperChatResponse(
@@ -182,6 +180,29 @@ class AiService:
             f"已读取的论文材料包括：{selected_titles or '无'}。"
             f"你刚才的问题是：{last_question}"
         )
+
+    def _build_paper_chat_context(self, paper: PaperChatPaper, result: PaperTextResult, context: str) -> str:
+        source_url = paper.source_url or self._derive_abs_url(paper.pdf_url)
+        local_context = context or "本地暂未提取到可用全文或摘要；如当前模型支持联网检索，请优先查看上方 arXiv 链接。"
+        return (
+            f"论文 ID：{result.paper_id}\n"
+            f"标题：{result.title}\n"
+            f"arXiv 页面：{source_url or '未提供'}\n"
+            f"PDF 链接：{paper.pdf_url or '未提供'}\n"
+            f"上下文来源：{result.status}\n"
+            f"内容：\n{local_context}"
+        )
+
+    def _derive_abs_url(self, pdf_url: str) -> str | None:
+        if "/pdf/" not in pdf_url:
+            return None
+        return pdf_url.replace("/pdf/", "/abs/", 1)
+
+    def _should_use_cached_summary(self, cached: TrendSummary) -> bool:
+        if cached.status == "success":
+            return True
+        # 降级摘要只在模型仍未配置时复用；配置恢复后需要重新请求模型，避免一直显示旧降级文案。
+        return not bool(self.settings.llm_api_key and self.settings.llm_model and self.settings.llm_base_url)
 
     def _build_cache_window(self, category: str | None) -> tuple[str, datetime, datetime]:
         window_end = datetime.now(UTC)

@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.base import Base
+from app.models.sync_record import SyncRecordModel
 from app.schemas.paper import Paper, PaperListResponse, PaperQuery
 from app.schemas.zotero import BibtexExportRequest
 from app.services.zotero_service import ZoteroService
@@ -179,6 +180,34 @@ async def test_sync_paper_is_idempotent_after_success() -> None:
     assert client.calls == 1
     assert client.last_item_payload is not None
     assert client.last_item_payload["data"]["collections"] == ["COLL1234"]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_sync_paper_repairs_collection_for_existing_synced_record() -> None:
+    db = build_session()
+    db.add(
+        SyncRecordModel(
+            paper_id="2401.00001",
+            status="synced",
+            zotero_item_key="ABCD1234",
+            message="旧版本已同步，但未确认集合。",
+            synced_at=datetime.now(UTC),
+        )
+    )
+    db.commit()
+    client = FakeZoteroClient(configured=True)
+    client.item_visible = False
+    client.repair_makes_item_visible = True
+    service = ZoteroService(zotero_client=client, paper_service=FakePaperService())
+
+    result = await service.sync_paper(db, "2401.00001")
+
+    assert result.status == "synced"
+    assert result.visibility_status == "verified"
+    assert result.target_collection_key == "COLL1234"
+    assert result.message == "已确认同步条目归档到目标集合。"
+    assert client.calls == 0
+    assert client.collection_repairs == [("ABCD1234", "COLL1234")]
 
 
 @pytest.mark.anyio("asyncio")

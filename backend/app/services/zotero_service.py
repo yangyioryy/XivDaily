@@ -53,17 +53,7 @@ class ZoteroService:
     async def sync_paper(self, db: Session, paper_id: str) -> ZoteroSyncResult:
         existing = db.get(SyncRecordModel, paper_id)
         if existing and existing.status == "synced":
-            return self._build_sync_result(
-                record=existing,
-                target_collection={
-                    "name": self.zotero_client.target_collection_name,
-                    "key": None,
-                    "created": False,
-                },
-                target_collection_status="ready",
-                visibility_status="not_checked",
-                visibility_message="本地已存在成功记录，本次未重复执行远端校验。",
-            )
+            return await self._reconcile_existing_synced_record(db, existing)
 
         paper = await self._find_paper(paper_id)
         if paper is None:
@@ -192,6 +182,64 @@ class ZoteroService:
 
     async def _ensure_target_collection(self) -> dict[str, object]:
         return await self.zotero_client.get_or_create_collection()
+
+    async def _reconcile_existing_synced_record(self, db: Session, record: SyncRecordModel) -> ZoteroSyncResult:
+        target_collection = {
+            "name": self.zotero_client.target_collection_name,
+            "key": None,
+            "created": False,
+        }
+        if not self.zotero_client.is_configured():
+            return self._build_sync_result(
+                record=record,
+                target_collection=target_collection,
+                target_collection_status="not_configured",
+                visibility_status="not_checked",
+                visibility_message="本地已存在成功记录，但 Zotero 配置未完成，无法确认目标集合。",
+            )
+
+        try:
+            target_collection = await self._ensure_target_collection()
+        except Exception as exc:  # noqa: BLE001
+            return self._build_sync_result(
+                record=record,
+                target_collection=target_collection,
+                target_collection_status="error",
+                visibility_status="not_checked",
+                visibility_message=f"本地已存在成功记录，但集合准备失败：{exc}",
+            )
+
+        collection_key = str(target_collection["key"])
+        if not record.zotero_item_key:
+            return self._build_sync_result(
+                record=record,
+                target_collection=target_collection,
+                target_collection_status="created" if bool(target_collection["created"]) else "ready",
+                visibility_status="not_checked",
+                visibility_message="本地已存在成功记录，但缺少 Zotero 条目 Key，无法远端确认集合归档。",
+            )
+
+        visibility = await self._verify_item_visibility(record.zotero_item_key, collection_key)
+        if visibility["status"] == "missing_from_collection":
+            visibility = await self._repair_item_collection_membership(record.zotero_item_key, collection_key)
+
+        message = "已确认同步条目归档到目标集合。" if visibility["status"] == "verified" else record.message
+        if message != record.message:
+            record = self._upsert_record(
+                db,
+                record.paper_id,
+                status="synced",
+                message=message,
+                zotero_item_key=record.zotero_item_key,
+            )
+
+        return self._build_sync_result(
+            record=record,
+            target_collection=target_collection,
+            target_collection_status="created" if bool(target_collection["created"]) else "ready",
+            visibility_status=str(visibility["status"]),
+            visibility_message=str(visibility["message"]),
+        )
 
     async def _verify_item_visibility(self, item_key: str, collection_key: str) -> dict[str, str]:
         try:

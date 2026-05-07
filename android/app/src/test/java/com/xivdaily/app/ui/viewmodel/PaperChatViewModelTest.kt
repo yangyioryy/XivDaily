@@ -49,6 +49,23 @@ class PaperChatViewModelTest {
     }
 
     @Test
+    fun initialPaperId_preselectsFavoriteFromLibraryNavigation() {
+        runTest {
+            val favorites = listOf(
+                FavoritePaperItem(samplePaper("2401.00001"), "2026-04-29T10:00:00Z"),
+                FavoritePaperItem(samplePaper("2401.00002"), "2026-04-29T10:00:00Z"),
+            )
+            val viewModel = PaperChatViewModel(
+                repository = FakePaperRepository(flowOf(favorites)),
+                initialPaperId = "2401.00002",
+            )
+            advanceUntilIdle()
+
+            assertEquals(setOf("2401.00002"), viewModel.uiState.value.selectedPaperIds)
+        }
+    }
+
+    @Test
     fun togglePaperSelection_limitsSelectedPapers() {
         runTest {
             val favorites = (1..4).map { index ->

@@ -185,6 +185,11 @@ D:\AndroidSdk\platform-tools\adb.exe shell am start -n com.xivdaily.app/.MainAct
 - `docs/deployment/local-run.md`：本地运行流程
 - `docs/qa/xiv-013-final-acceptance-2026-04-30.md`：最终验收记录
 
+## 🙏 致谢
+
+本项目通过 arXiv public API 获取论文元数据。感谢 arXiv 提供开放获取互操作性，
+使研究工具能够在遵守其 API 使用规范的前提下连接论文发现、筛选和阅读流程。
+
 ## 📄 License
 
 本项目采用 Apache License 2.0 开源协议，详见 [LICENSE](./LICENSE)。

@@ -24,22 +24,34 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.xivdaily.app.data.model.FavoritePaperItem
 import com.xivdaily.app.data.model.PaperChatMessage
@@ -133,7 +145,7 @@ private fun PaperChatHero(
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
-                text = "已选 $selectedCount 篇",
+                text = "已选 $selectedCount 篇 · 最多 3 篇",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -157,6 +169,13 @@ private fun PaperPicker(
     onTogglePaperSelection: (String) -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
+    var expanded by remember { mutableStateOf(false) }
+    val selectedPapers = favorites.filter { it.paper.id in selectedIds }
+    val selectedLabel = if (selectedPapers.isEmpty()) {
+        "从 ${favorites.size} 篇收藏论文中选择"
+    } else {
+        "已选 ${selectedPapers.size} 篇：${selectedPapers.joinToString(" / ") { it.paper.title.take(12) }}"
+    }
     Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
         Text(
             text = "收藏论文",
@@ -171,21 +190,81 @@ private fun PaperPicker(
             )
             return@Column
         }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(spacing.xs),
-            verticalArrangement = Arrangement.spacedBy(spacing.xs),
-        ) {
-            favorites.forEach { favorite ->
-                FilterChip(
-                    selected = favorite.paper.id in selectedIds,
-                    onClick = { onTogglePaperSelection(favorite.paper.id) },
-                    label = {
-                        Text(
-                            text = favorite.paper.title.take(28),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    },
-                )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = selectedLabel,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Icon(imageVector = Icons.Rounded.ArrowDropDown, contentDescription = "展开收藏论文")
+                }
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                favorites.forEach { favorite ->
+                    val selected = favorite.paper.id in selectedIds
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Checkbox(checked = selected, onCheckedChange = null)
+                        },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = favorite.paper.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = "${favorite.paper.primaryCategory} · ${favorite.savedAt.take(10)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        },
+                        onClick = { onTogglePaperSelection(favorite.paper.id) },
+                    )
+                }
+            }
+        }
+        if (selectedPapers.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+                verticalArrangement = Arrangement.spacedBy(spacing.xs),
+            ) {
+                selectedPapers.forEach { favorite ->
+                    FilterChip(
+                        selected = true,
+                        onClick = { onTogglePaperSelection(favorite.paper.id) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Rounded.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = favorite.paper.title.take(18),
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                    )
+                }
             }
         }
     }
@@ -242,7 +321,7 @@ private fun ChatInputBar(
         value = value,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
-        label = { Text(if (sending) "正在读取全文..." else "向选中论文提问") },
+        label = { Text(if (sending) "正在整理论文材料..." else "向选中论文提问") },
         enabled = !sending,
         minLines = 1,
         maxLines = 4,

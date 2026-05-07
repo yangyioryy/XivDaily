@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Download
@@ -62,6 +63,7 @@ fun LibraryScreen(
     onSyncFavorite: (String) -> Unit,
     onExportSelected: () -> Unit,
     onSelectAll: (List<String>) -> Unit,
+    onOpenChat: (String) -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
     val filtered = uiState.favorites.filter {
@@ -156,6 +158,7 @@ fun LibraryScreen(
                 onToggleSelection = { onToggleSelection(favorite.paper.id) },
                 onDeleteFavorite = { onDeleteFavorite(favorite.paper.id) },
                 onSyncFavorite = { onSyncFavorite(favorite.paper.id) },
+                onOpenChat = { onOpenChat(favorite.paper.id) },
             )
         }
             item {
@@ -175,6 +178,7 @@ fun LibraryScreen(
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun LibraryHeroSection(
     uiState: LibraryUiState,
     filteredCount: Int,
@@ -201,7 +205,10 @@ private fun LibraryHeroSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+                verticalArrangement = Arrangement.spacedBy(spacing.xs),
+            ) {
                 LeadingPill(icon = Icons.Rounded.Search)
                 LeadingPill(icon = Icons.Rounded.Bookmarks)
             }
@@ -380,12 +387,14 @@ private fun EmptyLibraryStateCard(
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun FavoritePaperCard(
     favorite: FavoritePaperItem,
     selected: Boolean,
     onToggleSelection: () -> Unit,
     onDeleteFavorite: () -> Unit,
     onSyncFavorite: () -> Unit,
+    onOpenChat: () -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
     Card(
@@ -438,7 +447,26 @@ private fun FavoritePaperCard(
                     color = if (selected) XivDailyInfo else MaterialTheme.colorScheme.outline,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+                verticalArrangement = Arrangement.spacedBy(spacing.xs),
+            ) {
+                Button(
+                    onClick = onOpenChat,
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.Send,
+                        contentDescription = "进入论文对话",
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.size(spacing.xs))
+                    Text("对话")
+                }
                 if (favorite.paper.zoteroSyncState != "synced") {
                     Button(
                         onClick = onSyncFavorite,

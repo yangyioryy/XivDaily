@@ -14,18 +14,27 @@ import kotlinx.coroutines.launch
 
 class PaperChatViewModel(
     private val repository: PaperChatRepositoryContract,
+    private val initialPaperId: String? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PaperChatUiState())
     val uiState: StateFlow<PaperChatUiState> = _uiState.asStateFlow()
+    private var pendingInitialPaperId = initialPaperId
 
     init {
         repository.observeFavorites()
             .onEach { favorites ->
                 _uiState.update { state ->
                     val availableIds = favorites.map { it.paper.id }.toSet()
+                    val retainedSelection = state.selectedPaperIds.intersect(availableIds)
+                    val preselectedId = pendingInitialPaperId
+                        ?.takeIf { retainedSelection.isEmpty() && it in availableIds }
+                    if (preselectedId != null) {
+                        pendingInitialPaperId = null
+                    }
+                    val initialSelection = preselectedId?.let { setOf(it) } ?: retainedSelection
                     state.copy(
                         favorites = favorites,
-                        selectedPaperIds = state.selectedPaperIds.intersect(availableIds),
+                        selectedPaperIds = initialSelection,
                     )
                 }
             }

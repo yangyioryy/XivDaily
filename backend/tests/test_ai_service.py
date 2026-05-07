@@ -135,6 +135,7 @@ async def test_chat_with_papers_uses_extracted_full_text_context() -> None:
                     title="Embodied AI Paper",
                     summary="summary",
                     pdf_url="https://arxiv.org/pdf/2401.00001",
+                    source_url="https://arxiv.org/abs/2401.00001",
                 )
             ],
             messages=[PaperChatMessage(role="user", content="这篇论文的核心贡献是什么？")],
@@ -144,6 +145,38 @@ async def test_chat_with_papers_uses_extracted_full_text_context() -> None:
     assert result.status == "success"
     assert result.used_papers[0].status == "full_text"
     assert "FULL TEXT ABOUT EMBODIED AI" in gateway.last_messages[1]["content"]
+    assert "https://arxiv.org/abs/2401.00001" in gateway.last_messages[1]["content"]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_chat_with_papers_passes_links_when_local_text_is_missing() -> None:
+    gateway = FakeGateway(status="success", text="我会根据链接补充核查。")
+    service = AiService(
+        db=build_session(),
+        llm_gateway=gateway,
+        paper_service=FakePaperService(),
+        paper_text_service=FakePaperTextService(status="failed", text="", warning="PDF 读取失败"),
+    )
+
+    result = await service.chat_with_papers(
+        PaperChatRequest(
+            papers=[
+                PaperChatPaper(
+                    paper_id="2401.00003",
+                    title="Link Only Paper",
+                    summary="",
+                    pdf_url="https://arxiv.org/pdf/2401.00003",
+                    source_url="https://arxiv.org/abs/2401.00003",
+                )
+            ],
+            messages=[PaperChatMessage(role="user", content="请核对这篇论文的方法")],
+        )
+    )
+
+    assert result.status == "degraded"
+    assert result.used_papers[0].status == "failed"
+    assert "本地暂未提取到可用全文或摘要" in gateway.last_messages[1]["content"]
+    assert "https://arxiv.org/pdf/2401.00003" in gateway.last_messages[1]["content"]
 
 
 @pytest.mark.anyio("asyncio")
@@ -193,6 +226,43 @@ async def test_generate_trend_summary_hits_cache_without_second_llm_call() -> No
     assert gateway.calls == 1
     assert len(paper_service.requests) == 1
     assert db.get(TrendSummaryCacheModel, next(iter([row.cache_key for row in db.query(TrendSummaryCacheModel).all()]))) is not None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_generate_trend_summary_refreshes_degraded_cache_when_model_is_configured() -> None:
+    db = build_session()
+    gateway = FakeGateway(
+        status="success",
+        text='{"intro":"配置恢复后的趋势","items":[{"rank":1,"trend_title":"📌 机器人规划","summary":"重新使用模型生成。","representative_paper_ids":["2401.00001"]}]}',
+    )
+    service = AiService(db=db, llm_gateway=gateway, paper_service=FakePaperService())
+    cache_key, window_start, window_end = service._build_cache_window("cs.CV")
+    db.merge(
+        TrendSummaryCacheModel(
+            cache_key=cache_key,
+            category="cs.CV",
+            days=3,
+            window_start=window_start,
+            window_end=window_end,
+            intro="当前使用本地降级摘要，后续可在配置好模型后重试。",
+            items_json="[]",
+            status="degraded",
+            warning="no key",
+            generated_at=datetime.now(UTC),
+        )
+    )
+    db.commit()
+
+    original_api_key = service.settings.llm_api_key
+    service.settings.llm_api_key = "configured-key"
+    try:
+        result = await service.generate_trend_summary("cs.CV", 3)
+    finally:
+        service.settings.llm_api_key = original_api_key
+
+    assert result.status == "success"
+    assert result.intro == "配置恢复后的趋势"
+    assert gateway.calls == 1
 
 
 @pytest.mark.anyio("asyncio")

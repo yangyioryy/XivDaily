@@ -1,5 +1,6 @@
 package com.xivdaily.app.ui.navigation
 
+import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
@@ -72,7 +73,9 @@ fun AppNavGraph(
                 tonalElevation = spacing.xs,
             ) {
                 tabs.forEach { tab ->
-                    val selected = currentDestination?.hierarchy?.any { it.route == tab.route } == true
+                    val selected = currentDestination?.hierarchy?.any {
+                        it.route == tab.route || it.route?.startsWith("${tab.route}/") == true
+                    } == true
                     NavigationBarItem(
                         selected = selected,
                         onClick = {
@@ -162,11 +165,36 @@ fun AppNavGraph(
                     onSyncFavorite = libraryViewModel::syncFavoriteToZotero,
                     onExportSelected = libraryViewModel::exportSelectedBibtex,
                     onSelectAll = libraryViewModel::selectAll,
+                    onOpenChat = { paperId ->
+                        navController.navigate("chat/${Uri.encode(paperId)}") {
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
             composable("chat") {
                 val paperChatViewModel: PaperChatViewModel = viewModel(
                     factory = viewModelFactory { PaperChatViewModel(app.container.paperRepository) }
+                )
+                val uiState by paperChatViewModel.uiState.collectAsState()
+                PaperChatScreen(
+                    uiState = uiState,
+                    onTogglePaperSelection = paperChatViewModel::togglePaperSelection,
+                    onInputChange = paperChatViewModel::updateInput,
+                    onSendMessage = paperChatViewModel::sendMessage,
+                    onClearConversation = paperChatViewModel::clearConversation,
+                )
+            }
+            composable("chat/{paperId}") { backStackEntry ->
+                val initialPaperId = backStackEntry.arguments?.getString("paperId")
+                val paperChatViewModel: PaperChatViewModel = viewModel(
+                    key = "paper-chat-${initialPaperId.orEmpty()}",
+                    factory = viewModelFactory {
+                        PaperChatViewModel(
+                            repository = app.container.paperRepository,
+                            initialPaperId = initialPaperId,
+                        )
+                    }
                 )
                 val uiState by paperChatViewModel.uiState.collectAsState()
                 PaperChatScreen(
