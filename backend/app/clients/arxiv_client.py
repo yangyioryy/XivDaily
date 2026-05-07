@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+from time import monotonic
 import xml.etree.ElementTree as ET
 
 import httpx
@@ -11,6 +13,10 @@ ATOM_NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/sch
 
 class ArxivClient:
     """arXiv Atom API 客户端，只负责请求和 XML 解析，不做业务过滤。"""
+
+    _rate_limit_lock = asyncio.Lock()
+    _last_request_at = 0.0
+    _min_request_interval_seconds = 3.2
 
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -30,10 +36,26 @@ class ArxivClient:
             "sortBy": "submittedDate",
             "sortOrder": "descending",
         }
+        headers = {"User-Agent": "XivDaily/0.1.0 (https://beginnerforever.eu.cc)"}
         async with httpx.AsyncClient(timeout=self.settings.arxiv_request_timeout_seconds) as client:
-            response = await client.get(self.settings.arxiv_base_url, params=params)
-            response.raise_for_status()
-        return self._parse_entries(response.text)
+            for attempt in range(3):
+                await self._respect_rate_limit()
+                response = await client.get(self.settings.arxiv_base_url, params=params, headers=headers)
+                if response.status_code == 429 and attempt < 2:
+                    # arXiv 明确按请求频率限流；退避后重试，避免服务刚重启或多筛选并发时直接空列表。
+                    await asyncio.sleep(4 * (attempt + 1))
+                    continue
+                response.raise_for_status()
+                return self._parse_entries(response.text)
+        return []
+
+    async def _respect_rate_limit(self) -> None:
+        async with self._rate_limit_lock:
+            elapsed = monotonic() - self.__class__._last_request_at
+            wait_seconds = self._min_request_interval_seconds - elapsed
+            if wait_seconds > 0:
+                await asyncio.sleep(wait_seconds)
+            self.__class__._last_request_at = monotonic()
 
     def _parse_entries(self, xml_text: str) -> list[dict[str, object]]:
         root = ET.fromstring(xml_text)

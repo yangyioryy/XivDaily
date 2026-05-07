@@ -2,12 +2,32 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import httpx
+import pytest
+
 from app.clients.arxiv_client import ArxivClient
+
+
+EMPTY_FEED = """<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns="http://www.w3.org/2005/Atom"></feed>
+"""
 
 
 def build_client() -> ArxivClient:
     client = ArxivClient()
     client.settings = SimpleNamespace(arxiv_request_timeout_seconds=20, arxiv_base_url="https://example.test")
+    return client
+
+
+def build_search_client(monkeypatch: pytest.MonkeyPatch) -> ArxivClient:
+    settings = SimpleNamespace(
+        arxiv_base_url="https://export.arxiv.org/api/query",
+        arxiv_request_timeout_seconds=3,
+    )
+    monkeypatch.setattr("app.clients.arxiv_client.get_settings", lambda: settings)
+    client = ArxivClient()
+    client._min_request_interval_seconds = 0
+    ArxivClient._last_request_at = 0
     return client
 
 
@@ -67,3 +87,75 @@ def test_parse_entries_falls_back_when_primary_category_missing() -> None:
     entries = client._parse_entries(xml_text)
 
     assert entries[0]["primary_category"] == "cs.CL"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_search_sets_descriptive_user_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = build_search_client(monkeypatch)
+    seen_headers: list[dict[str, str]] = []
+
+    class FakeResponse:
+        status_code = 200
+        text = EMPTY_FEED
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, params: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            seen_headers.append(headers)
+            return FakeResponse()
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await client.search("cs.CV", None, 10)
+
+    assert result == []
+    assert seen_headers[0]["User-Agent"].startswith("XivDaily/0.1.0")
+
+
+@pytest.mark.anyio("asyncio")
+async def test_search_retries_when_arxiv_returns_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = build_search_client(monkeypatch)
+    requested_statuses = [429, 200]
+    calls = 0
+
+    async def fake_sleep(seconds: float) -> None:
+        return None
+
+    class FakeResponse:
+        def __init__(self, status_code: int) -> None:
+            self.status_code = status_code
+            self.text = EMPTY_FEED
+            self.request = httpx.Request("GET", "https://export.arxiv.org/api/query")
+
+        def raise_for_status(self) -> None:
+            if self.status_code >= 400:
+                response = httpx.Response(self.status_code, request=self.request)
+                raise httpx.HTTPStatusError("rate limited", request=self.request, response=response)
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, params: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            nonlocal calls
+            calls += 1
+            return FakeResponse(requested_statuses.pop(0))
+
+    monkeypatch.setattr("app.clients.arxiv_client.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await client.search("cs.CV", None, 10)
+
+    assert result == []
+    assert calls == 2
