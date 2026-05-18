@@ -23,6 +23,10 @@ export struct LibraryPage {
     return this.vm.libraryState.syncFilter === filter;
   }
 
+  private isPaperSyncing(paperId: string): boolean {
+    return this.vm.libraryState.syncingPaperIds.indexOf(paperId) >= 0;
+  }
+
   build() {
     Column({ space: AppConstants.SECTION_SPACING }) {
       Column({ space: 4 }) {
@@ -137,6 +141,14 @@ export struct LibraryPage {
                   .padding({ left: 14, right: 14, top: 8, bottom: 8 })
                   .backgroundColor('#F1F4FA')
                   .borderRadius(12);
+                if (this.isPaperSyncing(favorite.paper.id)) {
+                  Text('同步中...')
+                    .fontSize(13)
+                    .fontColor('#2D6CE8')
+                    .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+                    .backgroundColor('#EAF2FF')
+                    .borderRadius(12);
+                }
                 Text(this.isPaperSelected(favorite.paper.id) ? '已选中' : '点按可加入批量选择')
                   .fontSize(13)
                   .fontColor(this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#9CA3AF')
@@ -158,6 +170,19 @@ export struct LibraryPage {
                     this.vm.selectTab(2);
                     this.vm.toggleChatPaper(favorite.paper.id);
                   });
+                if (favorite.paper.zoteroSyncState !== 'synced') {
+                  Text(this.isPaperSyncing(favorite.paper.id) ? '同步中...' : '同步 Zotero')
+                    .fontSize(15)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor('#1D4ED8')
+                    .padding({ left: 20, right: 20, top: 10, bottom: 10 })
+                    .backgroundColor('#EAF2FF')
+                    .borderRadius(14)
+                    .opacity(this.isPaperSyncing(favorite.paper.id) ? 0.6 : 1)
+                    .onClick(() => {
+                      void this.vm.syncFavoriteToZotero(favorite.paper.id);
+                    });
+                }
                 Text('删除')
                   .fontSize(15)
                   .fontWeight(FontWeight.Medium)

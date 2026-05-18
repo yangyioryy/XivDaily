@@ -318,6 +318,42 @@ export class AppViewModel {
     this.libraryState.syncFilter = filter;
   }
 
+  async syncFavoriteToZotero(paperId: string): Promise<void> {
+    const favorite = this.libraryState.favorites.find((item: FavoritePaperItem) => item.paper.id === paperId);
+    if (!favorite) {
+      return;
+    }
+    if (favorite.paper.zoteroSyncState === 'synced') {
+      this.libraryState.actionMessage = '这篇论文已经同步到 Zotero';
+      this.libraryState.errorMessage = undefined;
+      return;
+    }
+    if (this.libraryState.syncingPaperIds.indexOf(paperId) >= 0) {
+      return;
+    }
+
+    this.libraryState.syncingPaperIds = [...this.libraryState.syncingPaperIds, paperId];
+    this.libraryState.actionMessage = '正在同步到 Zotero...';
+    this.libraryState.errorMessage = undefined;
+
+    try {
+      const result = await paperService.syncPaperToZotero(favorite.paper);
+      this.homeState.papers = this.homeState.papers.map((item: PaperItem) => {
+        return item.id === paperId ? result.paper : item;
+      });
+      this.upsertFavorite(result.paper);
+      this.refreshFavorites();
+      this.libraryState.actionMessage = result.paper.zoteroSyncState === 'synced'
+        ? `已同步到 Zotero：${result.paper.title}`
+        : (result.message ?? 'Zotero 同步暂未完成');
+      this.libraryState.errorMessage = undefined;
+    } catch (error) {
+      this.libraryState.errorMessage = mapUserFriendlyError('收藏同步暂时失败', error);
+    } finally {
+      this.libraryState.syncingPaperIds = this.libraryState.syncingPaperIds.filter((id: string) => id !== paperId);
+    }
+  }
+
   async exportSelectedBibtex(): Promise<void> {
     if (this.libraryState.selectedPaperIds.length === 0) {
       this.libraryState.errorMessage = '请先选择要导出的论文';

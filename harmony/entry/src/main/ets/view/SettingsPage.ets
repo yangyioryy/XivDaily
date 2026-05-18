@@ -78,11 +78,36 @@ export struct SettingsPage {
     return '学者';
   }
 
+  private avatarPresetGlyph(value: string): string {
+    if (value === 'spark') {
+      return '灵';
+    }
+    if (value === 'orbit') {
+      return '研';
+    }
+    return '学';
+  }
+
+  private avatarPresetSubtitle(value: string): string {
+    if (value === 'spark') {
+      return '保持研究灵感在线';
+    }
+    if (value === 'orbit') {
+      return '围绕主题持续追踪';
+    }
+    return '保持每日研究敏感度';
+  }
+
+  private defaultCategoryOptions(): string[] {
+    const options = ['cs.CV', 'cs.LG', 'cs.AI', 'cs.CL'].concat(this.vm.settingsState.customTags);
+    return Array.from(new Set(options));
+  }
+
   private profileSubtitle(): string {
     if (this.vm.settingsState.avatarImageUri && this.vm.settingsState.avatarImageUri.length > 0) {
       return '本地研究档案 · 已使用本地图片头像';
     }
-    return `本地研究档案 · ${this.avatarPresetLabel(this.vm.settingsState.avatarPreset)}`;
+    return `本地研究档案 · ${this.avatarPresetSubtitle(this.vm.settingsState.avatarPreset)}`;
   }
 
   private showProfileEditor(): void {
@@ -154,7 +179,7 @@ export struct SettingsPage {
           .borderRadius(28)
           .objectFit(ImageFit.Cover);
       } else {
-        Text(this.vm.settingsState.displayName.slice(0, 1))
+        Text(this.avatarPresetGlyph(this.vm.settingsState.avatarPreset))
           .fontSize(24)
           .fontWeight(FontWeight.Bold)
           .fontColor('#FFFFFF')
@@ -327,10 +352,8 @@ export struct SettingsPage {
               .fontColor('#6B7280');
           }
         }
-        this.chipGroup(['cs.CV', 'cs.LG', 'cs.AI', 'cs.CL', 'nlp'], this.vm.settingsState.defaultCategory, (value: string) => {
-          if (value !== 'nlp') {
-            this.vm.updateDefaultCategory(value);
-          }
+        this.chipGroup(this.defaultCategoryOptions(), this.vm.settingsState.defaultCategory, (value: string) => {
+          this.vm.updateDefaultCategory(value);
         });
       }
 
