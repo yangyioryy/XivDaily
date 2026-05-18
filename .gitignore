@@ -42,3 +42,10 @@ android/.gradle/
 android/local.properties
 android/**/build/
 android/.idea/
+
+# Harmony 客户端
+harmony/.hvigor/
+harmony/.idea/
+harmony/local.properties
+harmony/**/build/
+harmony/oh_modules/

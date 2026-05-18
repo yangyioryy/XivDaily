@@ -1,0 +1,12 @@
+{
+  "modelVersion": "6.1.0",
+  "license": "MIT",
+  "devDependencies": {
+    "@ohos/hypium": "1.0.6"
+  },
+  "name": "xivdaily-harmony",
+  "description": "XivDaily Harmony frontend",
+  "repository": {},
+  "version": "1.0.0",
+  "dependencies": {}
+}

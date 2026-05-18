@@ -1,0 +1,9 @@
+{
+  "license": "MIT",
+  "devDependencies": {},
+  "name": "entry",
+  "description": "XivDaily Harmony entry module",
+  "repository": {},
+  "version": "1.0.0",
+  "dependencies": {}
+}

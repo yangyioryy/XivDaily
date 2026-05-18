@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "XivDaily Harmony 前端"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "XivDaily Harmony 入口能力"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "XivDaily"
+    }
+  ]
+}
