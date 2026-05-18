@@ -570,10 +570,11 @@ export class AppViewModel {
     this.settingsState.isClearCacheDialogVisible = false;
   }
 
-  updateProfile(displayName: string, avatarPreset: string): void {
+  updateProfile(displayName: string, avatarPreset: string, avatarImageUri?: string): void {
     const normalizedName = displayName.trim().length > 0 ? displayName.trim() : 'XivDaily Reader';
     this.settingsState.displayName = normalizedName;
     this.settingsState.avatarPreset = avatarPreset;
+    this.settingsState.avatarImageUri = avatarImageUri;
     this.persistLocalSettings();
     this.applyLocalSettings(this.settingsState);
     this.settingsState.actionMessage = '个人资料已保存';

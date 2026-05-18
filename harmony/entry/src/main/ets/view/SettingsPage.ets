@@ -1,6 +1,7 @@
 import AppConstants from '../common/constants/AppConstants';
 import Context from '@ohos.app.ability.application';
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
+import picker from '@ohos.file.picker';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
 @Component
@@ -9,6 +10,7 @@ export struct SettingsPage {
   @State private isProfileEditorVisible: boolean = false;
   @State private profileNameDraft: string = '';
   @State private profileAvatarDraft: string = 'study';
+  @State private profileAvatarImageUriDraft?: string = undefined;
 
   private applyThemeMode(themeMode: string): void {
     const uiContext = this.getUIContext();
@@ -86,6 +88,7 @@ export struct SettingsPage {
   private showProfileEditor(): void {
     this.profileNameDraft = this.vm.settingsState.displayName;
     this.profileAvatarDraft = this.vm.settingsState.avatarPreset;
+    this.profileAvatarImageUriDraft = this.vm.settingsState.avatarImageUri;
     this.isProfileEditorVisible = true;
   }
 
@@ -94,8 +97,42 @@ export struct SettingsPage {
   }
 
   private saveProfileEditor(): void {
-    this.vm.updateProfile(this.profileNameDraft, this.profileAvatarDraft);
+    this.vm.updateProfile(this.profileNameDraft, this.profileAvatarDraft, this.profileAvatarImageUriDraft);
     this.isProfileEditorVisible = false;
+  }
+
+  private async pickProfileAvatar(): Promise<void> {
+    const hostContext = this.getUIContext().getHostContext();
+    if (!hostContext) {
+      this.getUIContext().getPromptAction().showToast({
+        message: '当前无法打开图片选择器'
+      });
+      return;
+    }
+
+    try {
+      const photoPicker = new picker.PhotoViewPicker(hostContext as Context);
+      const options = new picker.PhotoSelectOptions();
+      options.MIMEType = picker.PhotoViewMIMETypes.IMAGE_TYPE;
+      options.maxSelectNumber = 1;
+      const result = await photoPicker.select(options);
+      const nextUri = result.photoUris[0];
+      if (!nextUri) {
+        return;
+      }
+      this.profileAvatarImageUriDraft = nextUri;
+      this.getUIContext().getPromptAction().showToast({
+        message: '已选择本地图片头像'
+      });
+    } catch (error) {
+      this.getUIContext().getPromptAction().showToast({
+        message: '选择头像图片失败'
+      });
+    }
+  }
+
+  private removeProfileAvatarImage(): void {
+    this.profileAvatarImageUriDraft = undefined;
   }
 
   @Builder
@@ -110,15 +147,23 @@ export struct SettingsPage {
   @Builder
   private profileCard() {
     Row({ space: 14 }) {
-      Text(this.vm.settingsState.displayName.slice(0, 1))
-        .fontSize(24)
-        .fontWeight(FontWeight.Bold)
-        .fontColor('#FFFFFF')
-        .width(56)
-        .height(56)
-        .textAlign(TextAlign.Center)
-        .backgroundColor('#0F7A95')
-        .borderRadius(28);
+      if (this.vm.settingsState.avatarImageUri && this.vm.settingsState.avatarImageUri.length > 0) {
+        Image(this.vm.settingsState.avatarImageUri)
+          .width(56)
+          .height(56)
+          .borderRadius(28)
+          .objectFit(ImageFit.Cover);
+      } else {
+        Text(this.vm.settingsState.displayName.slice(0, 1))
+          .fontSize(24)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FFFFFF')
+          .width(56)
+          .height(56)
+          .textAlign(TextAlign.Center)
+          .backgroundColor('#0F7A95')
+          .borderRadius(28);
+      }
       Column({ space: 2 }) {
         Row({ space: 6 }) {
           Text(this.vm.settingsState.displayName)
@@ -511,10 +556,24 @@ export struct SettingsPage {
           .fontWeight(FontWeight.Medium)
           .fontColor('#374151')
           .width('100%');
+        if (this.profileAvatarImageUriDraft && this.profileAvatarImageUriDraft.length > 0) {
+          Image(this.profileAvatarImageUriDraft)
+            .width(72)
+            .height(72)
+            .borderRadius(36)
+            .objectFit(ImageFit.Cover);
+        }
         this.chipGroup(['study', 'spark', 'orbit'], this.profileAvatarDraft, (value: string) => {
           this.profileAvatarDraft = value;
         });
-        Text('当前版本先支持预设头像；本地图片上传仍待补齐。')
+        Row({ space: 8 }) {
+          this.formActionButton(this.profileAvatarImageUriDraft ? '更换头像' : '上传头像', false, false, () => {
+            void this.pickProfileAvatar();
+          });
+          this.formActionButton('移除图片', false, !this.profileAvatarImageUriDraft, () => this.removeProfileAvatarImage());
+        }
+        .width('100%');
+        Text(this.profileAvatarImageUriDraft ? '已选择本地图片头像' : '未选择图片时使用头像预设')
           .fontSize(13)
           .fontColor('#6B7280');
         Row({ space: 8 }) {
