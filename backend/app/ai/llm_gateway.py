@@ -72,10 +72,24 @@ class LlmGateway:
                 return LlmResult(text=content, status="success")
             except Exception as exc:  # noqa: BLE001
                 last_warning = self._map_warning(exc)
-                # 失败响应可能带上游 URL 或账号信息，接口只返回通用提示，细节留在受控日志。
+                # 失败响应可能带上游 URL 或账号信息，接口只返回通用提示，细节落在受控日志里
+                # 方便定位是 base_url / key / model 哪个不对。
+                status_code: int | None = None
+                response_snippet = ""
+                if isinstance(exc, httpx.HTTPStatusError):
+                    status_code = exc.response.status_code
+                    response_snippet = exc.response.text[:300].replace("\n", " ")
                 logger.warning(
-                    "llm_call_failed",
-                    extra={"task_name": task_name, "attempt": attempt, "error_type": type(exc).__name__},
+                    "llm_call_failed task=%s attempt=%s model=%s endpoints=%s "
+                    "error_type=%s status_code=%s message=%s response=%s",
+                    task_name,
+                    attempt,
+                    self.settings.llm_model,
+                    endpoints,
+                    type(exc).__name__,
+                    status_code,
+                    str(exc)[:300],
+                    response_snippet,
                 )
 
         return LlmResult(text="", status="degraded", warning=last_warning or "大模型调用失败，已使用本地降级结果。")

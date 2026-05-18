@@ -1,4 +1,21 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
+
+
+class PaperSyncPayload(BaseModel):
+    """Android 在同步收藏论文时直传的本地元数据，避免后端反查 arXiv 触发频控。"""
+
+    id: str
+    title: str
+    authors: list[str] = Field(default_factory=list)
+    summary: str = ""
+    published_at: datetime
+    updated_at: datetime | None = None
+    categories: list[str] = Field(default_factory=list)
+    primary_category: str = ""
+    source_url: str = ""
+    pdf_url: str = ""
 
 
 class ZoteroConfigStatus(BaseModel):

@@ -7,8 +7,14 @@ from sqlalchemy.orm import Session
 
 from app.clients.zotero_client import ZoteroClient
 from app.models.sync_record import SyncRecordModel
-from app.schemas.paper import PaperQuery
-from app.schemas.zotero import BibtexExportRequest, BibtexExportResponse, ZoteroConfigStatus, ZoteroSyncResult
+from app.schemas.paper import Paper, PaperQuery
+from app.schemas.zotero import (
+    BibtexExportRequest,
+    BibtexExportResponse,
+    PaperSyncPayload,
+    ZoteroConfigStatus,
+    ZoteroSyncResult,
+)
 from app.services.paper_service import PaperService
 
 
@@ -50,13 +56,23 @@ class ZoteroService:
             warning="未完成 Zotero User ID 或 API Key 配置。",
         )
 
-    async def sync_paper(self, db: Session, paper_id: str) -> ZoteroSyncResult:
+    async def sync_paper(
+        self,
+        db: Session,
+        paper_id: str,
+        *,
+        paper: PaperSyncPayload | None = None,
+    ) -> ZoteroSyncResult:
         existing = db.get(SyncRecordModel, paper_id)
         if existing and existing.status == "synced":
             return await self._reconcile_existing_synced_record(db, existing)
 
-        paper = await self._find_paper(paper_id)
-        if paper is None:
+        # 客户端可以把已收藏的论文元数据直接传上来，跳过会被 arXiv 频控阻塞的反查路径。
+        if paper is not None:
+            resolved_paper = self._payload_to_paper(paper_id, paper)
+        else:
+            resolved_paper = await self._find_paper(paper_id)
+        if resolved_paper is None:
             record = self._upsert_record(db, paper_id, status="failed", message="未找到对应论文，无法同步到 Zotero。")
             return self._build_sync_result(
                 record=record,
@@ -93,14 +109,14 @@ class ZoteroService:
             "itemKey": item_key,
             "data": {
                 "itemType": "preprint",
-                "title": paper.title,
-                "abstractNote": paper.summary,
-                "url": paper.source_url,
-                "archiveID": paper.id,
+                "title": resolved_paper.title,
+                "abstractNote": resolved_paper.summary,
+                "url": resolved_paper.source_url,
+                "archiveID": resolved_paper.id,
                 "libraryCatalog": "arXiv",
-                "date": paper.published_at.date().isoformat(),
-                "creators": [{"creatorType": "author", "name": author} for author in paper.authors],
-                "tags": [{"tag": category} for category in paper.categories],
+                "date": resolved_paper.published_at.date().isoformat(),
+                "creators": [{"creatorType": "author", "name": author} for author in resolved_paper.authors],
+                "tags": [{"tag": category} for category in resolved_paper.categories],
                 "collections": [str(target_collection["key"])],
             },
         }
@@ -161,6 +177,23 @@ class ZoteroService:
             if paper.id == paper_id:
                 return paper
         return None
+
+    def _payload_to_paper(self, paper_id: str, payload: PaperSyncPayload) -> Paper:
+        # 客户端 payload 沿用 Android 收藏库字段，能填的就直接落到 Paper 模型，缺省的留空 Pydantic 默认。
+        categories = payload.categories or ([payload.primary_category] if payload.primary_category else [])
+        primary_category = payload.primary_category or (categories[0] if categories else "")
+        return Paper(
+            id=payload.id or paper_id,
+            title=payload.title,
+            authors=payload.authors,
+            summary=payload.summary,
+            published_at=payload.published_at,
+            updated_at=payload.updated_at or payload.published_at,
+            categories=categories,
+            primary_category=primary_category,
+            source_url=payload.source_url,
+            pdf_url=payload.pdf_url,
+        )
 
     def _upsert_record(
         self,

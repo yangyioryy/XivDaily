@@ -25,7 +25,7 @@ class FakeZoteroService:
             "warning": None,
         }
 
-    async def sync_paper(self, db, paper_id: str):
+    async def sync_paper(self, db, paper_id: str, *, paper=None):
         return {
             "paper_id": paper_id,
             "status": "synced",

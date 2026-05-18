@@ -32,9 +32,9 @@ class ZoteroConfigSaveRequest(BaseModel):
 
 
 class LlmConfigSaveRequest(BaseModel):
-    base_url: str = "https://yangyioryy.cc.cd"
+    base_url: str = "https://grok.yangyioryy.cc.cd"
     api_key: str | None = None
-    model: str = "glm5"
+    model: str = "grok-4.20-0309-non-reasoning"
 
 
 class ConfigTestResult(BaseModel):

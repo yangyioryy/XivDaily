@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.db.base import Base
 from app.models.sync_record import SyncRecordModel
 from app.schemas.paper import Paper, PaperListResponse, PaperQuery
-from app.schemas.zotero import BibtexExportRequest
+from app.schemas.zotero import BibtexExportRequest, PaperSyncPayload
 from app.services.zotero_service import ZoteroService
 
 
@@ -240,6 +240,64 @@ async def test_sync_paper_reports_missing_visibility_when_repair_still_fails() -
     assert result.visibility_status == "missing_from_collection"
     assert "暂未在目标集合中确认可见" in (result.message or "")
     assert "已尝试补偿归档" in (result.visibility_message or "")
+
+
+class EmptyPaperService:
+    """模拟 arXiv 频控、缓存全空的情况，触发 _find_paper 返回 None。"""
+
+    async def list_papers(self, query: PaperQuery) -> PaperListResponse:
+        return PaperListResponse(
+            query=query,
+            items=[],
+            page=1,
+            page_size=10,
+            total=0,
+            has_more=False,
+            status="unavailable",
+            warning="arXiv unavailable",
+            empty_reason=None,
+        )
+
+
+@pytest.mark.anyio("asyncio")
+async def test_sync_paper_uses_payload_when_arxiv_lookup_fails() -> None:
+    db = build_session()
+    client = FakeZoteroClient(configured=True)
+    # 故意让后端的论文反查为空，确认客户端提供的 payload 能直接驱动 Zotero 同步。
+    service = ZoteroService(zotero_client=client, paper_service=EmptyPaperService())
+    payload = PaperSyncPayload(
+        id="2605.16250v1",
+        title="Local Paper",
+        authors=["Author A"],
+        summary="abstract",
+        published_at=datetime.now(UTC),
+        updated_at=None,
+        categories=["cs.CV"],
+        primary_category="cs.CV",
+        source_url="https://arxiv.org/abs/2605.16250v1",
+        pdf_url="https://arxiv.org/pdf/2605.16250v1",
+    )
+
+    result = await service.sync_paper(db, "2605.16250v1", paper=payload)
+
+    assert result.status == "synced"
+    assert client.calls == 1
+    assert client.last_item_payload is not None
+    assert client.last_item_payload["data"]["title"] == "Local Paper"
+    assert client.last_item_payload["data"]["tags"] == [{"tag": "cs.CV"}]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_sync_paper_marks_failed_when_no_payload_and_arxiv_empty() -> None:
+    db = build_session()
+    client = FakeZoteroClient(configured=True)
+    service = ZoteroService(zotero_client=client, paper_service=EmptyPaperService())
+
+    result = await service.sync_paper(db, "2605.16250v1")
+
+    # 旧契约保留：未传 payload 且无法从 arXiv 反查到论文时仍写入 failed 状态。
+    assert result.status == "failed"
+    assert client.calls == 0
 
 
 @pytest.mark.anyio("asyncio")
