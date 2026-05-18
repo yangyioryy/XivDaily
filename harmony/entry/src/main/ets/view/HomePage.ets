@@ -1,4 +1,5 @@
 import AppConstants from '../common/constants/AppConstants';
+import common from '@ohos.app.ability.common';
 import { PaperItem, TrendItem } from '../model/AppModels';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
@@ -64,94 +65,117 @@ export struct HomePage {
     this.customTagDraft = '';
   }
 
+  private async openPaperSource(paper: PaperItem): Promise<void> {
+    const hostContext = this.getUIContext().getHostContext();
+    if (!hostContext || paper.sourceUrl.trim().length === 0) {
+      this.getUIContext().getPromptAction().showToast({
+        message: '论文链接暂不可用'
+      });
+      return;
+    }
+
+    try {
+      await (hostContext as common.UIAbilityContext).openLink(paper.sourceUrl.trim());
+    } catch (error) {
+      this.getUIContext().getPromptAction().showToast({
+        message: '打开论文原文失败'
+      });
+    }
+  }
+
   @Builder
   private paperCard(paper: PaperItem) {
     Column({ space: 10 }) {
-      Row() {
-        Text(paper.title)
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827')
-          .layoutWeight(1);
-        Text(paper.favoriteState ? '★' : '☆')
-          .fontSize(18)
-          .fontColor('#B37B3F')
-          .onClick(() => this.vm.toggleFavorite(paper.id));
-      }
-      .width('100%');
-
-      Text(`${paper.authors.join(', ')} · ${paper.primaryCategory} · ${paper.publishedAt}`)
-        .fontSize(13)
-        .fontColor('#6B7280');
-
-      Row({ space: 8 }) {
-        if (paper.zoteroSyncState === 'synced') {
-          Text('● 已同步')
-            .fontSize(13)
-            .fontColor('#3F7A58')
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .backgroundColor('#F1F4FA')
-            .borderRadius(12);
-        } else {
-          Text('● 未同步')
-            .fontSize(13)
-            .fontColor('#B37B3F')
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .backgroundColor('#F1F4FA')
-            .borderRadius(12);
-        }
-
-        if (this.isPaperTranslating(paper.id)) {
-          Text('翻译中...')
-            .fontSize(13)
-            .fontColor('#2D6CE8')
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .backgroundColor('#EAF2FF')
-            .borderRadius(12);
-        }
-
-        if (this.isPaperSyncing(paper.id)) {
-          Text('同步中...')
-            .fontSize(13)
-            .fontColor('#2D6CE8')
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .backgroundColor('#EAF2FF')
-            .borderRadius(12);
-        }
-      }
-
-      if (this.isPaperExpanded(paper.id)) {
-        Column({ space: 8 }) {
-          if (paper.translatedSummary) {
-            Text('中文翻译')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#2D6CE8');
-            Text(paper.translatedSummary)
-              .fontSize(14)
-              .lineHeight(22)
-              .fontColor('#374151');
-          }
-          Text('Original Abstract')
-            .fontSize(14)
+      Column({ space: 10 }) {
+        Row() {
+          Text(paper.title)
+            .fontSize(18)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#6B7280');
-          Text(paper.summary)
-            .fontSize(14)
-            .lineHeight(22)
-              .fontColor('#374151');
-
-          if (this.vm.homeState.translationErrors[paper.id]) {
-            Text(this.vm.homeState.translationErrors[paper.id])
-              .fontSize(13)
-              .fontColor('#B6544A')
-              .padding(12)
-              .backgroundColor('#FFEAEA')
-              .borderRadius(14);
-          }
+            .fontColor('#111827')
+            .layoutWeight(1);
+          Text(paper.favoriteState ? '★' : '☆')
+            .fontSize(18)
+            .fontColor('#B37B3F');
         }
         .width('100%');
+
+        Text(`${paper.authors.join(', ')} · ${paper.primaryCategory} · ${paper.publishedAt}`)
+          .fontSize(13)
+          .fontColor('#6B7280');
+
+        Row({ space: 8 }) {
+          if (paper.zoteroSyncState === 'synced') {
+            Text('● 已同步')
+              .fontSize(13)
+              .fontColor('#3F7A58')
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .backgroundColor('#F1F4FA')
+              .borderRadius(12);
+          } else {
+            Text('● 未同步')
+              .fontSize(13)
+              .fontColor('#B37B3F')
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .backgroundColor('#F1F4FA')
+              .borderRadius(12);
+          }
+
+          if (this.isPaperTranslating(paper.id)) {
+            Text('翻译中...')
+              .fontSize(13)
+              .fontColor('#2D6CE8')
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .backgroundColor('#EAF2FF')
+              .borderRadius(12);
+          }
+
+          if (this.isPaperSyncing(paper.id)) {
+            Text('同步中...')
+              .fontSize(13)
+              .fontColor('#2D6CE8')
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .backgroundColor('#EAF2FF')
+              .borderRadius(12);
+          }
+        }
+
+        if (this.isPaperExpanded(paper.id)) {
+          Column({ space: 8 }) {
+            if (paper.translatedSummary) {
+              Text('中文翻译')
+                .fontSize(14)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#2D6CE8');
+              Text(paper.translatedSummary)
+                .fontSize(14)
+                .lineHeight(22)
+                .fontColor('#374151');
+            }
+            Text('Original Abstract')
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#6B7280');
+            Text(paper.summary)
+              .fontSize(14)
+              .lineHeight(22)
+                .fontColor('#374151');
+
+            if (this.vm.homeState.translationErrors[paper.id]) {
+              Text(this.vm.homeState.translationErrors[paper.id])
+                .fontSize(13)
+                .fontColor('#B6544A')
+                .padding(12)
+                .backgroundColor('#FFEAEA')
+                .borderRadius(14);
+            }
+          }
+          .width('100%');
+        }
       }
+      .width('100%')
+      .onClick(() => {
+        void this.openPaperSource(paper);
+      });
 
       Row({ space: 8 }) {
         Text(this.isPaperExpanded(paper.id) ? '收起摘要' : '展开摘要')
@@ -162,6 +186,33 @@ export struct HomePage {
           .borderRadius(12)
           .onClick(() => this.vm.toggleAbstract(paper.id));
 
+        Text('收藏')
+          .fontSize(14)
+          .fontColor('#2D6CE8')
+          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+          .backgroundColor('#EAF2FF')
+          .borderRadius(12)
+          .onClick(() => this.vm.toggleFavorite(paper.id));
+
+        Text(this.isPaperSyncing(paper.id) ? '同步中...' : '同步')
+          .fontSize(14)
+          .fontColor('#2D6CE8')
+          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+          .backgroundColor('#EAF2FF')
+          .borderRadius(12)
+          .opacity(this.isPaperSyncing(paper.id) ? 0.6 : 1)
+          .onClick(() => {
+            void this.vm.syncToZotero(paper.id);
+          });
+
+        Text('忽略')
+          .fontSize(14)
+          .fontColor('#B6544A')
+          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+          .backgroundColor('#FFEAEA')
+          .borderRadius(12)
+          .onClick(() => this.vm.dismissHomePaper(paper.id));
+
         if (this.isPaperExpanded(paper.id)) {
           Text('翻译')
             .fontSize(14)
@@ -170,16 +221,9 @@ export struct HomePage {
             .backgroundColor('#EAF2FF')
             .borderRadius(12)
             .opacity(this.isPaperTranslating(paper.id) ? 0.6 : 1)
-            .onClick(() => this.vm.translatePaper(paper.id));
-
-          Text('同步')
-            .fontSize(14)
-            .fontColor('#2D6CE8')
-            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-            .backgroundColor('#EAF2FF')
-            .borderRadius(12)
-            .opacity(this.isPaperSyncing(paper.id) ? 0.6 : 1)
-            .onClick(() => this.vm.syncToZotero(paper.id));
+            .onClick(() => {
+              void this.vm.translatePaper(paper.id);
+            });
         }
       }
     }

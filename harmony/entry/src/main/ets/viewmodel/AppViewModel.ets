@@ -246,6 +246,20 @@ export class AppViewModel {
     this.refreshFavorites();
   }
 
+  dismissHomePaper(paperId: string): void {
+    const paper = this.homeState.papers.find((item: PaperItem) => item.id === paperId);
+    if (!paper) {
+      return;
+    }
+
+    this.homeState.papers = this.homeState.papers.filter((item: PaperItem) => item.id !== paperId);
+    this.homeState.expandedAbstractPaperIds = this.homeState.expandedAbstractPaperIds.filter((id: string) => id !== paperId);
+    this.homeState.translatingPaperIds = this.homeState.translatingPaperIds.filter((id: string) => id !== paperId);
+    this.homeState.syncingPaperIds = this.homeState.syncingPaperIds.filter((id: string) => id !== paperId);
+    this.homeState.translationErrors = this.copyTranslationErrorsWithout(paperId);
+    this.pushHomeAction(`已从当前流忽略：${paper.title}`);
+  }
+
   async syncToZotero(paperId: string): Promise<void> {
     const paper = this.homeState.papers.find((item: PaperItem) => item.id === paperId);
     if (!paper) {
