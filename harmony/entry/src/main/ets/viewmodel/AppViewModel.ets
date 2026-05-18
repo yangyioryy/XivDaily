@@ -257,6 +257,11 @@ export class AppViewModel {
       : [...this.libraryState.selectedPaperIds, paperId];
   }
 
+  selectAllLibraryPapers(paperIds: string[]): void {
+    this.libraryState.selectedPaperIds = paperIds.slice();
+    this.libraryState.errorMessage = undefined;
+  }
+
   selectLibraryFilter(filter: string): void {
     this.libraryState.syncFilter = filter;
   }
@@ -284,6 +289,25 @@ export class AppViewModel {
     });
     this.libraryState.selectedPaperIds = this.libraryState.selectedPaperIds.filter((id: string) => id !== paperId);
     this.libraryState.actionMessage = '已删除收藏';
+    this.libraryState.errorMessage = undefined;
+  }
+
+  deleteSelectedFavorites(): void {
+    if (this.libraryState.selectedPaperIds.length === 0) {
+      this.libraryState.errorMessage = '请先选择要删除的论文';
+      return;
+    }
+
+    const ids = this.libraryState.selectedPaperIds.slice();
+    ids.forEach((paperId: string) => {
+      favoriteStoreService.deleteFavorite(paperId);
+    });
+    this.refreshFavorites();
+    this.homeState.papers = this.homeState.papers.map((item: PaperItem) => {
+      return ids.indexOf(item.id) >= 0 ? this.withFavoriteState(item, false) : item;
+    });
+    this.libraryState.selectedPaperIds = [];
+    this.libraryState.actionMessage = `已批量删除 ${ids.length} 条收藏`;
     this.libraryState.errorMessage = undefined;
   }
 

@@ -15,8 +15,15 @@ export struct LibraryPage {
     });
   }
 
+  private isPaperSelected(paperId: string): boolean {
+    return this.vm.libraryState.selectedPaperIds.indexOf(paperId) >= 0;
+  }
+
+  private isSyncFilterSelected(filter: string): boolean {
+    return this.vm.libraryState.syncFilter === filter;
+  }
+
   build() {
-    const filtered = this.filteredFavorites();
     Column({ space: AppConstants.SECTION_SPACING }) {
       Column({ space: 4 }) {
         Text('收藏库')
@@ -31,10 +38,10 @@ export struct LibraryPage {
       Row({ space: 8 }) {
         Text(`全部 ${this.vm.libraryState.favorites.length}`)
           .fontSize(14)
-          .fontWeight(this.vm.libraryState.syncFilter === 'all' ? FontWeight.Medium : FontWeight.Regular)
+          .fontWeight(this.isSyncFilterSelected('all') ? FontWeight.Medium : FontWeight.Regular)
           .fontColor('#1F2937')
           .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-          .backgroundColor(this.vm.libraryState.syncFilter === 'all' ? '#F1F4FA' : '#FFFFFF')
+          .backgroundColor(this.isSyncFilterSelected('all') ? '#F1F4FA' : '#FFFFFF')
           .borderRadius(12)
           .border({ width: 1, color: '#D7DEE9' })
           .onClick(() => this.vm.selectLibraryFilter('all'));
@@ -42,7 +49,7 @@ export struct LibraryPage {
           .fontSize(14)
           .fontColor('#6B7280')
           .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-          .backgroundColor(this.vm.libraryState.syncFilter === 'synced' ? '#F1F4FA' : '#FFFFFF')
+          .backgroundColor(this.isSyncFilterSelected('synced') ? '#F1F4FA' : '#FFFFFF')
           .borderRadius(12)
           .border({ width: 1, color: '#D7DEE9' })
           .onClick(() => this.vm.selectLibraryFilter('synced'));
@@ -50,7 +57,7 @@ export struct LibraryPage {
           .fontSize(14)
           .fontColor('#6B7280')
           .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-          .backgroundColor(this.vm.libraryState.syncFilter === 'not_synced' ? '#F1F4FA' : '#FFFFFF')
+          .backgroundColor(this.isSyncFilterSelected('not_synced') ? '#F1F4FA' : '#FFFFFF')
           .borderRadius(12)
           .border({ width: 1, color: '#D7DEE9' })
           .onClick(() => this.vm.selectLibraryFilter('not_synced'));
@@ -88,13 +95,13 @@ export struct LibraryPage {
           .fontSize(24)
           .fontWeight(FontWeight.Medium)
           .fontColor('#111827');
-        Text(`共 ${this.vm.libraryState.favorites.length} 条 · 当前展示 ${filtered.length} 条`)
+        Text(`共 ${this.vm.libraryState.favorites.length} 条 · 当前展示 ${this.filteredFavorites().length} 条`)
           .fontSize(14)
           .fontColor('#6B7280');
       }
       .width('100%');
 
-      if (filtered.length === 0) {
+      if (this.filteredFavorites().length === 0) {
         Text('当前筛选下没有结果。')
           .fontSize(14)
           .fontColor('#6B7280')
@@ -104,8 +111,7 @@ export struct LibraryPage {
           .borderRadius(16);
       } else {
         Column({ space: 12 }) {
-          ForEach(filtered, (favorite: FavoritePaperItem) => {
-            const selected = this.vm.libraryState.selectedPaperIds.indexOf(favorite.paper.id) >= 0;
+          ForEach(this.filteredFavorites(), (favorite: FavoritePaperItem) => {
             Column({ space: 12 }) {
               Row() {
                 Text(favorite.paper.title)
@@ -113,7 +119,7 @@ export struct LibraryPage {
                   .fontWeight(FontWeight.Medium)
                   .fontColor('#111827')
                   .layoutWeight(1);
-                Text(selected ? '☑' : '☐')
+                Text(this.isPaperSelected(favorite.paper.id) ? '☑' : '☐')
                   .fontSize(18)
                   .fontColor('#2D6CE8')
                   .onClick(() => this.vm.toggleLibrarySelection(favorite.paper.id));
@@ -131,9 +137,9 @@ export struct LibraryPage {
                   .padding({ left: 14, right: 14, top: 8, bottom: 8 })
                   .backgroundColor('#F1F4FA')
                   .borderRadius(12);
-                Text(selected ? '已选中' : '点按可加入批量选择')
+                Text(this.isPaperSelected(favorite.paper.id) ? '已选中' : '点按可加入批量选择')
                   .fontSize(13)
-                  .fontColor(selected ? '#2D6CE8' : '#9CA3AF')
+                  .fontColor(this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#9CA3AF')
                   .padding({ left: 14, right: 14, top: 8, bottom: 8 })
                   .backgroundColor('#F1F4FA')
                   .borderRadius(12)
@@ -177,10 +183,18 @@ export struct LibraryPage {
             .fontSize(14)
             .fontColor('#111827')
             .layoutWeight(1);
+          Text('全选')
+            .fontSize(14)
+            .fontColor('#2D6CE8')
+            .onClick(() => this.vm.selectAllLibraryPapers(this.filteredFavorites().map((favorite: FavoritePaperItem) => favorite.paper.id)));
           Text('导出 BibTeX')
             .fontSize(14)
             .fontColor('#2D6CE8')
             .onClick(() => this.vm.exportSelectedBibtex());
+          Text('批量删除')
+            .fontSize(14)
+            .fontColor('#B6544A')
+            .onClick(() => this.vm.deleteSelectedFavorites());
         }
         .width('100%')
         .padding(16)
