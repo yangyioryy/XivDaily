@@ -83,6 +83,29 @@ export struct HomePage {
     }
   }
 
+  private normalizeSwipeAngle(angle: number): number {
+    const normalizedAngle = angle % 360;
+    return normalizedAngle < 0 ? normalizedAngle + 360 : normalizedAngle;
+  }
+
+  private handlePaperSwipe(paper: PaperItem, event: GestureEvent): void {
+    const swipeEvent = event as SwipeGestureEvent;
+    const angle = this.normalizeSwipeAngle(swipeEvent.angle);
+    if (angle <= 90 || angle >= 270) {
+      void this.vm.syncToZotero(paper.id);
+      return;
+    }
+    this.vm.dismissHomePaper(paper.id);
+  }
+
+  private handleCustomTagTap(tag: string): void {
+    if (this.pendingDeletionTag === tag) {
+      this.clearPendingDeletion();
+      return;
+    }
+    this.vm.selectCategory(tag);
+  }
+
   @Builder
   private paperCard(paper: PaperItem) {
     Column({ space: 10 }) {
@@ -173,9 +196,21 @@ export struct HomePage {
         }
       }
       .width('100%')
-      .onClick(() => {
-        void this.openPaperSource(paper);
-      });
+      .gesture(
+        GestureGroup(
+          GestureMode.Exclusive,
+          TapGesture({ count: 2 })
+            .onAction(() => this.vm.toggleFavorite(paper.id)),
+          TapGesture()
+            .onAction(() => {
+              void this.openPaperSource(paper);
+            })
+        )
+      )
+      .parallelGesture(
+        SwipeGesture({ direction: SwipeDirection.Horizontal })
+          .onAction((event: GestureEvent) => this.handlePaperSwipe(paper, event))
+      );
 
       Row({ space: 8 }) {
         Text(this.isPaperExpanded(paper.id) ? '收起摘要' : '展开摘要')
@@ -302,32 +337,44 @@ export struct HomePage {
           }, (category: string) => category);
 
           ForEach(this.vm.homeState.customTags, (tag: string) => {
-            Row({ space: 6 }) {
-              Text(tag)
-                .fontSize(14)
-                .fontWeight(this.isCategorySelected(tag) ? FontWeight.Medium : FontWeight.Regular)
-                .fontColor(this.isCategorySelected(tag) ? '#FFFFFF' : '#1F2937');
+            Row({ space: 0 }) {
+              Row() {
+                Text(tag)
+                  .fontSize(14)
+                  .fontWeight(this.isCategorySelected(tag) ? FontWeight.Medium : FontWeight.Regular)
+                  .fontColor(this.isCategorySelected(tag) ? '#FFFFFF' : '#1F2937');
+              }
+              .padding({ left: 16, right: 10, top: 8, bottom: 8 })
+              .gesture(
+                GestureGroup(
+                  GestureMode.Exclusive,
+                  LongPressGesture({ repeat: false, duration: 350 })
+                    .onAction(() => this.markTagPendingDeletion(tag)),
+                  TapGesture()
+                    .onAction(() => this.handleCustomTagTap(tag))
+                )
+              );
               if (this.pendingDeletionTag === tag) {
                 Text('删')
                   .fontSize(12)
                   .fontColor(this.isCategorySelected(tag) ? '#FFFFFF' : '#B6544A')
+                  .padding({ left: 0, right: 16, top: 8, bottom: 8 })
                   .onClick(() => this.vm.deleteCustomTag(tag));
               } else {
                 Text('×')
                   .fontSize(12)
                   .fontColor(this.isCategorySelected(tag) ? '#FFFFFF' : '#6B7280')
+                  .padding({ left: 0, right: 16, top: 8, bottom: 8 })
                   .onClick(() => this.markTagPendingDeletion(tag));
               }
             }
-            .padding({ left: 16, right: 16, top: 8, bottom: 8 })
             .margin({ right: 8, bottom: 8 })
             .backgroundColor(this.isCategorySelected(tag) ? '#2D6CE8' : '#FFFFFF')
             .borderRadius(14)
             .border({
               width: this.isCategorySelected(tag) ? 0 : 1,
               color: '#D7DEE9'
-            })
-            .onClick(() => this.vm.selectCategory(tag));
+            });
           }, (tag: string) => `custom-${tag}`);
 
           Text('+ 添加')
