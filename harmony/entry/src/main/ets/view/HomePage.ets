@@ -41,6 +41,62 @@ export struct HomePage {
     return this.vm.homeState.syncingPaperIds.indexOf(paperId) >= 0;
   }
 
+  private isSearchActive(): boolean {
+    return this.vm.homeState.searchKeyword.trim().length > 0;
+  }
+
+  private heroSubtitle(): string {
+    if (this.isSearchActive()) {
+      return `正在全 arXiv 搜索“${this.vm.homeState.searchKeyword}”，时间筛选不会缩小搜索范围。`;
+    }
+    return '围绕当天筛选范围快速浏览、收藏和同步论文。';
+  }
+
+  private paperSectionTitle(): string {
+    return this.vm.homeState.isLoading ? '论文加载中...' : '论文列表';
+  }
+
+  private paperSectionSubtitle(): string {
+    if (this.isSearchActive()) {
+      return `全 arXiv 搜索：${this.vm.homeState.searchKeyword}，分类过滤：${this.vm.homeState.selectedCategory}`;
+    }
+    return `围绕 ${this.vm.homeState.selectedCategory} 的最新研究流`;
+  }
+
+  private emptyStateTitle(): string {
+    if (this.vm.homeState.isLoading) {
+      return '正在刷新论文列表';
+    }
+    if (this.vm.homeState.listStatus === 'unavailable') {
+      return '当前暂时无法获取论文';
+    }
+    return '当前暂无可展示论文';
+  }
+
+  private emptyStateSubtitle(): string {
+    if (this.vm.homeState.isLoading) {
+      return '稍后将自动填充最新内容';
+    }
+    if (this.vm.homeState.emptyReason === 'time_window_filtered') {
+      return '当前时间窗口过窄，可以尝试切换到 7 天或 30 天。';
+    }
+    if (this.vm.homeState.emptyReason === 'no_results') {
+      return '当前搜索条件下没有命中论文，可以切换领域或重新搜索。';
+    }
+    if (this.vm.homeState.listStatus === 'unavailable') {
+      return '请稍后重试，或先检查本地网络与服务状态。';
+    }
+    return '可以切换领域、时间窗口或重新搜索';
+  }
+
+  private representativeTitles(item: TrendItem): string {
+    const titles: string[] = item.representativePaperIds.map((paperId: string) => {
+      const paper = this.vm.homeState.papers.find((candidate: PaperItem) => candidate.id === paperId);
+      return paper ? paper.title : '';
+    }).filter((title: string) => title.length > 0);
+    return titles.join(' / ');
+  }
+
   private showAddTagDialog(): void {
     this.customTagDraft = '';
     this.isAddTagDialogVisible = true;
@@ -284,7 +340,7 @@ export struct HomePage {
         }
         .width('100%');
 
-        Text('围绕当天筛选范围快速浏览、收藏和同步论文。')
+        Text(this.heroSubtitle())
           .fontSize(14)
           .fontColor('#6B7280');
       }
@@ -355,21 +411,21 @@ export struct HomePage {
                 )
               );
               if (this.pendingDeletionTag === tag) {
-                Text('删')
+                Text('-')
                   .fontSize(12)
+                  .fontWeight(FontWeight.Medium)
                   .fontColor(this.isCategorySelected(tag) ? '#FFFFFF' : '#B6544A')
-                  .padding({ left: 0, right: 16, top: 8, bottom: 8 })
+                  .width(22)
+                  .height(22)
+                  .textAlign(TextAlign.Center)
+                  .backgroundColor(this.isCategorySelected(tag) ? '#8E2D2D' : '#FFEAEA')
+                  .borderRadius(6)
+                  .margin({ left: 2, right: 12, top: 7, bottom: 7 })
                   .onClick(() => this.vm.deleteCustomTag(tag));
-              } else {
-                Text('×')
-                  .fontSize(12)
-                  .fontColor(this.isCategorySelected(tag) ? '#FFFFFF' : '#6B7280')
-                  .padding({ left: 0, right: 16, top: 8, bottom: 8 })
-                  .onClick(() => this.markTagPendingDeletion(tag));
               }
             }
             .margin({ right: 8, bottom: 8 })
-            .backgroundColor(this.isCategorySelected(tag) ? '#2D6CE8' : '#FFFFFF')
+            .backgroundColor(this.isCategorySelected(tag) ? '#2D6CE8' : (this.pendingDeletionTag === tag ? '#FFF1DD' : '#FFFFFF'))
             .borderRadius(14)
             .border({
               width: this.isCategorySelected(tag) ? 0 : 1,
@@ -514,6 +570,11 @@ export struct HomePage {
                       .fontSize(14)
                       .lineHeight(22)
                       .fontColor('#6B7280');
+                    if (this.representativeTitles(item).length > 0) {
+                      Text(`代表论文：${this.representativeTitles(item)}`)
+                        .fontSize(13)
+                        .fontColor('#6B7280');
+                    }
                   }
                   .width('100%');
                 }, (item: TrendItem) => `${item.rank}`);
@@ -542,15 +603,26 @@ export struct HomePage {
       }
 
       Column({ space: 12 }) {
-        Text(this.vm.homeState.isLoading ? '论文加载中...' : `论文列表 · ${this.vm.homeState.listStatus}`)
+        Text(this.paperSectionTitle())
           .fontSize(24)
           .fontWeight(FontWeight.Medium)
           .fontColor('#111827');
+        Text(this.paperSectionSubtitle())
+          .fontSize(14)
+          .fontColor('#6B7280');
 
         if (this.vm.homeState.papers.length === 0) {
-          Text('当前暂无可展示论文，可以切换领域或时间窗口。')
-            .fontSize(14)
-            .fontColor('#6B7280')
+          Column({ space: 8 }) {
+            Text(this.emptyStateTitle())
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#111827');
+            Text(this.emptyStateSubtitle())
+              .fontSize(14)
+              .lineHeight(22)
+              .fontColor('#6B7280');
+          }
+          .alignItems(HorizontalAlign.Center)
             .width('100%')
             .padding(16)
             .backgroundColor('#FFFFFF')
