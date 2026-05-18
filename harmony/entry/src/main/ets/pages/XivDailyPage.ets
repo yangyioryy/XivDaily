@@ -1,4 +1,6 @@
 import AppConstants from '../common/constants/AppConstants';
+import Context from '@ohos.app.ability.application';
+import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 import { ChatPage } from '../view/ChatPage';
 import { HomePage } from '../view/HomePage';
@@ -9,6 +11,29 @@ import { SettingsPage } from '../view/SettingsPage';
 @Component
 struct XivDailyPage {
   @State vm: AppViewModel = new AppViewModel();
+
+  aboutToAppear(): void {
+    this.applyThemeMode();
+  }
+
+  private applyThemeMode(): void {
+    const uiContext = this.getUIContext();
+    const hostContext = uiContext.getHostContext();
+    if (!hostContext) {
+      return;
+    }
+    const abilityContext = hostContext as ContextWithColorMode;
+    const themeMode = this.vm.settingsState.themeMode;
+    if (themeMode === 'dark') {
+      abilityContext.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
+      return;
+    }
+    if (themeMode === 'light') {
+      abilityContext.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT);
+      return;
+    }
+    abilityContext.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
+  }
 
   @Builder
   private tabLabel(index: number, icon: string, label: string) {
@@ -70,8 +95,19 @@ struct XivDailyPage {
     .onChange((index: number) => {
       this.vm.selectTab(index);
     })
+    .onAppear(() => {
+      this.applyThemeMode();
+    })
     .width('100%')
     .height('100%')
     .backgroundColor('#F7F9FD');
   }
+}
+
+interface ColorModeHostContext {
+  setColorMode(colorMode: number): void;
+}
+
+interface ContextWithColorMode extends Context {
+  setColorMode(colorMode: number): void;
 }

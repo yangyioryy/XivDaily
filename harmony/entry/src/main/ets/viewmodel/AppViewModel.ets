@@ -80,6 +80,44 @@ export class AppViewModel {
     }
   }
 
+  addCustomTag(tag: string): void {
+    const normalizedTag = this.normalizeCustomTag(tag);
+    if (normalizedTag.length === 0) {
+      this.pushHomeAction('请输入标签名称');
+      return;
+    }
+    if (this.homeState.categories.indexOf(normalizedTag) >= 0 || this.homeState.customTags.indexOf(normalizedTag) >= 0) {
+      this.pushHomeAction('标签已存在');
+      return;
+    }
+
+    const nextTags = this.homeState.customTags.concat([normalizedTag]);
+    this.settingsState.customTags = nextTags;
+    this.persistLocalSettings();
+    this.applyLocalSettings(this.settingsState);
+    this.homeState.selectedCategory = normalizedTag;
+    this.homeState.dismissedSummary = false;
+    void this.refreshFeed();
+    this.pushHomeAction(`已添加标签：${normalizedTag}`);
+  }
+
+  deleteCustomTag(tag: string): void {
+    if (this.homeState.customTags.indexOf(tag) < 0) {
+      return;
+    }
+
+    const nextTags = this.homeState.customTags.filter((item: string) => item !== tag);
+    this.settingsState.customTags = nextTags;
+    this.persistLocalSettings();
+    this.applyLocalSettings(this.settingsState);
+    if (this.homeState.selectedCategory === tag) {
+      this.homeState.selectedCategory = this.homeState.categories[0] ?? 'cs.CV';
+    }
+    this.homeState.dismissedSummary = false;
+    void this.refreshFeed();
+    this.pushHomeAction(`已删除标签：${tag}`);
+  }
+
   toggleAbstract(paperId: string): void {
     const existed = this.homeState.expandedAbstractPaperIds.indexOf(paperId) >= 0;
     this.homeState.expandedAbstractPaperIds = existed
@@ -813,6 +851,10 @@ export class AppViewModel {
 
   private toCustomTagSearchKeyword(value: string): string {
     return value.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  private normalizeCustomTag(value: string): string {
+    return value.trim().replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase();
   }
 
   private pushHomeAction(text: string): void {

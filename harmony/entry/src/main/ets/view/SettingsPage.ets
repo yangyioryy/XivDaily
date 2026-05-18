@@ -1,9 +1,29 @@
 import AppConstants from '../common/constants/AppConstants';
+import Context from '@ohos.app.ability.application';
+import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
 @Component
 export struct SettingsPage {
   @ObjectLink vm: AppViewModel;
+
+  private applyThemeMode(themeMode: string): void {
+    const uiContext = this.getUIContext();
+    const hostContext = uiContext.getHostContext();
+    if (!hostContext) {
+      return;
+    }
+    const abilityContext = hostContext as ContextWithColorMode;
+    if (themeMode === 'dark') {
+      abilityContext.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
+      return;
+    }
+    if (themeMode === 'light') {
+      abilityContext.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT);
+      return;
+    }
+    abilityContext.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
+  }
 
   private themeModeLabel(): string {
     if (this.vm.settingsState.themeMode === 'dark') {
@@ -312,11 +332,20 @@ export struct SettingsPage {
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
           .fontColor('#111827');
-        this.settingRow('✦', '跟随系统', '当前已选中则不会主动覆盖系统主题', undefined, () => this.vm.selectThemeMode('system'));
+        this.settingRow('✦', '跟随系统', '当前已选中则不会主动覆盖系统主题', undefined, () => {
+          this.vm.selectThemeMode('system');
+          this.applyThemeMode('system');
+        });
         Divider().color('#EEF2F7');
-        this.settingRow('☀', '浅色', '点击切换到浅色主题', undefined, () => this.vm.selectThemeMode('light'));
+        this.settingRow('☀', '浅色', '点击切换到浅色主题', undefined, () => {
+          this.vm.selectThemeMode('light');
+          this.applyThemeMode('light');
+        });
         Divider().color('#EEF2F7');
-        this.settingRow('☾', '深色', '点击切换到深色主题', undefined, () => this.vm.selectThemeMode('dark'));
+        this.settingRow('☾', '深色', '点击切换到深色主题', undefined, () => {
+          this.vm.selectThemeMode('dark');
+          this.applyThemeMode('dark');
+        });
         Row() {
           Blank();
           this.formActionButton('关闭', false, false, () => this.vm.hideThemePicker());
@@ -562,4 +591,12 @@ export struct SettingsPage {
     .alignItems(HorizontalAlign.Start)
     .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
   }
+}
+
+interface ColorModeHostContext {
+  setColorMode(colorMode: number): void;
+}
+
+interface ContextWithColorMode extends Context {
+  setColorMode(colorMode: number): void;
 }
