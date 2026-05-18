@@ -50,6 +50,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -368,6 +370,8 @@ private fun ChatInputBar(
     onSend: () -> Unit,
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue(value)) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(value) {
         if (value != textFieldValue.text) {
@@ -386,6 +390,15 @@ private fun ChatInputBar(
         }
     }
 
+    // 在发送动作的最早时机收起 IME 与焦点，强制 IME 结束 composing。
+    // 否则中文输入法可能在 onValueChange 中把残留候选回填到刚清空的 inputDraft。
+    val triggerSend: () -> Unit = {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        textFieldValue = TextFieldValue("")
+        onSend()
+    }
+
     OutlinedTextField(
         value = textFieldValue,
         onValueChange = { next ->
@@ -402,7 +415,7 @@ private fun ChatInputBar(
         maxLines = 4,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
         trailingIcon = {
-            IconButton(onClick = onSend, enabled = !sending) {
+            IconButton(onClick = triggerSend, enabled = !sending) {
                 Icon(imageVector = Icons.AutoMirrored.Rounded.Send, contentDescription = "发送")
             }
         },

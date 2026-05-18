@@ -21,6 +21,7 @@ data class HomeUiState(
     val searchKeyword: String = "",
     val papers: List<PaperItem> = emptyList(),
     val translatingPaperIds: Set<String> = emptySet(),
+    val syncingPaperIds: Set<String> = emptySet(),
     val translationErrors: Map<String, String> = emptyMap(),
     val listStatus: String = "ok",
     val listWarning: String? = null,

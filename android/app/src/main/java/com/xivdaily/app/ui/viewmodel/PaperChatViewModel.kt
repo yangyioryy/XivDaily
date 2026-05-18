@@ -57,6 +57,11 @@ class PaperChatViewModel(
     }
 
     fun updateInput(value: String) {
+        // 处于发送中状态时拒绝任何输入回写，避免中文 IME 在送出后用残留 composing 触发的
+        // onValueChange 把刚清空的对话框再次填回。
+        if (_uiState.value.isSending) {
+            return
+        }
         _uiState.update { it.copy(inputDraft = value, errorMessage = null) }
     }
 

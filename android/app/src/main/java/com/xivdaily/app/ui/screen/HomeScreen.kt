@@ -43,6 +43,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -186,6 +187,7 @@ fun HomeScreen(
                 HomePaperCard(
                     paper = paper,
                     isTranslating = paper.id in uiState.translatingPaperIds,
+                    isSyncing = paper.id in uiState.syncingPaperIds,
                     translationError = uiState.translationErrors[paper.id],
                     isAbstractExpanded = paper.id in uiState.expandedAbstractPaperIds,
                     onOpenPaper = { uriHandler.openUri(paper.sourceUrl) },
@@ -524,6 +526,7 @@ private fun TrendSummaryCard(
 private fun HomePaperCard(
     paper: PaperItem,
     isTranslating: Boolean,
+    isSyncing: Boolean,
     translationError: String?,
     isAbstractExpanded: Boolean,
     onOpenPaper: () -> Unit,
@@ -653,8 +656,10 @@ private fun HomePaperCard(
                         if (paper.zoteroSyncState != "synced") {
                             ActionButton(
                                 icon = Icons.Rounded.Sync,
-                                label = "同步",
+                                label = if (isSyncing) "同步中..." else "同步",
                                 onClick = onSyncToZotero,
+                                isLoading = isSyncing,
+                                enabled = !isSyncing,
                             )
                         }
                     }
@@ -896,21 +901,32 @@ private fun ActionButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     onClick: () -> Unit,
+    isLoading: Boolean = false,
+    enabled: Boolean = true,
 ) {
     val spacing = MaterialTheme.xivSpacing
     Button(
         onClick = onClick,
+        enabled = enabled,
         shape = MaterialTheme.shapes.medium,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         ),
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            modifier = Modifier.size(16.dp),
-        )
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        } else {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(16.dp),
+            )
+        }
         Spacer(modifier = Modifier.size(spacing.xs))
         Text(text = label, style = MaterialTheme.typography.labelLarge)
     }

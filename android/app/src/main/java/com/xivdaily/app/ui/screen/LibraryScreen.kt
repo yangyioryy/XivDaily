@@ -33,6 +33,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -155,6 +156,7 @@ fun LibraryScreen(
             FavoritePaperCard(
                 favorite = favorite,
                 selected = favorite.paper.id in uiState.selectedPaperIds,
+                isSyncing = favorite.paper.id in uiState.syncingPaperIds,
                 onToggleSelection = { onToggleSelection(favorite.paper.id) },
                 onDeleteFavorite = { onDeleteFavorite(favorite.paper.id) },
                 onSyncFavorite = { onSyncFavorite(favorite.paper.id) },
@@ -391,6 +393,7 @@ private fun EmptyLibraryStateCard(
 private fun FavoritePaperCard(
     favorite: FavoritePaperItem,
     selected: Boolean,
+    isSyncing: Boolean,
     onToggleSelection: () -> Unit,
     onDeleteFavorite: () -> Unit,
     onSyncFavorite: () -> Unit,
@@ -470,19 +473,30 @@ private fun FavoritePaperCard(
                 if (favorite.paper.zoteroSyncState != "synced") {
                     Button(
                         onClick = onSyncFavorite,
+                        enabled = !isSyncing,
                         shape = MaterialTheme.shapes.medium,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         ),
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Sync,
-                            contentDescription = "同步 Zotero",
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(modifier = Modifier.size(spacing.xs))
-                        Text("同步 Zotero")
+                        if (isSyncing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            Spacer(modifier = Modifier.size(spacing.xs))
+                            Text("同步中...")
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.Sync,
+                                contentDescription = "同步 Zotero",
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(modifier = Modifier.size(spacing.xs))
+                            Text("同步 Zotero")
+                        }
                     }
                 }
                 Button(

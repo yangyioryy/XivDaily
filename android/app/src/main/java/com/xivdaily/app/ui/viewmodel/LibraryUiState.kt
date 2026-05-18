@@ -7,6 +7,7 @@ data class LibraryUiState(
     val selectedPaperIds: Set<String> = emptySet(),
     val isBatchMode: Boolean = false,
     val syncFilter: String = "all",
+    val syncingPaperIds: Set<String> = emptySet(),
     val exportContent: String? = null,
     val actionMessage: String? = null,
     val errorMessage: String? = null,

@@ -259,12 +259,21 @@ class HomeViewModel(
             showActionMessage("这篇论文已经同步到 Zotero")
             return
         }
+        if (paper.id in _uiState.value.syncingPaperIds) {
+            // 防止用户在同步进行中重复点击触发并发请求。
+            return
+        }
+        _uiState.update { state ->
+            state.copy(syncingPaperIds = state.syncingPaperIds + paper.id, errorMessage = null)
+        }
+        showActionMessage("正在同步到 Zotero...")
         viewModelScope.launch {
             runCatching { repository.syncPaperToZotero(paper) }
                 .onSuccess { synced ->
                     _uiState.update { state ->
                         state.copy(
                             papers = state.papers.map { if (it.id == synced.id) synced else it },
+                            syncingPaperIds = state.syncingPaperIds - paper.id,
                             errorMessage = null,
                         )
                     }
@@ -276,7 +285,12 @@ class HomeViewModel(
                         }
                     )
                 }
-                .onFailure { error -> setError(mapUserFriendlyError("Zotero 同步暂时失败", error)) }
+                .onFailure { error ->
+                    _uiState.update { state ->
+                        state.copy(syncingPaperIds = state.syncingPaperIds - paper.id)
+                    }
+                    setError(mapUserFriendlyError("Zotero 同步暂时失败", error))
+                }
         }
     }
 

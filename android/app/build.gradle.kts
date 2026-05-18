@@ -10,6 +10,14 @@ val releaseBackendBaseUrl = providers.gradleProperty("xivdaily.releaseBaseUrl")
 val debugBackendBaseUrl = providers.gradleProperty("xivdaily.debugBaseUrl")
     .orElse("http://10.0.2.2:8000/")
 
+// release 签名信息全部来自 local.properties / -P 参数，避免把 keystore 路径与密码提交进仓库。
+val releaseStoreFile = providers.gradleProperty("xivdaily.releaseStoreFile")
+val releaseStorePassword = providers.gradleProperty("xivdaily.releaseStorePassword")
+val releaseKeyAlias = providers.gradleProperty("xivdaily.releaseKeyAlias")
+val releaseKeyPassword = providers.gradleProperty("xivdaily.releaseKeyPassword")
+val hasReleaseSigning = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+    .all { it.isPresent }
+
 android {
     namespace = "com.xivdaily.app"
     compileSdk = 36
@@ -28,6 +36,17 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile.get())
+                storePassword = releaseStorePassword.get()
+                keyAlias = releaseKeyAlias.get()
+                keyPassword = releaseKeyPassword.get()
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // 本地联调只允许通过 debug 构建访问模拟器映射出来的宿主机服务。
@@ -37,6 +56,12 @@ android {
             isMinifyEnabled = false
             // release 地址必须由构建参数覆盖，避免把开发地址带进正式包。
             buildConfigField("String", "BACKEND_BASE_URL", "\"${releaseBackendBaseUrl.get()}\"")
+            // 缺少 release keystore 时退回 debug 签名，但只允许在本机出"可装"包，CI/正式渠道仍需配齐。
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 

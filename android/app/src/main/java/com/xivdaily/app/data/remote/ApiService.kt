@@ -52,7 +52,10 @@ interface ApiService {
     suspend fun testLlmConfig(): ConfigTestResultDto
 
     @POST("zotero/sync/{paper_id}")
-    suspend fun syncPaperToZotero(@Path("paper_id") paperId: String): ZoteroSyncDto
+    suspend fun syncPaperToZotero(
+        @Path("paper_id") paperId: String,
+        @Body paper: PaperSyncPayloadDto,
+    ): ZoteroSyncDto
 
     @POST("zotero/exports/bibtex")
     suspend fun exportBibtex(@Body request: BibtexExportRequestDto): BibtexExportResponseDto
@@ -217,6 +220,19 @@ data class ZoteroSyncDto(
     @Json(name = "zotero_item_key") val zoteroItemKey: String?,
     val message: String?,
     @Json(name = "synced_at") val syncedAt: String?,
+)
+
+data class PaperSyncPayloadDto(
+    val id: String,
+    val title: String,
+    val authors: List<String>,
+    val summary: String,
+    @Json(name = "published_at") val publishedAt: String,
+    @Json(name = "updated_at") val updatedAt: String?,
+    val categories: List<String>,
+    @Json(name = "primary_category") val primaryCategory: String,
+    @Json(name = "source_url") val sourceUrl: String,
+    @Json(name = "pdf_url") val pdfUrl: String,
 )
 
 data class BibtexExportRequestDto(

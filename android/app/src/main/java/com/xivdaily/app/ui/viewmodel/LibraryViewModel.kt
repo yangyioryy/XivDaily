@@ -91,17 +91,36 @@ class LibraryViewModel(private val repository: FavoritePaperRepositoryContract) 
             }
             return
         }
+        if (paperId in _uiState.value.syncingPaperIds) {
+            // 防止用户在同步进行中重复点击触发并发请求。
+            return
+        }
+        _uiState.update {
+            it.copy(
+                syncingPaperIds = it.syncingPaperIds + paperId,
+                actionMessage = "正在同步到 Zotero...",
+                errorMessage = null,
+            )
+        }
         viewModelScope.launch {
             runCatching { repository.syncFavoriteToZotero(paperId) }
                 .onSuccess { synced ->
                     _uiState.update {
                         it.copy(
+                            syncingPaperIds = it.syncingPaperIds - paperId,
                             actionMessage = "已同步到 Zotero：${synced.title}",
                             errorMessage = null,
                         )
                     }
                 }
-                .onFailure { error -> setError(mapLibraryError("收藏同步暂时失败", error)) }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            syncingPaperIds = it.syncingPaperIds - paperId,
+                            errorMessage = mapLibraryError("收藏同步暂时失败", error),
+                        )
+                    }
+                }
         }
     }
 

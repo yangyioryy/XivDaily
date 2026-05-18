@@ -19,6 +19,7 @@ import com.xivdaily.app.data.remote.PaperChatMessageDto
 import com.xivdaily.app.data.remote.PaperChatPaperDto
 import com.xivdaily.app.data.remote.PaperChatRequestDto
 import com.xivdaily.app.data.remote.PaperDto
+import com.xivdaily.app.data.remote.PaperSyncPayloadDto
 import com.xivdaily.app.data.remote.TranslationRequestDto
 import com.xivdaily.app.data.remote.ZoteroConfigSaveRequestDto
 import java.time.Instant
@@ -144,7 +145,20 @@ class PaperRepository(
     override suspend fun syncPaperToZotero(paper: PaperItem): PaperItem {
         // 同步前先落本地收藏，保证同步状态回写有稳定记录。
         saveFavorite(paper.copy(favoriteState = true))
-        val result = apiService.syncPaperToZotero(paper.id)
+        // 把已知元数据直接传到后端，避免后端再去 arXiv 反查触发频控导致同步失败。
+        val payload = PaperSyncPayloadDto(
+            id = paper.id,
+            title = paper.title,
+            authors = paper.authors,
+            summary = paper.summary,
+            publishedAt = paper.publishedAt,
+            updatedAt = paper.updatedAt,
+            categories = listOf(paper.primaryCategory).filter { it.isNotBlank() },
+            primaryCategory = paper.primaryCategory,
+            sourceUrl = paper.sourceUrl,
+            pdfUrl = paper.pdfUrl,
+        )
+        val result = apiService.syncPaperToZotero(paper.id, payload)
         val nextState = result.status.ifBlank { "failed" }
         favoritePaperDao.updateZoteroSyncState(paper.id, nextState)
         return paper.copy(favoriteState = true, zoteroSyncState = nextState)
