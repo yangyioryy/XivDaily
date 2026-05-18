@@ -191,7 +191,7 @@ D:\AndroidSdk\platform-tools\adb.exe shell am start -n com.xivdaily.app/.MainAct
 | `DATABASE_URL`                        | 后端数据库连接                      | `sqlite:///./data/xivdaily.db`  |
 | `LLM_BASE_URL`                        | LLM 服务地址（OpenAI 兼容）         | `https://example.com`           |
 | `LLM_API_KEY`                         | LLM API Key                         | `sk-...`                        |
-| `LLM_MODEL`                           | LLM 模型名                          | `glm5`                          |
+| `LLM_MODEL`                           | LLM 模型名                          | `grok-4.20-0309-non-reasoning`  |
 | `LLM_REQUEST_TIMEOUT_SECONDS`         | LLM 单次请求超时（秒）              | `60`                            |
 | `PAPER_CHAT_CONTEXT_CHARS_PER_PAPER`  | 每篇论文进入对话的字符上限          | `12000`                         |
 | `ZOTERO_BASE_URL`                     | Zotero Web API 地址                 | `https://api.zotero.org`        |
