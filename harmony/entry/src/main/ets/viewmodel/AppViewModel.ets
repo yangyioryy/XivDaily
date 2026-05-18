@@ -1,10 +1,13 @@
 import {
   FavoritePaperItem,
+  HomeActionMessage,
   HomeUiState,
   LibraryUiState,
+  PaperChatMessage,
   PaperChatUiState,
   PaperItem,
-  SettingsStatus
+  SettingsStatus,
+  ZoteroSyncState
 } from '../model/AppModels';
 import {
   createDefaultChatState,
@@ -27,38 +30,24 @@ export class AppViewModel {
   private nextActionMessageId: number = 1;
 
   constructor() {
-    this.settingsState = paperService.mergeSettingsStatus(createDefaultSettingsStatus());
     preferenceService.initialize(this.settingsState);
-    favoriteStoreService.initialize(paperService.listFavorites());
-    this.bootstrap();
+    const storedFavorites = favoriteStoreService.read([]);
+    favoriteStoreService.initialize(storedFavorites);
+    this.applyLocalSettings(preferenceService.read(this.settingsState));
+    this.refreshFavorites();
+    void this.bootstrap();
   }
 
-  private bootstrap(): void {
-    this.refreshHome();
-    this.refreshFavorites();
-    this.refreshSettings();
+  private async bootstrap(): Promise<void> {
+    await Promise.all([
+      this.refreshHome(),
+      this.refreshTrendSummary(),
+      this.refreshIntegrationStatus(false)
+    ]);
   }
 
   selectTab(index: number): void {
     this.selectedTab = index;
-  }
-
-  refreshHome(): void {
-    this.homeState.isLoading = true;
-    const result = paperService.listHomePapers({
-      keyword: this.homeState.searchKeyword.length > 0 ? this.homeState.searchKeyword : undefined,
-      category: this.homeState.selectedCategory,
-      days: this.homeState.searchKeyword.length > 0 ? undefined : this.homeState.selectedDays,
-      page: 1,
-      pageSize: 20
-    });
-    this.homeState.papers = result.items;
-    this.homeState.listStatus = result.status;
-    this.homeState.listWarning = result.warning;
-    this.homeState.emptyReason = result.emptyReason;
-    this.homeState.trendSummary = paperService.getTrendSummary();
-    this.homeState.isLoading = false;
-    this.homeState.isSummaryLoading = false;
   }
 
   updateSearchKeywordDraft(value: string): void {
@@ -67,24 +56,27 @@ export class AppViewModel {
 
   submitSearch(): void {
     this.homeState.searchKeyword = this.homeState.searchKeywordDraft.trim();
-    this.refreshHome();
+    void this.refreshHome();
   }
 
   clearSearch(): void {
     this.homeState.searchKeyword = '';
     this.homeState.searchKeywordDraft = '';
-    this.refreshHome();
+    void this.refreshHome();
   }
 
   selectCategory(category: string): void {
     this.homeState.selectedCategory = category;
-    this.refreshHome();
+    this.homeState.dismissedSummary = false;
+    this.homeState.errorMessage = undefined;
+    this.homeState.trendErrorMessage = undefined;
+    void this.refreshFeed();
   }
 
   selectDays(days: number): void {
     this.homeState.selectedDays = days;
-    if (this.homeState.searchKeyword.length === 0) {
-      this.refreshHome();
+    if (!this.isSearchActive()) {
+      void this.refreshHome();
     }
   }
 
@@ -103,7 +95,62 @@ export class AppViewModel {
     this.homeState.dismissedSummary = true;
   }
 
-  translatePaper(paperId: string): void {
+  async refreshFeed(): Promise<void> {
+    await Promise.all([
+      this.refreshHome(),
+      this.refreshTrendSummary()
+    ]);
+  }
+
+  async refreshHome(): Promise<void> {
+    const searchKeyword = this.homeState.searchKeyword.trim();
+    // 搜索态下沿用 Android 的语义：关键词优先，时间窗口仅服务无关键词首页流。
+    const keyword = searchKeyword.length > 0
+      ? searchKeyword
+      : this.isSelectedCategoryCustomTag()
+        ? this.toCustomTagSearchKeyword(this.homeState.selectedCategory)
+        : undefined;
+    const category = this.isSelectedCategoryCustomTag() ? undefined : this.homeState.selectedCategory;
+    const days = keyword ? undefined : this.homeState.selectedDays;
+
+    this.homeState.isLoading = true;
+    this.homeState.errorMessage = undefined;
+
+    try {
+      const result = await paperService.listHomePapers({
+        keyword: keyword,
+        category: category,
+        days: days,
+        page: 1,
+        pageSize: 20
+      });
+
+      this.homeState.papers = this.mergeHomePapersWithLocalFavorites(result.items);
+      this.homeState.listStatus = result.status;
+      this.homeState.listWarning = result.warning;
+      this.homeState.emptyReason = result.emptyReason;
+    } catch (error) {
+      this.homeState.errorMessage = mapUserFriendlyError('论文列表暂时无法刷新', error);
+    } finally {
+      this.homeState.isLoading = false;
+    }
+  }
+
+  private async refreshTrendSummary(): Promise<void> {
+    this.homeState.isSummaryLoading = true;
+    const category = this.isSelectedCategoryCustomTag() ? undefined : this.homeState.selectedCategory;
+
+    try {
+      this.homeState.trendSummary = await paperService.getTrendSummary(category);
+      this.homeState.trendErrorMessage = undefined;
+    } catch (error) {
+      this.homeState.trendErrorMessage = mapUserFriendlyError('趋势摘要暂时不可用', error);
+    } finally {
+      this.homeState.isSummaryLoading = false;
+    }
+  }
+
+  async translatePaper(paperId: string): Promise<void> {
     const paper = this.homeState.papers.find((item: PaperItem) => item.id === paperId);
     if (!paper) {
       return;
@@ -112,9 +159,30 @@ export class AppViewModel {
       this.pushHomeAction('请先展开摘要');
       return;
     }
-    const translated = paperService.translatePaper(paper);
-    this.homeState.papers = this.homeState.papers.map((item: PaperItem) => item.id === paperId ? translated : item);
-    this.pushHomeAction('摘要翻译已完成');
+    if (paper.translatedSummary && paper.translatedSummary.length > 0) {
+      this.pushHomeAction('已显示中文翻译');
+      return;
+    }
+    if (this.homeState.translatingPaperIds.indexOf(paperId) >= 0) {
+      return;
+    }
+
+    this.homeState.translatingPaperIds = [...this.homeState.translatingPaperIds, paperId];
+    this.homeState.translationErrors = this.copyTranslationErrorsWithout(paperId);
+
+    try {
+      const translated = await paperService.translatePaper(paper);
+      this.homeState.papers = this.homeState.papers.map((item: PaperItem) => {
+        return item.id === paperId ? translated : item;
+      });
+      this.pushHomeAction('摘要翻译已完成');
+    } catch (error) {
+      const nextErrors = this.copyTranslationErrorsWithout('');
+      nextErrors[paperId] = mapUserFriendlyError('摘要翻译暂时不可用', error);
+      this.homeState.translationErrors = nextErrors;
+    } finally {
+      this.homeState.translatingPaperIds = this.homeState.translatingPaperIds.filter((id: string) => id !== paperId);
+    }
   }
 
   toggleFavorite(paperId: string): void {
@@ -122,32 +190,64 @@ export class AppViewModel {
     if (!paper) {
       return;
     }
+
     const nextFavoriteState = !paper.favoriteState;
-    const updatedPaper: PaperItem = {
-      ...paper,
-      favoriteState: nextFavoriteState
-    };
-    this.homeState.papers = this.homeState.papers.map((item: PaperItem) => item.id === paperId ? updatedPaper : item);
+    const updatedPaper = this.withFavoriteState(paper, nextFavoriteState);
+
     if (nextFavoriteState) {
-      favoriteStoreService.saveFavorite(updatedPaper);
+      this.upsertFavorite(updatedPaper);
       this.pushHomeAction('已收藏');
     } else {
       favoriteStoreService.deleteFavorite(paperId);
       this.pushHomeAction('已取消收藏');
     }
+
+    this.homeState.papers = this.homeState.papers.map((item: PaperItem) => {
+      return item.id === paperId ? updatedPaper : item;
+    });
     this.refreshFavorites();
   }
 
+  async syncToZotero(paperId: string): Promise<void> {
+    const paper = this.homeState.papers.find((item: PaperItem) => item.id === paperId);
+    if (!paper) {
+      return;
+    }
+    if (paper.zoteroSyncState === 'synced') {
+      this.pushHomeAction('这篇论文已经同步到 Zotero');
+      return;
+    }
+    if (this.homeState.syncingPaperIds.indexOf(paperId) >= 0) {
+      return;
+    }
+
+    this.homeState.syncingPaperIds = [...this.homeState.syncingPaperIds, paperId];
+    this.pushHomeAction('正在同步到 Zotero...');
+
+    try {
+      const result = await paperService.syncPaperToZotero(paper);
+      this.homeState.papers = this.homeState.papers.map((item: PaperItem) => {
+        return item.id === paperId ? result.paper : item;
+      });
+      this.upsertFavorite(result.paper);
+      this.refreshFavorites();
+      this.pushHomeAction(result.paper.zoteroSyncState === 'synced' ? '已同步到 Zotero' : (result.message ?? 'Zotero 同步暂未完成'));
+    } catch (error) {
+      this.homeState.errorMessage = mapUserFriendlyError('Zotero 同步暂时失败', error);
+    } finally {
+      this.homeState.syncingPaperIds = this.homeState.syncingPaperIds.filter((id: string) => id !== paperId);
+    }
+  }
+
   refreshFavorites(): void {
-    const favorites = favoriteStoreService.read(paperService.listFavorites());
-    this.libraryState = {
-      ...this.libraryState,
-      favorites
-    };
-    this.chatState = {
-      ...this.chatState,
-      favorites
-    };
+    const favorites = favoriteStoreService.read([]);
+    const favoriteIds = favorites.map((item: FavoritePaperItem) => item.paper.id);
+
+    this.libraryState.favorites = favorites;
+    this.libraryState.selectedPaperIds = this.libraryState.selectedPaperIds.filter((id: string) => favoriteIds.indexOf(id) >= 0);
+    this.chatState.favorites = favorites;
+    this.chatState.selectedPaperIds = this.chatState.selectedPaperIds.filter((id: string) => favoriteIds.indexOf(id) >= 0);
+    this.homeState.papers = this.mergeHomePapersWithLocalFavorites(this.homeState.papers);
   }
 
   toggleLibrarySelection(paperId: string): void {
@@ -161,29 +261,37 @@ export class AppViewModel {
     this.libraryState.syncFilter = filter;
   }
 
-  exportSelectedBibtex(): void {
-    const favorites = this.libraryState.favorites.filter((item: FavoritePaperItem) => {
-      return this.libraryState.selectedPaperIds.indexOf(item.paper.id) >= 0;
-    });
-    if (favorites.length === 0) {
+  async exportSelectedBibtex(): Promise<void> {
+    if (this.libraryState.selectedPaperIds.length === 0) {
       this.libraryState.errorMessage = '请先选择要导出的论文';
       return;
     }
-    this.libraryState.exportContent = paperService.exportBibtex(favorites);
-    this.libraryState.actionMessage = 'BibTeX 已生成';
+
+    try {
+      this.libraryState.exportContent = await paperService.exportBibtex(this.libraryState.selectedPaperIds);
+      this.libraryState.actionMessage = 'BibTeX 已生成';
+      this.libraryState.errorMessage = undefined;
+    } catch (error) {
+      this.libraryState.errorMessage = mapUserFriendlyError('导出暂时失败', error);
+    }
   }
 
   deleteFavorite(paperId: string): void {
     favoriteStoreService.deleteFavorite(paperId);
     this.refreshFavorites();
+    this.homeState.papers = this.homeState.papers.map((item: PaperItem) => {
+      return item.id === paperId ? this.withFavoriteState(item, false) : item;
+    });
     this.libraryState.selectedPaperIds = this.libraryState.selectedPaperIds.filter((id: string) => id !== paperId);
     this.libraryState.actionMessage = '已删除收藏';
+    this.libraryState.errorMessage = undefined;
   }
 
   toggleChatPaper(paperId: string): void {
     const existed = this.chatState.selectedPaperIds.indexOf(paperId) >= 0;
     if (existed) {
       this.chatState.selectedPaperIds = this.chatState.selectedPaperIds.filter((id: string) => id !== paperId);
+      this.chatState.errorMessage = undefined;
       return;
     }
     if (this.chatState.selectedPaperIds.length >= 3) {
@@ -195,14 +303,19 @@ export class AppViewModel {
   }
 
   updateChatDraft(value: string): void {
+    if (this.chatState.isSending) {
+      return;
+    }
     this.chatState.inputDraft = value;
+    this.chatState.errorMessage = undefined;
   }
 
-  sendChatMessage(): void {
+  async sendChatMessage(): Promise<void> {
     const selectedPapers = this.chatState.favorites.filter((item: FavoritePaperItem) => {
       return this.chatState.selectedPaperIds.indexOf(item.paper.id) >= 0;
     });
     const question = this.chatState.inputDraft.trim();
+
     if (selectedPapers.length === 0) {
       this.chatState.errorMessage = '请先选择至少一篇收藏论文';
       return;
@@ -211,39 +324,524 @@ export class AppViewModel {
       this.chatState.errorMessage = '请输入要询问的问题';
       return;
     }
-    this.chatState.isSending = true;
-    const result = paperService.chatWithPapers(selectedPapers, question);
-    this.chatState.messages = result.messages;
-    this.chatState.usedPapers = result.usedPapers;
-    this.chatState.warningMessage = result.warning;
+
+    const userMessage: PaperChatMessage = {
+      role: 'user',
+      content: question
+    };
+    const nextMessages: PaperChatMessage[] = this.chatState.messages.concat([userMessage]);
+
+    this.chatState.messages = nextMessages;
     this.chatState.inputDraft = '';
-    this.chatState.isSending = false;
+    this.chatState.isSending = true;
     this.chatState.errorMessage = undefined;
+    this.chatState.warningMessage = undefined;
+
+    try {
+      const result = await paperService.chatWithPapers(selectedPapers, nextMessages);
+      const assistantMessage: PaperChatMessage = {
+        role: 'assistant',
+        content: result.answer
+      };
+      this.chatState.messages = nextMessages.concat([assistantMessage]);
+      this.chatState.usedPapers = result.usedPapers;
+      this.chatState.warningMessage = result.warning;
+    } catch (error) {
+      this.chatState.errorMessage = mapUserFriendlyError('论文对话暂时失败', error);
+    } finally {
+      this.chatState.isSending = false;
+    }
   }
 
-  refreshSettings(): void {
-    this.settingsState = preferenceService.read(this.settingsState);
+  clearConversation(): void {
+    this.chatState.messages = [];
+    this.chatState.usedPapers = [];
+    this.chatState.warningMessage = undefined;
+    this.chatState.errorMessage = undefined;
   }
 
   updateDefaultCategory(category: string): void {
     this.settingsState.defaultCategory = category;
-    this.settingsState = preferenceService.save(this.settingsState);
-    this.homeState.selectedCategory = category;
-    this.refreshHome();
+    this.persistLocalSettings();
+    this.applyLocalSettings(this.settingsState);
+    this.settingsState.actionMessage = '默认领域已更新';
+    this.settingsState.errorMessage = undefined;
+    void this.refreshFeed();
   }
 
   updateDefaultDays(days: number): void {
     this.settingsState.defaultDays = days;
-    this.settingsState = preferenceService.save(this.settingsState);
-    this.homeState.selectedDays = days;
-    this.refreshHome();
+    this.persistLocalSettings();
+    this.applyLocalSettings(this.settingsState);
+    this.settingsState.actionMessage = '默认时间窗口已更新';
+    this.settingsState.errorMessage = undefined;
+    void this.refreshHome();
+  }
+
+  showThemePicker(): void {
+    this.settingsState.isThemePickerVisible = true;
+    this.settingsState.errorMessage = undefined;
+  }
+
+  hideThemePicker(): void {
+    this.settingsState.isThemePickerVisible = false;
+  }
+
+  selectThemeMode(themeMode: string): void {
+    this.settingsState.themeMode = themeMode;
+    this.settingsState.isThemePickerVisible = false;
+    this.persistLocalSettings();
+    this.applyLocalSettings(this.settingsState);
+    this.settingsState.actionMessage = `主题已切换为${themeModeLabel(themeMode)}`;
+    this.settingsState.errorMessage = undefined;
+  }
+
+  showLanguagePicker(): void {
+    this.settingsState.isLanguagePickerVisible = true;
+    this.settingsState.errorMessage = undefined;
+  }
+
+  hideLanguagePicker(): void {
+    this.settingsState.isLanguagePickerVisible = false;
+  }
+
+  selectLanguage(language: string): void {
+    this.settingsState.language = language;
+    this.settingsState.isLanguagePickerVisible = false;
+    this.persistLocalSettings();
+    this.applyLocalSettings(this.settingsState);
+    this.settingsState.actionMessage = `语言已切换为${languageLabel(language)}`;
+    this.settingsState.errorMessage = undefined;
+  }
+
+  showZoteroDetailDialog(): void {
+    this.settingsState.isZoteroDetailDialogVisible = true;
+    this.settingsState.zoteroUserIdDraft = this.settingsState.zoteroUserId ?? '';
+    this.settingsState.zoteroLibraryTypeDraft = this.settingsState.zoteroLibraryType ?? 'user';
+    this.settingsState.zoteroApiKeyDraft = '';
+    this.settingsState.zoteroTargetCollectionNameDraft = this.settingsState.zoteroTargetCollectionName;
+    this.settingsState.errorMessage = undefined;
+  }
+
+  hideZoteroDetailDialog(): void {
+    this.settingsState.isZoteroDetailDialogVisible = false;
+  }
+
+  showLlmDetailDialog(): void {
+    this.settingsState.isLlmDetailDialogVisible = true;
+    this.settingsState.llmBaseUrlDraft = this.settingsState.llmBaseUrl;
+    this.settingsState.llmApiKeyDraft = '';
+    this.settingsState.llmModelDraft = this.settingsState.llmModel;
+    this.settingsState.errorMessage = undefined;
+  }
+
+  hideLlmDetailDialog(): void {
+    this.settingsState.isLlmDetailDialogVisible = false;
+  }
+
+  updateZoteroUserIdDraft(value: string): void {
+    this.settingsState.zoteroUserIdDraft = value;
+  }
+
+  updateZoteroLibraryTypeDraft(value: string): void {
+    this.settingsState.zoteroLibraryTypeDraft = value;
+  }
+
+  updateZoteroApiKeyDraft(value: string): void {
+    this.settingsState.zoteroApiKeyDraft = value;
+  }
+
+  updateZoteroCollectionDraft(value: string): void {
+    this.settingsState.zoteroTargetCollectionNameDraft = value;
+  }
+
+  updateLlmBaseUrlDraft(value: string): void {
+    this.settingsState.llmBaseUrlDraft = value;
+  }
+
+  updateLlmApiKeyDraft(value: string): void {
+    this.settingsState.llmApiKeyDraft = value;
+  }
+
+  updateLlmModelDraft(value: string): void {
+    this.settingsState.llmModelDraft = value;
+  }
+
+  showAboutDialog(): void {
+    this.settingsState.isAboutDialogVisible = true;
+    this.settingsState.errorMessage = undefined;
+  }
+
+  hideAboutDialog(): void {
+    this.settingsState.isAboutDialogVisible = false;
+  }
+
+  showUpdateDialog(): void {
+    this.settingsState.isUpdateDialogVisible = true;
+    this.settingsState.errorMessage = undefined;
+  }
+
+  hideUpdateDialog(): void {
+    this.settingsState.isUpdateDialogVisible = false;
+  }
+
+  showClearCacheDialog(): void {
+    this.settingsState.isClearCacheDialogVisible = true;
+    this.settingsState.errorMessage = undefined;
+  }
+
+  hideClearCacheDialog(): void {
+    this.settingsState.isClearCacheDialogVisible = false;
+  }
+
+  clearCache(): void {
+    // 当前版本先提供真实反馈闭环，避免“可点但没有结果”的空入口。
+    this.settingsState.isClearCacheDialogVisible = false;
+    this.settingsState.cacheStatusText = '刚刚完成';
+    this.settingsState.actionMessage = '缓存已清理完成';
+    this.settingsState.errorMessage = undefined;
+  }
+
+  async refreshIntegrationStatusAction(): Promise<void> {
+    await this.refreshIntegrationStatus(true);
+  }
+
+  async saveZoteroConfig(): Promise<void> {
+    this.settingsState.isConfigBusy = true;
+    this.settingsState.errorMessage = undefined;
+
+    try {
+      const status = await paperService.saveZoteroConfig(
+        normalizeOptionalDraft(this.settingsState.zoteroUserIdDraft),
+        this.settingsState.zoteroLibraryTypeDraft.trim().length > 0 ? this.settingsState.zoteroLibraryTypeDraft.trim() : 'user',
+        normalizeOptionalDraft(this.settingsState.zoteroApiKeyDraft),
+        this.settingsState.zoteroTargetCollectionNameDraft.trim().length > 0
+          ? this.settingsState.zoteroTargetCollectionNameDraft.trim()
+          : 'XivDaily'
+      );
+      this.applyRemoteIntegrationStatus(status);
+      this.settingsState.isConfigBusy = false;
+      this.settingsState.isZoteroDetailDialogVisible = false;
+      this.settingsState.actionMessage = 'Zotero 配置已保存';
+      this.settingsState.errorMessage = undefined;
+    } catch (error) {
+      this.settingsState.isConfigBusy = false;
+      this.settingsState.errorMessage = mapUserFriendlyError('Zotero 配置保存失败', error);
+    }
+  }
+
+  async saveLlmConfig(): Promise<void> {
+    this.settingsState.isConfigBusy = true;
+    this.settingsState.errorMessage = undefined;
+
+    try {
+      const status = await paperService.saveLlmConfig(
+        this.settingsState.llmBaseUrlDraft.trim().length > 0 ? this.settingsState.llmBaseUrlDraft.trim() : DEFAULT_LLM_BASE_URL,
+        normalizeOptionalDraft(this.settingsState.llmApiKeyDraft),
+        this.settingsState.llmModelDraft.trim().length > 0 ? this.settingsState.llmModelDraft.trim() : DEFAULT_LLM_MODEL
+      );
+      this.applyRemoteIntegrationStatus(status);
+      this.settingsState.isConfigBusy = false;
+      this.settingsState.isLlmDetailDialogVisible = false;
+      this.settingsState.actionMessage = '大模型配置已保存';
+      this.settingsState.errorMessage = undefined;
+    } catch (error) {
+      this.settingsState.isConfigBusy = false;
+      this.settingsState.errorMessage = mapUserFriendlyError('大模型配置保存失败', error);
+    }
+  }
+
+  async testZoteroConfig(): Promise<void> {
+    this.settingsState.isConfigBusy = true;
+    this.settingsState.errorMessage = undefined;
+
+    try {
+      const result = await paperService.testZoteroConfig();
+      this.settingsState.isConfigBusy = false;
+      this.settingsState.actionMessage = result.ok ? result.message : undefined;
+      this.settingsState.errorMessage = result.ok ? undefined : result.message;
+    } catch (error) {
+      this.settingsState.isConfigBusy = false;
+      this.settingsState.errorMessage = mapUserFriendlyError('Zotero 连接测试失败', error);
+    }
+  }
+
+  async testLlmConfig(): Promise<void> {
+    this.settingsState.isConfigBusy = true;
+    this.settingsState.errorMessage = undefined;
+
+    try {
+      const result = await paperService.testLlmConfig();
+      this.settingsState.isConfigBusy = false;
+      this.settingsState.actionMessage = result.ok ? result.message : undefined;
+      this.settingsState.errorMessage = result.ok ? undefined : result.message;
+    } catch (error) {
+      this.settingsState.isConfigBusy = false;
+      this.settingsState.errorMessage = mapUserFriendlyError('大模型连接测试失败', error);
+    }
+  }
+
+  private async refreshIntegrationStatus(showSuccessMessage: boolean): Promise<void> {
+    try {
+      const remoteStatus = await paperService.getIntegrationConfigStatus();
+      this.applyRemoteIntegrationStatus(remoteStatus);
+      this.settingsState.integrationStatusFailed = false;
+      this.settingsState.errorMessage = undefined;
+      this.settingsState.actionMessage = showSuccessMessage ? '配置状态已刷新' : this.settingsState.actionMessage;
+    } catch (error) {
+      this.settingsState.integrationStatusFailed = true;
+      this.settingsState.zoteroTargetCollectionStatus = 'error';
+      this.settingsState.errorMessage = mapUserFriendlyError('配置状态刷新失败', error);
+    }
+  }
+
+  private applyLocalSettings(nextSettings: SettingsStatus): void {
+    this.settingsState.defaultCategory = nextSettings.defaultCategory;
+    this.settingsState.customTags = nextSettings.customTags.slice();
+    this.settingsState.defaultDays = nextSettings.defaultDays;
+    this.settingsState.themeMode = nextSettings.themeMode;
+    this.settingsState.hasSeenOnboarding = nextSettings.hasSeenOnboarding;
+    this.settingsState.displayName = nextSettings.displayName;
+    this.settingsState.avatarPreset = nextSettings.avatarPreset;
+    this.settingsState.avatarImageUri = nextSettings.avatarImageUri;
+    this.settingsState.language = nextSettings.language;
+    this.settingsState.zoteroUserIdDraft = nextSettings.zoteroUserIdDraft;
+    this.settingsState.zoteroLibraryTypeDraft = nextSettings.zoteroLibraryTypeDraft;
+    this.settingsState.zoteroApiKeyDraft = nextSettings.zoteroApiKeyDraft;
+    this.settingsState.zoteroTargetCollectionNameDraft = nextSettings.zoteroTargetCollectionNameDraft;
+    this.settingsState.llmBaseUrlDraft = nextSettings.llmBaseUrlDraft;
+    this.settingsState.llmApiKeyDraft = nextSettings.llmApiKeyDraft;
+    this.settingsState.llmModelDraft = nextSettings.llmModelDraft;
+    this.settingsState.isThemePickerVisible = false;
+    this.settingsState.isLanguagePickerVisible = false;
+    this.settingsState.isZoteroDetailDialogVisible = false;
+    this.settingsState.isLlmDetailDialogVisible = false;
+    this.settingsState.isAboutDialogVisible = false;
+    this.settingsState.isUpdateDialogVisible = false;
+    this.settingsState.isClearCacheDialogVisible = false;
+    this.settingsState.cacheStatusText = nextSettings.cacheStatusText;
+    this.settingsState.actionMessage = undefined;
+    this.settingsState.errorMessage = undefined;
+
+    this.homeState.customTags = nextSettings.customTags.slice();
+    this.homeState.selectedDays = nextSettings.defaultDays;
+    const availableCategories = this.homeState.categories.concat(nextSettings.customTags);
+    if (availableCategories.indexOf(this.homeState.selectedCategory) < 0) {
+      this.homeState.selectedCategory = availableCategories[0] ?? 'cs.CV';
+    } else if (this.homeState.selectedCategory.indexOf('cs.') === 0) {
+      this.homeState.selectedCategory = availableCategories.indexOf(nextSettings.defaultCategory) >= 0
+        ? nextSettings.defaultCategory
+        : this.homeState.selectedCategory;
+    }
+  }
+
+  private persistLocalSettings(): void {
+    // 仅把本地偏好落盘，避免把瞬时错误提示等界面态写进持久层。
+    const nextSettings = this.cloneSettingsState(this.settingsState);
+    nextSettings.actionMessage = undefined;
+    nextSettings.errorMessage = undefined;
+    nextSettings.isConfigBusy = false;
+    nextSettings.isThemePickerVisible = false;
+    nextSettings.isLanguagePickerVisible = false;
+    nextSettings.isZoteroDetailDialogVisible = false;
+    nextSettings.isLlmDetailDialogVisible = false;
+    nextSettings.isAboutDialogVisible = false;
+    nextSettings.isUpdateDialogVisible = false;
+    nextSettings.isClearCacheDialogVisible = false;
+    this.settingsState = preferenceService.save(nextSettings);
+  }
+
+  private mergeHomePapersWithLocalFavorites(items: PaperItem[]): PaperItem[] {
+    const favorites = favoriteStoreService.read([]);
+
+    return items.map((item: PaperItem) => {
+      const favorite = favorites.find((saved: FavoritePaperItem) => saved.paper.id === item.id);
+      if (!favorite) {
+        return item;
+      }
+      return this.withFavoriteAndSync(item, true, favorite.paper.zoteroSyncState);
+    });
+  }
+
+  private upsertFavorite(paper: PaperItem): void {
+    favoriteStoreService.deleteFavorite(paper.id);
+    favoriteStoreService.saveFavorite(paper);
+  }
+
+  private withFavoriteState(paper: PaperItem, favoriteState: boolean): PaperItem {
+    const nextPaper: PaperItem = {
+      id: paper.id,
+      title: paper.title,
+      authors: paper.authors,
+      summary: paper.summary,
+      translatedSummary: paper.translatedSummary,
+      publishedAt: paper.publishedAt,
+      updatedAt: paper.updatedAt,
+      primaryCategory: paper.primaryCategory,
+      sourceUrl: paper.sourceUrl,
+      pdfUrl: paper.pdfUrl,
+      favoriteState: favoriteState,
+      zoteroSyncState: paper.zoteroSyncState
+    };
+    return nextPaper;
+  }
+
+  private withFavoriteAndSync(paper: PaperItem, favoriteState: boolean, zoteroSyncState: ZoteroSyncState): PaperItem {
+    const nextPaper: PaperItem = {
+      id: paper.id,
+      title: paper.title,
+      authors: paper.authors,
+      summary: paper.summary,
+      translatedSummary: paper.translatedSummary,
+      publishedAt: paper.publishedAt,
+      updatedAt: paper.updatedAt,
+      primaryCategory: paper.primaryCategory,
+      sourceUrl: paper.sourceUrl,
+      pdfUrl: paper.pdfUrl,
+      favoriteState: favoriteState,
+      zoteroSyncState: zoteroSyncState
+    };
+    return nextPaper;
+  }
+
+  private cloneSettingsState(source: SettingsStatus): SettingsStatus {
+    const nextSettings: SettingsStatus = {
+      defaultCategory: source.defaultCategory,
+      customTags: source.customTags.slice(),
+      defaultDays: source.defaultDays,
+      themeMode: source.themeMode,
+      hasSeenOnboarding: source.hasSeenOnboarding,
+      displayName: source.displayName,
+      avatarPreset: source.avatarPreset,
+      avatarImageUri: source.avatarImageUri,
+      language: source.language,
+      zoteroConfigured: source.zoteroConfigured,
+      zoteroUserId: source.zoteroUserId,
+      zoteroLibraryType: source.zoteroLibraryType,
+      zoteroApiKeyMasked: source.zoteroApiKeyMasked,
+      zoteroTargetCollectionName: source.zoteroTargetCollectionName,
+      zoteroTargetCollectionKey: source.zoteroTargetCollectionKey,
+      zoteroTargetCollectionStatus: source.zoteroTargetCollectionStatus,
+      llmConfigured: source.llmConfigured,
+      llmBaseUrl: source.llmBaseUrl,
+      llmModel: source.llmModel,
+      llmApiKeyMasked: source.llmApiKeyMasked,
+      integrationStatusFailed: source.integrationStatusFailed,
+      isConfigBusy: source.isConfigBusy,
+      zoteroUserIdDraft: source.zoteroUserIdDraft,
+      zoteroLibraryTypeDraft: source.zoteroLibraryTypeDraft,
+      zoteroApiKeyDraft: source.zoteroApiKeyDraft,
+      zoteroTargetCollectionNameDraft: source.zoteroTargetCollectionNameDraft,
+      llmBaseUrlDraft: source.llmBaseUrlDraft,
+      llmApiKeyDraft: source.llmApiKeyDraft,
+      llmModelDraft: source.llmModelDraft,
+      isThemePickerVisible: source.isThemePickerVisible,
+      isLanguagePickerVisible: source.isLanguagePickerVisible,
+      isZoteroDetailDialogVisible: source.isZoteroDetailDialogVisible,
+      isLlmDetailDialogVisible: source.isLlmDetailDialogVisible,
+      isAboutDialogVisible: source.isAboutDialogVisible,
+      isUpdateDialogVisible: source.isUpdateDialogVisible,
+      isClearCacheDialogVisible: source.isClearCacheDialogVisible,
+      cacheStatusText: source.cacheStatusText,
+      actionMessage: source.actionMessage,
+      errorMessage: source.errorMessage
+    };
+    return nextSettings;
+  }
+
+  private applyRemoteIntegrationStatus(status: SettingsStatus): void {
+    this.settingsState.zoteroConfigured = status.zoteroConfigured;
+    this.settingsState.zoteroUserId = status.zoteroUserId;
+    this.settingsState.zoteroLibraryType = status.zoteroLibraryType;
+    this.settingsState.zoteroApiKeyMasked = status.zoteroApiKeyMasked;
+    this.settingsState.zoteroTargetCollectionName = status.zoteroTargetCollectionName;
+    this.settingsState.zoteroTargetCollectionKey = status.zoteroTargetCollectionKey;
+    this.settingsState.zoteroTargetCollectionStatus = status.zoteroTargetCollectionStatus;
+    this.settingsState.llmConfigured = status.llmConfigured;
+    this.settingsState.llmBaseUrl = status.llmBaseUrl;
+    this.settingsState.llmModel = status.llmModel;
+    this.settingsState.llmApiKeyMasked = status.llmApiKeyMasked;
+    this.settingsState.zoteroUserIdDraft = status.zoteroUserId ?? '';
+    this.settingsState.zoteroLibraryTypeDraft = status.zoteroLibraryType ?? 'user';
+    this.settingsState.zoteroTargetCollectionNameDraft = status.zoteroTargetCollectionName;
+    this.settingsState.llmBaseUrlDraft = status.llmBaseUrl;
+    this.settingsState.llmModelDraft = status.llmModel;
+    this.settingsState.integrationStatusFailed = false;
+  }
+
+  private copyTranslationErrorsWithout(paperId: string): Record<string, string> {
+    const nextErrors: Record<string, string> = {};
+    Object.keys(this.homeState.translationErrors).forEach((key: string) => {
+      if (key !== paperId) {
+        nextErrors[key] = this.homeState.translationErrors[key];
+      }
+    });
+    return nextErrors;
+  }
+
+  private isSelectedCategoryCustomTag(): boolean {
+    return this.homeState.customTags.indexOf(this.homeState.selectedCategory) >= 0;
+  }
+
+  private isSearchActive(): boolean {
+    return this.homeState.searchKeyword.trim().length > 0;
+  }
+
+  private toCustomTagSearchKeyword(value: string): string {
+    return value.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
   private pushHomeAction(text: string): void {
-    this.homeState.actionMessage = {
-      id: this.nextActionMessageId++,
-      text
+    const message: HomeActionMessage = {
+      id: this.nextActionMessageId,
+      text: text
     };
-    this.libraryState.actionMessage = undefined;
+    this.nextActionMessageId += 1;
+    this.homeState.actionMessage = message;
+    this.homeState.errorMessage = undefined;
   }
 }
+
+function mapUserFriendlyError(prefix: string, error: Object): string {
+  const message = error instanceof Error ? error.message : `${error}`;
+  const detail = message.toLowerCase();
+
+  if (detail.includes('timeout') || detail.includes('2300028')) {
+    return `${prefix}，请稍后重试。`;
+  }
+  if (detail.includes('resolve') || detail.includes('2300006')) {
+    return `${prefix}，请检查当前网络连接。`;
+  }
+  if (detail.includes('connect') || detail.includes('refused') || detail.includes('2300007')) {
+    return `${prefix}，请确认本地后端已经启动。`;
+  }
+  if (detail.includes('2300997')) {
+    return `${prefix}，当前构建未允许明文 HTTP，请检查鸿蒙联网配置。`;
+  }
+  return `${prefix}，请稍后再试。`;
+}
+
+function normalizeOptionalDraft(value: string): string | undefined {
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function themeModeLabel(themeMode: string): string {
+  if (themeMode === 'dark') {
+    return '深色';
+  }
+  if (themeMode === 'light') {
+    return '浅色';
+  }
+  return '跟随系统';
+}
+
+function languageLabel(language: string): string {
+  if (language === 'en-US') {
+    return 'English';
+  }
+  return '简体中文';
+}
+
+const DEFAULT_LLM_BASE_URL: string = 'https://grok.yangyioryy.cc.cd';
+const DEFAULT_LLM_MODEL: string = 'grok-4.20-0309-non-reasoning';

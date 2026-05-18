@@ -122,6 +122,21 @@ export interface SettingsStatus {
   llmApiKeyMasked?: string;
   integrationStatusFailed: boolean;
   isConfigBusy: boolean;
+  zoteroUserIdDraft: string;
+  zoteroLibraryTypeDraft: string;
+  zoteroApiKeyDraft: string;
+  zoteroTargetCollectionNameDraft: string;
+  llmBaseUrlDraft: string;
+  llmApiKeyDraft: string;
+  llmModelDraft: string;
+  isThemePickerVisible: boolean;
+  isLanguagePickerVisible: boolean;
+  isZoteroDetailDialogVisible: boolean;
+  isLlmDetailDialogVisible: boolean;
+  isAboutDialogVisible: boolean;
+  isUpdateDialogVisible: boolean;
+  isClearCacheDialogVisible: boolean;
+  cacheStatusText: string;
   actionMessage?: string;
   errorMessage?: string;
 }

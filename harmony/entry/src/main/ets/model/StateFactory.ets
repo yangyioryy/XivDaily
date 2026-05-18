@@ -23,7 +23,22 @@ export function createDefaultSettingsStatus(): SettingsStatus {
     llmBaseUrl: 'https://grok.yangyioryy.cc.cd',
     llmModel: 'grok-4.20-0309-non-reasoning',
     integrationStatusFailed: false,
-    isConfigBusy: false
+    isConfigBusy: false,
+    zoteroUserIdDraft: '',
+    zoteroLibraryTypeDraft: 'user',
+    zoteroApiKeyDraft: '',
+    zoteroTargetCollectionNameDraft: 'XivDaily',
+    llmBaseUrlDraft: 'https://grok.yangyioryy.cc.cd',
+    llmApiKeyDraft: '',
+    llmModelDraft: 'grok-4.20-0309-non-reasoning',
+    isThemePickerVisible: false,
+    isLanguagePickerVisible: false,
+    isZoteroDetailDialogVisible: false,
+    isLlmDetailDialogVisible: false,
+    isAboutDialogVisible: false,
+    isUpdateDialogVisible: false,
+    isClearCacheDialogVisible: false,
+    cacheStatusText: '待清理'
   };
 }
 
