@@ -6,6 +6,9 @@ import { AppViewModel } from '../viewmodel/AppViewModel';
 @Component
 export struct SettingsPage {
   @ObjectLink vm: AppViewModel;
+  @State private isProfileEditorVisible: boolean = false;
+  @State private profileNameDraft: string = '';
+  @State private profileAvatarDraft: string = 'study';
 
   private applyThemeMode(themeMode: string): void {
     const uiContext = this.getUIContext();
@@ -63,6 +66,38 @@ export struct SettingsPage {
     return this.vm.settingsState.llmConfigured ? '已启用' : '未启用';
   }
 
+  private avatarPresetLabel(value: string): string {
+    if (value === 'spark') {
+      return '灵感';
+    }
+    if (value === 'orbit') {
+      return '探索';
+    }
+    return '学者';
+  }
+
+  private profileSubtitle(): string {
+    if (this.vm.settingsState.avatarImageUri && this.vm.settingsState.avatarImageUri.length > 0) {
+      return '本地研究档案 · 已使用本地图片头像';
+    }
+    return `本地研究档案 · ${this.avatarPresetLabel(this.vm.settingsState.avatarPreset)}`;
+  }
+
+  private showProfileEditor(): void {
+    this.profileNameDraft = this.vm.settingsState.displayName;
+    this.profileAvatarDraft = this.vm.settingsState.avatarPreset;
+    this.isProfileEditorVisible = true;
+  }
+
+  private hideProfileEditor(): void {
+    this.isProfileEditorVisible = false;
+  }
+
+  private saveProfileEditor(): void {
+    this.vm.updateProfile(this.profileNameDraft, this.profileAvatarDraft);
+    this.isProfileEditorVisible = false;
+  }
+
   @Builder
   private sectionTitle(title: string) {
     Text(title)
@@ -94,7 +129,7 @@ export struct SettingsPage {
             .fontSize(14)
             .fontColor('#6B7280');
         }
-        Text('本地研究档案 · 已使用本地图⽚头像')
+        Text(this.profileSubtitle())
           .fontSize(13)
           .fontColor('#6B7280');
       }
@@ -106,7 +141,8 @@ export struct SettingsPage {
     .width('100%')
     .padding(16)
     .backgroundColor('#FFFFFF')
-    .borderRadius(20);
+    .borderRadius(20)
+    .onClick(() => this.showProfileEditor());
   }
 
   @Builder
@@ -461,6 +497,38 @@ export struct SettingsPage {
 
   @Builder
   private otherDialogs() {
+    if (this.isProfileEditorVisible) {
+      Column({ space: 12 }) {
+        Text('编辑个人资料')
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#111827');
+        this.formInput('用户名', this.profileNameDraft, 'XivDaily Reader', (value: string) => {
+          this.profileNameDraft = value;
+        });
+        Text('头像预设')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#374151')
+          .width('100%');
+        this.chipGroup(['study', 'spark', 'orbit'], this.profileAvatarDraft, (value: string) => {
+          this.profileAvatarDraft = value;
+        });
+        Text('当前版本先支持预设头像；本地图片上传仍待补齐。')
+          .fontSize(13)
+          .fontColor('#6B7280');
+        Row({ space: 8 }) {
+          this.formActionButton('保存', true, false, () => this.saveProfileEditor());
+          this.formActionButton('取消', false, false, () => this.hideProfileEditor());
+        }
+        .width('100%');
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(20);
+    }
+
     if (this.vm.settingsState.isAboutDialogVisible) {
       Column({ space: 10 }) {
         Text('关于 XivDaily')

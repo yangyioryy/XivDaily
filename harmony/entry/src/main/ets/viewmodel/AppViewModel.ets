@@ -556,6 +556,16 @@ export class AppViewModel {
     this.settingsState.isClearCacheDialogVisible = false;
   }
 
+  updateProfile(displayName: string, avatarPreset: string): void {
+    const normalizedName = displayName.trim().length > 0 ? displayName.trim() : 'XivDaily Reader';
+    this.settingsState.displayName = normalizedName;
+    this.settingsState.avatarPreset = avatarPreset;
+    this.persistLocalSettings();
+    this.applyLocalSettings(this.settingsState);
+    this.settingsState.actionMessage = '个人资料已保存';
+    this.settingsState.errorMessage = undefined;
+  }
+
   clearCache(): void {
     // 当前版本先提供真实反馈闭环，避免“可点但没有结果”的空入口。
     this.settingsState.isClearCacheDialogVisible = false;
