@@ -1,4 +1,5 @@
 import { http } from '@kit.NetworkKit';
+import hilog from '@ohos.hilog';
 import {
   FavoritePaperItem,
   PaperChatMessage,
@@ -210,9 +211,9 @@ export interface PaperChatResult {
 }
 
 const CANDIDATE_BACKEND_BASE_URLS: string[] = [
-  'http://127.0.0.1:8000/',
   'http://10.0.2.2:8000/',
-  'https://beginnerforever.eu.cc/'
+  'https://beginnerforever.eu.cc/',
+  'http://127.0.0.1:8000/'
 ];
 const DEFAULT_CONNECT_TIMEOUT_MS: number = 20_000;
 const PAPER_CHAT_TIMEOUT_MS: number = 75_000;
@@ -424,10 +425,11 @@ export class PaperService {
     while (index < CANDIDATE_BACKEND_BASE_URLS.length) {
       const baseUrl = CANDIDATE_BACKEND_BASE_URLS[index];
       const requestTask = http.createHttp();
+      const requestUrl = this.resolveRequestUrl(baseUrl, path);
 
       try {
         const httpOptions = this.toHttpRequestOptions(options);
-        const response = await requestTask.request(this.buildUrl(baseUrl, path), httpOptions);
+        const response = await requestTask.request(requestUrl, httpOptions);
         const responseText = this.responseToText(response.result);
 
         if (response.responseCode < 200 || response.responseCode >= 300) {
@@ -436,6 +438,7 @@ export class PaperService {
         return this.parseJson<T>(responseText);
       } catch (error) {
         lastError = this.normalizeError(error);
+        hilog.warn(0x0000, 'XivDaily', 'PaperService request failed. url=%{public}s error=%{public}s', requestUrl, lastError.message);
         if (index >= CANDIDATE_BACKEND_BASE_URLS.length - 1 || !this.shouldTryNextBase(lastError)) {
           throw lastError;
         }
@@ -488,6 +491,13 @@ export class PaperService {
       return normalizedBase;
     }
     return normalizedBase + '?' + query;
+  }
+
+  private resolveRequestUrl(baseUrl: string, path: string): string {
+    if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) {
+      return path.replace(this.getBaseUrl(), baseUrl);
+    }
+    return baseUrl + this.normalizePath(path);
   }
 
   private getBaseUrl(): string {
@@ -598,6 +608,9 @@ export class PaperService {
       || message.includes('resolve')
       || message.includes('timeout')
       || message.includes('refused')
+      || message.includes('err: 111')
+      || message.includes('err 111')
+      || message.includes('code: 111')
       || message.includes('2300006')
       || message.includes('2300007')
       || message.includes('2300028');
@@ -607,7 +620,54 @@ export class PaperService {
     if (error instanceof Error) {
       return error;
     }
-    return new Error(`${error}`);
+    const normalizedMessage = this.extractErrorMessage(error);
+    return new Error(normalizedMessage.length > 0 ? normalizedMessage : `${error}`);
+  }
+
+  private extractErrorMessage(error: Object): string {
+    if (typeof error === 'string') {
+      return error;
+    }
+    if (typeof error !== 'object' || error === null) {
+      return `${error}`;
+    }
+
+    const messageParts: string[] = [];
+    const errorRecord = error as Record<string, Object>;
+    this.pushErrorPart(messageParts, 'code', errorRecord['code']);
+    this.pushErrorPart(messageParts, 'message', errorRecord['message']);
+    this.pushErrorPart(messageParts, 'name', errorRecord['name']);
+    this.pushErrorPart(messageParts, 'data', errorRecord['data']);
+    this.pushErrorPart(messageParts, 'details', errorRecord['details']);
+
+    const serialized = this.safeSerializeError(errorRecord);
+    if (serialized.length > 0) {
+      messageParts.push(serialized);
+    }
+    return messageParts.join(' | ');
+  }
+
+  private pushErrorPart(parts: string[], label: string, value: Object | undefined): void {
+    if (value === undefined || value === null) {
+      return;
+    }
+    const normalized = `${value}`.trim();
+    if (normalized.length === 0 || normalized === '[object Object]') {
+      return;
+    }
+    parts.push(`${label}: ${normalized}`);
+  }
+
+  private safeSerializeError(error: Record<string, Object>): string {
+    try {
+      const serialized = JSON.stringify(error);
+      if (!serialized || serialized === '{}' || serialized === '[]') {
+        return '';
+      }
+      return serialized;
+    } catch (_serializeError) {
+      return '';
+    }
   }
 
   private normalizeOptionalText(value?: string | null): string | undefined {
