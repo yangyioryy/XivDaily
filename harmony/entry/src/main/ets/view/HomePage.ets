@@ -60,7 +60,8 @@ export struct HomePage {
     if (this.isSearchActive()) {
       return `全 arXiv 搜索：${this.vm.homeState.searchKeyword}，分类过滤：${this.vm.homeState.selectedCategory}`;
     }
-    return `围绕 ${this.vm.homeState.selectedCategory} 的最新研究流`;
+    const countSuffix = this.vm.homeState.papers.length > 0 ? ` · ${this.vm.homeState.papers.length} 篇` : '';
+    return `围绕 ${this.vm.homeState.selectedCategory} 的最新研究流${countSuffix}`;
   }
 
   private emptyStateTitle(): string {
@@ -163,216 +164,136 @@ export struct HomePage {
   }
 
   @Builder
-  private paperCard(paper: PaperItem) {
+  private leadingPill() {
+    Row() {
+      SymbolGlyph($r('sys.symbol.bell'))
+        .fontSize(16)
+        .fontColor(['#2D6CE8']);
+    }
+    .width(32)
+    .height(32)
+    .justifyContent(FlexAlign.Center)
+    .backgroundColor('#EAF2FF')
+    .borderRadius(10);
+  }
+
+  @Builder
+  private heroSection() {
     Column({ space: 10 }) {
-      Column({ space: 10 }) {
-        Row() {
-          Text(paper.title)
-            .fontSize(18)
+      Row() {
+        Column({ space: 4 }) {
+          Text('DAILY DIGEST')
+            .fontSize(12)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827')
-            .layoutWeight(1);
-          Text(paper.favoriteState ? '★' : '☆')
-            .fontSize(18)
-            .fontColor('#B37B3F');
+            .fontColor('#2D6CE8');
+          Text('首页')
+            .fontSize(32)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#111827');
+        }
+        Blank();
+        this.leadingPill();
+      }
+      .width('100%');
+
+      Text(this.heroSubtitle())
+        .fontSize(14)
+        .lineHeight(22)
+        .fontColor('#6B7280');
+
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+        Text(this.isSearchActive() ? `搜索中：${this.vm.homeState.searchKeyword}` : this.vm.homeState.selectedCategory)
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D6CE8');
+        Text(this.isSearchActive() ? '全 arXiv' : this.dayLabel(this.vm.homeState.selectedDays))
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#475569');
+        if (!this.vm.homeState.dismissedSummary) {
+          Text(this.vm.homeState.trendSummary?.items.length ? `趋势焦点：${this.summaryTitle()}` : '趋势摘要待生成')
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#475569');
+        }
+      }
+      .width('100%');
+    }
+    .width('100%')
+    .padding(18)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(24)
+    .border({ width: 1, color: '#E5EBF5' });
+  }
+
+  @Builder
+  private exploreControlCard() {
+    Column({ space: 14 }) {
+      Column({ space: 4 }) {
+        Text('探索条件')
+          .fontSize(20)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#111827');
+        Text(this.isSearchActive() ? '当前正在执行全局搜索，可随时退出回到时间流。' : '先限定领域和时间，再决定是否发起全局搜索。')
+          .fontSize(13)
+          .lineHeight(20)
+          .fontColor('#6B7280');
+      }
+
+      Column({ space: 10 }) {
+        Row({ space: 10 }) {
+          Row({ space: 8 }) {
+            Text('⌕')
+              .fontSize(16)
+              .fontColor('#6B7280');
+            TextInput({
+              placeholder: '搜索论文、作者、关键词',
+              text: this.vm.homeState.searchKeywordDraft
+            })
+              .fontSize(15)
+              .layoutWeight(1)
+              .backgroundColor('#F7F9FC')
+              .onChange((value: string) => this.vm.updateSearchKeywordDraft(value))
+              .onSubmit(() => this.vm.submitSearch());
+          }
+          .layoutWeight(1)
+          .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+          .backgroundColor('#F7F9FC')
+          .borderRadius(16)
+          .border({ width: 1, color: '#E5EBF5' });
+
+          Text('搜索')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#FFFFFF')
+            .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+            .backgroundColor('#2D6CE8')
+            .borderRadius(16)
+            .onClick(() => this.vm.submitSearch());
         }
         .width('100%');
 
-        Text(`${paper.authors.join(', ')} · ${paper.primaryCategory} · ${paper.publishedAt}`)
-          .fontSize(13)
-          .fontColor('#6B7280');
-
-        Row({ space: 8 }) {
-          if (paper.zoteroSyncState === 'synced') {
-            Text('● 已同步')
+        if (this.isSearchActive()) {
+          Row() {
+            Blank();
+            Text('退出搜索')
               .fontSize(13)
-              .fontColor('#3F7A58')
-              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-              .backgroundColor('#F1F4FA')
-              .borderRadius(12);
-          } else {
-            Text('● 未同步')
-              .fontSize(13)
-              .fontColor('#B37B3F')
-              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-              .backgroundColor('#F1F4FA')
-              .borderRadius(12);
-          }
-
-          if (this.isPaperTranslating(paper.id)) {
-            Text('翻译中...')
-              .fontSize(13)
-              .fontColor('#2D6CE8')
-              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-              .backgroundColor('#EAF2FF')
-              .borderRadius(12);
-          }
-
-          if (this.isPaperSyncing(paper.id)) {
-            Text('同步中...')
-              .fontSize(13)
-              .fontColor('#2D6CE8')
-              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-              .backgroundColor('#EAF2FF')
-              .borderRadius(12);
-          }
-        }
-
-        if (this.isPaperExpanded(paper.id)) {
-          Column({ space: 8 }) {
-            if (paper.translatedSummary) {
-              Text('中文翻译')
-                .fontSize(14)
-                .fontWeight(FontWeight.Medium)
-                .fontColor('#2D6CE8');
-              Text(paper.translatedSummary)
-                .fontSize(14)
-                .lineHeight(22)
-                .fontColor('#374151');
-            }
-            Text('Original Abstract')
-              .fontSize(14)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#6B7280');
-            Text(paper.summary)
-              .fontSize(14)
-              .lineHeight(22)
-                .fontColor('#374151');
-
-            if (this.vm.homeState.translationErrors[paper.id]) {
-              Text(this.vm.homeState.translationErrors[paper.id])
-                .fontSize(13)
-                .fontColor('#B6544A')
-                .padding(12)
-                .backgroundColor('#FFEAEA')
-                .borderRadius(14);
-            }
+              .fontColor('#475569')
+              .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+              .backgroundColor('#F1F4FA')
+              .borderRadius(999)
+              .onClick(() => this.vm.clearSearch());
           }
           .width('100%');
         }
       }
-      .width('100%')
-      .gesture(
-        GestureGroup(
-          GestureMode.Exclusive,
-          TapGesture({ count: 2 })
-            .onAction(() => this.vm.toggleFavorite(paper.id)),
-          TapGesture()
-            .onAction(() => {
-              void this.openPaperSource(paper);
-            })
-        )
-      )
-      .parallelGesture(
-        SwipeGesture({ direction: SwipeDirection.Horizontal })
-          .onAction((event: GestureEvent) => this.handlePaperSwipe(paper, event))
-      );
 
-      Row({ space: 8 }) {
-        Text(this.isPaperExpanded(paper.id) ? '收起摘要' : '展开摘要')
-          .fontSize(14)
-          .fontColor('#2D6CE8')
-          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-          .backgroundColor('#EAF2FF')
-          .borderRadius(12)
-          .onClick(() => this.vm.toggleAbstract(paper.id));
-
-        Text('收藏')
-          .fontSize(14)
-          .fontColor('#2D6CE8')
-          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-          .backgroundColor('#EAF2FF')
-          .borderRadius(12)
-          .onClick(() => this.vm.toggleFavorite(paper.id));
-
-        Text(this.isPaperSyncing(paper.id) ? '同步中...' : '同步')
-          .fontSize(14)
-          .fontColor('#2D6CE8')
-          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-          .backgroundColor('#EAF2FF')
-          .borderRadius(12)
-          .opacity(this.isPaperSyncing(paper.id) ? 0.6 : 1)
-          .onClick(() => {
-            void this.vm.syncToZotero(paper.id);
-          });
-
-        Text('忽略')
-          .fontSize(14)
-          .fontColor('#B6544A')
-          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-          .backgroundColor('#FFEAEA')
-          .borderRadius(12)
-          .onClick(() => this.vm.dismissHomePaper(paper.id));
-
-        if (this.isPaperExpanded(paper.id)) {
-          Text('翻译')
-            .fontSize(14)
-            .fontColor('#2D6CE8')
-            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-            .backgroundColor('#EAF2FF')
-            .borderRadius(12)
-            .opacity(this.isPaperTranslating(paper.id) ? 0.6 : 1)
-            .onClick(() => {
-              void this.vm.translatePaper(paper.id);
-            });
-        }
-      }
-    }
-    .width('100%')
-    .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(20);
-  }
-
-  build() {
-    Column({ space: AppConstants.SECTION_SPACING }) {
       Column({ space: 8 }) {
-        Row() {
-          Text('首页')
-            .fontSize(28)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#111827');
-          Blank();
-          Text('刷新')
-            .fontSize(15)
-            .fontColor('#2D6CE8')
-            .onClick(() => this.vm.refreshHome());
-        }
-        .width('100%');
-
-        Text(this.heroSubtitle())
-          .fontSize(14)
-          .fontColor('#6B7280');
-      }
-
-      Column({ space: 12 }) {
-        Row({ space: 8 }) {
-          Text('🔎')
-            .fontSize(18);
-          TextInput({
-            placeholder: '搜索论文、作者、关键词',
-            text: this.vm.homeState.searchKeywordDraft
-          })
-            .fontSize(16)
-            .layoutWeight(1)
-            .backgroundColor('#FFFFFF')
-            .onChange((value: string) => this.vm.updateSearchKeywordDraft(value))
-            .onSubmit(() => this.vm.submitSearch());
-          Text(this.vm.homeState.searchKeyword.length > 0 ? '清空' : '搜索')
-            .fontSize(15)
-            .fontColor('#2D6CE8')
-            .onClick(() => this.vm.homeState.searchKeyword.length > 0 ? this.vm.clearSearch() : this.vm.submitSearch());
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-        .backgroundColor('#FFFFFF')
-        .borderRadius(16)
-        .border({ width: 1, color: '#D7DEE9' });
-
         Text('领域')
-          .fontSize(18)
+          .fontSize(16)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#374151')
+          .fontColor('#475569')
           .width('100%');
 
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
@@ -383,7 +304,7 @@ export struct HomePage {
               .fontColor(this.isCategorySelected(category) ? '#FFFFFF' : '#1F2937')
               .padding({ left: 16, right: 16, top: 8, bottom: 8 })
               .margin({ right: 8, bottom: 8 })
-              .backgroundColor(this.isCategorySelected(category) ? '#2D6CE8' : '#FFFFFF')
+              .backgroundColor(this.isCategorySelected(category) ? '#2D6CE8' : '#F8FAFC')
               .borderRadius(14)
               .border({
                 width: this.isCategorySelected(category) ? 0 : 1,
@@ -425,7 +346,7 @@ export struct HomePage {
               }
             }
             .margin({ right: 8, bottom: 8 })
-            .backgroundColor(this.isCategorySelected(tag) ? '#2D6CE8' : (this.pendingDeletionTag === tag ? '#FFF1DD' : '#FFFFFF'))
+            .backgroundColor(this.isCategorySelected(tag) ? '#2D6CE8' : (this.pendingDeletionTag === tag ? '#FFF1DD' : '#F8FAFC'))
             .borderRadius(14)
             .border({
               width: this.isCategorySelected(tag) ? 0 : 1,
@@ -439,24 +360,28 @@ export struct HomePage {
             .fontColor('#2D6CE8')
             .padding({ left: 16, right: 16, top: 8, bottom: 8 })
             .margin({ right: 8, bottom: 8 })
-            .backgroundColor('#FFFFFF')
+            .backgroundColor('#F8FAFC')
             .borderRadius(14)
             .border({ width: 1, color: '#D7DEE9' })
             .onClick(() => this.showAddTagDialog());
         }
         .width('100%');
+      }
 
-        if (this.vm.homeState.searchKeyword.length > 0) {
-          Text('关键词搜索覆盖全 arXiv；领域只做结果过滤，时间 Pills 只影响无关键词列表。')
-            .fontSize(13)
-            .fontColor('#6B7280')
-            .width('100%')
-            .padding(12)
-            .backgroundColor('#FFF1DD')
-            .borderRadius(14);
-        } else if (this.vm.homeState.customTags.indexOf(this.vm.homeState.selectedCategory) >= 0) {
+      if (this.vm.homeState.searchKeyword.length > 0) {
+        Text('关键词搜索覆盖全 arXiv；领域只做结果过滤，时间 Pills 会临时隐藏。')
+          .fontSize(13)
+          .lineHeight(20)
+          .fontColor('#6B7280')
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#FFF1DD')
+          .borderRadius(14);
+      } else {
+        if (this.vm.homeState.customTags.indexOf(this.vm.homeState.selectedCategory) >= 0) {
           Text('自定义标签会用关键词在全 arXiv 召回论文，适合 embodied-ai 这类研究方向。')
             .fontSize(13)
+            .lineHeight(20)
             .fontColor('#6B7280')
             .width('100%')
             .padding(12)
@@ -464,169 +389,463 @@ export struct HomePage {
             .borderRadius(14);
         }
 
-        Text('时间')
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#374151')
-          .width('100%');
+        Column({ space: 8 }) {
+          Text('时间')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#475569')
+            .width('100%');
 
-        Row({ space: 8 }) {
-          ForEach(this.vm.homeState.dayOptions, (days: number) => {
-            Text(this.dayLabel(days))
-              .fontSize(14)
-              .fontWeight(this.isDaySelected(days) ? FontWeight.Medium : FontWeight.Regular)
-              .fontColor(this.isDaySelected(days) ? '#1F2937' : '#6B7280')
-              .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-              .backgroundColor(this.isDaySelected(days) ? '#F1F4FA' : '#FFFFFF')
-              .borderRadius(12)
-              .border({ width: 1, color: '#D7DEE9' })
-              .onClick(() => this.vm.selectDays(days));
-          }, (days: number) => `${days}`);
+          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+            ForEach(this.vm.homeState.dayOptions, (days: number) => {
+              Text(this.dayLabel(days))
+                .fontSize(14)
+                .fontWeight(this.isDaySelected(days) ? FontWeight.Medium : FontWeight.Regular)
+                .fontColor(this.isDaySelected(days) ? '#1F2937' : '#6B7280')
+                .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+                .margin({ right: 8, bottom: 8 })
+                .backgroundColor(this.isDaySelected(days) ? '#F1F4FA' : '#F8FAFC')
+                .borderRadius(12)
+                .border({ width: 1, color: '#D7DEE9' })
+                .onClick(() => this.vm.selectDays(days));
+            }, (days: number) => `${days}`);
+          }
+        }
+        .width('100%');
+      }
+    }
+    .width('100%')
+    .padding(18)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(24)
+    .border({ width: 1, color: '#E5EBF5' });
+  }
+
+  @Builder
+  private paperSectionHeader() {
+    Row() {
+      Column({ space: 4 }) {
+        Text(this.paperSectionTitle())
+          .fontSize(22)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#111827');
+        Text(this.paperSectionSubtitle())
+          .fontSize(14)
+          .lineHeight(20)
+          .fontColor('#6B7280');
+      }
+      Blank();
+      Row({ space: 6 }) {
+        Text('↻')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D6CE8');
+        Text('刷新')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D6CE8');
+      }
+      .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+      .backgroundColor('#F8FAFC')
+      .borderRadius(999)
+      .border({ width: 1, color: '#D7DEE9' })
+      .onClick(() => this.vm.refreshHome());
+    }
+    .width('100%');
+  }
+
+  @Builder
+  private trendSummaryCard() {
+    Column({ space: 14 }) {
+      Row() {
+        Column({ space: 6 }) {
+          Text('AI 趋势简报')
+            .fontSize(22)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#111827');
+
+          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+            Text(`最近 3 天 · ${this.vm.homeState.selectedCategory}`)
+              .fontSize(13)
+              .fontColor('#6B7280')
+              .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+              .margin({ right: 8, bottom: 6 })
+              .backgroundColor('#FFFFFF')
+              .borderRadius(999);
+
+            if (this.vm.homeState.trendSummary?.items.length) {
+              Text(`TOP 1 · ${this.summaryTitle()}`)
+                .fontSize(13)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#2D6CE8')
+                .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+                .margin({ right: 8, bottom: 6 })
+                .backgroundColor('#FFFFFF')
+                .borderRadius(999);
+            }
+          }
+          .width('100%');
+        }
+        Blank();
+        Text('关闭')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D6CE8')
+          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+          .backgroundColor('#FFFFFF')
+          .borderRadius(999)
+          .onClick(() => this.vm.dismissSummary());
+      }
+      .width('100%');
+
+      if (this.vm.homeState.isSummaryLoading) {
+        Text('趋势摘要加载中...')
+          .fontSize(14)
+          .fontColor('#6B7280')
+          .width('100%')
+          .padding(16)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(18);
+      } else if (this.vm.homeState.trendErrorMessage) {
+        Text(this.vm.homeState.trendErrorMessage!)
+          .fontSize(14)
+          .lineHeight(21)
+          .fontColor('#B6544A')
+          .width('100%')
+          .padding(16)
+          .backgroundColor('#FFEAEA')
+          .borderRadius(18);
+      } else if (this.vm.homeState.trendSummary) {
+        Text(this.vm.homeState.trendSummary!.intro)
+          .fontSize(15)
+          .lineHeight(24)
+          .fontColor('#374151')
+          .width('100%')
+          .padding(16)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(18);
+
+        if (this.vm.homeState.summaryExpanded) {
+          Column({ space: 12 }) {
+            ForEach(this.vm.homeState.trendSummary!.items, (item: TrendItem) => {
+              Column({ space: 8 }) {
+                Row({ space: 8 }) {
+                  Text(`${item.rank}.`)
+                    .fontSize(16)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor('#2D6CE8');
+                  Text(item.trendTitle)
+                    .fontSize(17)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor('#1F2937')
+                    .layoutWeight(1);
+                }
+                .width('100%');
+
+                Text(item.summary)
+                  .fontSize(14)
+                  .lineHeight(22)
+                  .fontColor('#6B7280');
+                if (this.representativeTitles(item).length > 0) {
+                  Text(`代表论文：${this.representativeTitles(item)}`)
+                    .fontSize(13)
+                    .lineHeight(20)
+                    .fontColor('#6B7280');
+                }
+              }
+              .width('100%')
+              .padding(14)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(18);
+            }, (item: TrendItem) => `${item.rank}`);
+          }
+          .width('100%');
+        }
+
+        Text(this.vm.homeState.summaryExpanded ? '收起趋势详情' : '展开趋势详情')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D6CE8')
+          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+          .backgroundColor('#FFFFFF')
+          .borderRadius(999)
+          .onClick(() => this.vm.toggleSummaryExpanded());
+      } else {
+        Text('暂无趋势摘要')
+          .fontSize(14)
+          .fontColor('#6B7280')
+          .width('100%')
+          .padding(16)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(18);
+      }
+    }
+    .width('100%')
+    .padding(18)
+    .backgroundColor('#EAF2FF')
+    .borderRadius(24);
+  }
+
+  @Builder
+  private paperCard(paper: PaperItem) {
+    Column({ space: 12 }) {
+      Column({ space: 12 }) {
+        Row() {
+          Text(paper.title)
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#111827')
+            .layoutWeight(1);
+          Text(paper.favoriteState ? '★' : '☆')
+            .fontSize(18)
+            .fontColor('#B37B3F');
+        }
+        .width('100%');
+
+        Text(paper.authors.join(', '))
+          .fontSize(13)
+          .lineHeight(20)
+          .fontColor('#6B7280');
+
+        Text(`${paper.primaryCategory} · ${paper.publishedAt.slice(0, 10)} · Zotero ${paper.zoteroSyncState === 'synced' ? '已同步' : '未同步'}`)
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#37527A')
+          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+          .backgroundColor('#EEF4FF')
+          .borderRadius(14);
+
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+          if (paper.zoteroSyncState === 'synced') {
+            Text('● 已同步')
+              .fontSize(13)
+              .fontColor('#3F7A58')
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .margin({ right: 8, bottom: 8 })
+              .backgroundColor('#F1F4FA')
+              .borderRadius(12);
+          } else {
+            Text('● 未同步')
+              .fontSize(13)
+              .fontColor('#B37B3F')
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .margin({ right: 8, bottom: 8 })
+              .backgroundColor('#F1F4FA')
+              .borderRadius(12);
+          }
+
+          if (this.isPaperTranslating(paper.id)) {
+            Text('翻译中...')
+              .fontSize(13)
+              .fontColor('#2D6CE8')
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .margin({ right: 8, bottom: 8 })
+              .backgroundColor('#EAF2FF')
+              .borderRadius(12);
+          }
+
+          if (this.isPaperSyncing(paper.id)) {
+            Text('同步中...')
+              .fontSize(13)
+              .fontColor('#2D6CE8')
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .margin({ right: 8, bottom: 8 })
+              .backgroundColor('#EAF2FF')
+              .borderRadius(12);
+          }
+        }
+        .width('100%');
+
+        if (this.isPaperExpanded(paper.id)) {
+          Column({ space: 10 }) {
+            if (paper.translatedSummary) {
+              Column({ space: 8 }) {
+                Text('中文翻译')
+                  .fontSize(14)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor('#2D6CE8');
+                Text(paper.translatedSummary)
+                  .fontSize(14)
+                  .lineHeight(22)
+                  .fontColor('#374151');
+              }
+              .width('100%')
+              .padding(14)
+              .backgroundColor('#F7FAFF')
+              .borderRadius(16);
+            }
+
+            Column({ space: 8 }) {
+              Text('Original Abstract')
+                .fontSize(14)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#6B7280');
+              Text(paper.summary)
+                .fontSize(14)
+                .lineHeight(22)
+                .fontColor('#374151');
+            }
+            .width('100%')
+            .padding(14)
+            .backgroundColor('#F8FAFC')
+            .borderRadius(16);
+
+            if (this.vm.homeState.translationErrors[paper.id]) {
+              Text(this.vm.homeState.translationErrors[paper.id])
+                .fontSize(13)
+                .lineHeight(20)
+                .fontColor('#B6544A')
+                .padding(12)
+                .backgroundColor('#FFEAEA')
+                .borderRadius(14);
+            }
+          }
+          .width('100%');
+        }
+      }
+      .width('100%')
+      .gesture(
+        GestureGroup(
+          GestureMode.Exclusive,
+          TapGesture({ count: 2 })
+            .onAction(() => this.vm.toggleFavorite(paper.id)),
+          TapGesture()
+            .onAction(() => {
+              void this.openPaperSource(paper);
+            })
+        )
+      )
+      .parallelGesture(
+        SwipeGesture({ direction: SwipeDirection.Horizontal })
+          .onAction((event: GestureEvent) => this.handlePaperSwipe(paper, event))
+      );
+
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+        Text(this.isPaperExpanded(paper.id) ? '收起摘要' : '展开摘要')
+          .fontSize(14)
+          .fontColor('#2D6CE8')
+          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+          .margin({ right: 8, bottom: 8 })
+          .backgroundColor('#EEF4FF')
+          .borderRadius(12)
+          .onClick(() => this.vm.toggleAbstract(paper.id));
+
+        if (this.isPaperExpanded(paper.id)) {
+          Text(this.isPaperTranslating(paper.id) ? '翻译中...' : '翻译')
+            .fontSize(14)
+            .fontColor('#2D6CE8')
+            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+            .margin({ right: 8, bottom: 8 })
+            .backgroundColor('#EEF4FF')
+            .borderRadius(12)
+            .opacity(this.isPaperTranslating(paper.id) ? 0.6 : 1)
+            .onClick(() => {
+              void this.vm.translatePaper(paper.id);
+            });
+        }
+
+        Text(paper.favoriteState ? '取消收藏' : '收藏')
+          .fontSize(14)
+          .fontColor('#2D6CE8')
+          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+          .margin({ right: 8, bottom: 8 })
+          .backgroundColor('#EEF4FF')
+          .borderRadius(12)
+          .onClick(() => this.vm.toggleFavorite(paper.id));
+
+        if (paper.zoteroSyncState !== 'synced') {
+          Text(this.isPaperSyncing(paper.id) ? '同步中...' : '同步')
+            .fontSize(14)
+            .fontColor('#2D6CE8')
+            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+            .margin({ right: 8, bottom: 8 })
+            .backgroundColor('#EEF4FF')
+            .borderRadius(12)
+            .opacity(this.isPaperSyncing(paper.id) ? 0.6 : 1)
+            .onClick(() => {
+              void this.vm.syncToZotero(paper.id);
+            });
         }
       }
 
-      if (this.vm.homeState.actionMessage) {
-        Text(this.vm.homeState.actionMessage!.text)
+      Text('轻触打开原文 · 双击收藏 · 左右滑动执行快捷操作')
+        .fontSize(12)
+        .fontColor('#94A3B8');
+    }
+    .width('100%')
+    .padding(18)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(24)
+    .border({ width: 1, color: '#E5EBF5' });
+  }
+
+  @Builder
+  private emptyStateCard() {
+    Column({ space: 10 }) {
+      this.leadingPill();
+      Text(this.emptyStateTitle())
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#111827');
+      Text(this.emptyStateSubtitle())
+        .fontSize(14)
+        .lineHeight(22)
+        .fontColor('#6B7280');
+    }
+    .alignItems(HorizontalAlign.Center)
+    .width('100%')
+    .padding({ left: 20, right: 20, top: 28, bottom: 28 })
+    .backgroundColor('#FFFFFF')
+    .borderRadius(20)
+    .border({ width: 1, color: '#E5EBF5' });
+  }
+
+  build() {
+    Column({ space: AppConstants.SECTION_SPACING }) {
+      this.heroSection();
+      this.exploreControlCard();
+
+      if (!this.vm.homeState.dismissedSummary) {
+        this.trendSummaryCard();
+      }
+
+      if (this.vm.homeState.errorMessage) {
+        Text(this.vm.homeState.errorMessage!)
           .fontSize(13)
-          .fontColor('#2D6CE8')
+          .lineHeight(20)
+          .fontColor('#B6544A')
+          .width('100%')
           .padding(12)
-          .backgroundColor('#EAF2FF')
+          .backgroundColor('#FFEAEA')
           .borderRadius(14);
       }
 
       if (this.vm.homeState.listWarning) {
         Text(this.vm.homeState.listWarning!)
           .fontSize(13)
+          .lineHeight(20)
           .fontColor('#B37B3F')
+          .width('100%')
           .padding(12)
           .backgroundColor('#FFF1DD')
           .borderRadius(14);
       }
 
-      if (this.vm.homeState.errorMessage) {
-        Text(this.vm.homeState.errorMessage!)
+      if (this.vm.homeState.actionMessage) {
+        Text(this.vm.homeState.actionMessage!.text)
           .fontSize(13)
-          .fontColor('#B6544A')
-          .padding(12)
-          .backgroundColor('#FFEAEA')
-          .borderRadius(14);
-      }
-
-      if (!this.vm.homeState.dismissedSummary) {
-        Column({ space: 12 }) {
-          Row() {
-            Column({ space: 4 }) {
-              Text('AI 趋势简报')
-                .fontSize(24)
-                .fontWeight(FontWeight.Medium)
-                .fontColor('#111827');
-              Text(`最近 3 天 · ${this.vm.homeState.selectedCategory}`)
-                .fontSize(13)
-                .fontColor('#6B7280');
-            }
-            Blank();
-            Text('关闭')
-              .fontSize(15)
-              .fontColor('#2D6CE8')
-              .onClick(() => this.vm.dismissSummary());
-          }
-          .width('100%');
-
-          if (this.vm.homeState.isSummaryLoading) {
-            Text('趋势摘要加载中...')
-              .fontSize(14)
-              .fontColor('#6B7280')
-              .width('100%')
-              .padding(16)
-              .backgroundColor('#FFFFFF')
-              .borderRadius(16);
-          } else if (this.vm.homeState.trendErrorMessage) {
-            Text(this.vm.homeState.trendErrorMessage!)
-              .fontSize(14)
-              .fontColor('#B6544A')
-              .width('100%')
-              .padding(16)
-              .backgroundColor('#FFEAEA')
-              .borderRadius(16);
-          } else if (this.vm.homeState.trendSummary) {
-            Text(this.vm.homeState.trendSummary!.intro)
-              .fontSize(15)
-              .lineHeight(24)
-              .fontColor('#374151')
-              .width('100%')
-              .padding(16)
-              .backgroundColor('#FFFFFF')
-              .borderRadius(16);
-
-            if (this.vm.homeState.summaryExpanded) {
-              Column({ space: 12 }) {
-                ForEach(this.vm.homeState.trendSummary!.items, (item: TrendItem) => {
-                  Column({ space: 6 }) {
-                    Text(`${item.rank}. ${item.trendTitle}`)
-                      .fontSize(18)
-                      .fontWeight(FontWeight.Medium)
-                      .fontColor('#1F2937');
-                    Text(item.summary)
-                      .fontSize(14)
-                      .lineHeight(22)
-                      .fontColor('#6B7280');
-                    if (this.representativeTitles(item).length > 0) {
-                      Text(`代表论文：${this.representativeTitles(item)}`)
-                        .fontSize(13)
-                        .fontColor('#6B7280');
-                    }
-                  }
-                  .width('100%');
-                }, (item: TrendItem) => `${item.rank}`);
-              }
-              .width('100%');
-            }
-
-            Text(this.vm.homeState.summaryExpanded ? '收起趋势详情' : '展开趋势详情')
-              .fontSize(14)
-              .fontColor('#2D6CE8')
-              .onClick(() => this.vm.toggleSummaryExpanded());
-          } else {
-            Text('暂无趋势摘要')
-              .fontSize(14)
-              .fontColor('#6B7280')
-              .width('100%')
-              .padding(16)
-              .backgroundColor('#FFFFFF')
-              .borderRadius(16);
-          }
-        }
-        .width('100%')
-        .padding(16)
-        .backgroundColor('#EAF2FF')
-        .borderRadius(20);
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#FFFFFF')
+          .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+          .backgroundColor('#1F2937')
+          .borderRadius(999);
       }
 
       Column({ space: 12 }) {
-        Text(this.paperSectionTitle())
-          .fontSize(24)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        Text(this.paperSectionSubtitle())
-          .fontSize(14)
-          .fontColor('#6B7280');
+        this.paperSectionHeader();
 
         if (this.vm.homeState.papers.length === 0) {
-          Column({ space: 8 }) {
-            Text(this.emptyStateTitle())
-              .fontSize(16)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#111827');
-            Text(this.emptyStateSubtitle())
-              .fontSize(14)
-              .lineHeight(22)
-              .fontColor('#6B7280');
-          }
-          .alignItems(HorizontalAlign.Center)
-            .width('100%')
-            .padding(16)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(16);
+          this.emptyStateCard();
         } else {
           ForEach(this.vm.homeState.papers, (paper: PaperItem) => {
             this.paperCard(paper);
@@ -676,7 +895,8 @@ export struct HomePage {
         .width('100%')
         .padding(16)
         .backgroundColor('#FFFFFF')
-        .borderRadius(20);
+        .borderRadius(20)
+        .border({ width: 1, color: '#E5EBF5' });
       }
     }
     .width('100%')
