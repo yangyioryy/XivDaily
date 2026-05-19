@@ -1,0 +1,12 @@
+一些已经安装好的东西：
+D:\DevEco Studio
+D:\HarmonySDK
+
+Harmony 命令行构建验证：
+- DEVECO_SDK_HOME 需要指向：D:\DevEco Studio\sdk
+- hvigor 命令入口：D:\DevEco Studio\tools\hvigor\bin\hvigorw.bat
+- PowerShell 构建命令：
+  $env:DEVECO_SDK_HOME='D:\DevEco Studio\sdk'
+  & 'D:\DevEco Studio\tools\hvigor\bin\hvigorw.bat' assembleHap
+- 当前工程 compileSdkVersion：6.1.0(23)
+- 当前可以成功 assembleHap，但会提示未配置 signingConfigs，所以跳过 HAP 签名
