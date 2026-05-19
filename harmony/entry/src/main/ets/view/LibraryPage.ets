@@ -2,6 +2,18 @@ import AppConstants from '../common/constants/AppConstants';
 import { FavoritePaperItem } from '../model/AppModels';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
+class LibraryFilterOption {
+  value: string;
+  label: string;
+  renderKey: string;
+
+  constructor(value: string, label: string) {
+    this.value = value;
+    this.label = label;
+    this.renderKey = `${value}:${label}`;
+  }
+}
+
 @Component
 export struct LibraryPage {
   @ObjectLink vm: AppViewModel;
@@ -24,6 +36,10 @@ export struct LibraryPage {
     return this.vm.libraryState.favorites.filter((favorite: FavoritePaperItem) => favorite.paper.zoteroSyncState === 'not_synced').length;
   }
 
+  private totalFavoriteCount(): number {
+    return this.vm.libraryState.favorites.length;
+  }
+
   private isPaperSelected(paperId: string): boolean {
     return this.vm.libraryState.selectedPaperIds.indexOf(paperId) >= 0;
   }
@@ -44,6 +60,18 @@ export struct LibraryPage {
       return '待同步';
     }
     return '全部';
+  }
+
+  private visibleCountText(): string {
+    return `共 ${this.totalFavoriteCount()} 条 · 当前展示 ${this.filteredFavorites().length} 条`;
+  }
+
+  private filterOptions(): LibraryFilterOption[] {
+    return [
+      new LibraryFilterOption('all', `全部 ${this.totalFavoriteCount()}`),
+      new LibraryFilterOption('synced', `已同步 ${this.syncedCount()}`),
+      new LibraryFilterOption('not_synced', `未同步 ${this.unsyncedCount()}`)
+    ];
   }
 
   private syncStatusLabel(syncState: string): string {
@@ -101,34 +129,8 @@ export struct LibraryPage {
         }
       }
       .width('100%');
-
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-        Text(`共 ${this.vm.libraryState.favorites.length} 条`)
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#2D6CE8')
-          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-          .margin({ right: 8, bottom: 8 })
-          .backgroundColor('#EAF2FF')
-          .borderRadius(999);
-        if (this.filteredFavorites().length > 0) {
-          Text(`当前展示 ${this.filteredFavorites().length} 条`)
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#475569')
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-            .margin({ right: 8, bottom: 8 })
-            .backgroundColor('#F8FAFC')
-            .borderRadius(999);
-        }
-      }
-      .width('100%');
     }
-    .width('100%')
-    .padding(18)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .width('100%');
   }
 
   @Builder
@@ -147,24 +149,12 @@ export struct LibraryPage {
 
   @Builder
   private filterToolbar() {
-    Column({ space: 12 }) {
-      Text('同步状态')
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
-        .fontColor('#374151');
-
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-        this.filterChip('all', `全部 ${this.vm.libraryState.favorites.length}`);
-        this.filterChip('synced', `已同步 ${this.syncedCount()}`);
-        this.filterChip('not_synced', `未同步 ${this.unsyncedCount()}`);
-      }
-      .width('100%');
+    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+      ForEach(this.filterOptions(), (item: LibraryFilterOption) => {
+        this.filterChip(item.value, item.label);
+      }, (item: LibraryFilterOption) => item.renderKey);
     }
-    .width('100%')
-    .padding(18)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .width('100%');
   }
 
   @Builder
@@ -373,11 +363,19 @@ export struct LibraryPage {
       Text('收藏论文')
         .fontSize(24)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#111827');
+        .fontColor('#111827')
+        .width('100%');
+
+      if (this.totalFavoriteCount() > 0 && this.filteredFavorites().length > 0) {
+        Text(this.visibleCountText())
+          .fontSize(13)
+          .fontColor('#6B7280')
+          .width('100%');
+      }
 
       Scroll(this.listScroller) {
         Column({ space: 12 }) {
-          if (this.vm.libraryState.favorites.length === 0) {
+          if (this.totalFavoriteCount() === 0) {
             this.emptyStateCard('还没有收藏论文', '在首页收藏感兴趣的论文后，这里会成为你的研究资料库。');
           } else if (this.filteredFavorites().length === 0) {
             this.emptyStateCard('当前筛选下没有结果', '可以切换同步状态，或者检查导出与同步后的收藏记录。');

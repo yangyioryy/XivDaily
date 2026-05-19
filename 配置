@@ -51,3 +51,17 @@ Harmony 命令行构建验证：
   2. 等待 3-4 秒
   3. `uitest uiInput click 1150 2680`
   4. `snapshot_display` + `file recv`
+
+2026-05-19 23:10:00 +08:00 补充：
+- 当前优先使用的 `hdc` 路径：`D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe`
+- 真实版本：`Ver: 3.2.0c`
+- 真实设备检查命令：
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -v`
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' list targets`
+- 当前已验证目标仍是：`127.0.0.1:5555`
+- 收藏页非空态这轮真实验收结果：
+  - 证据文件：`tmp-xivdaily-library-round5.jpeg`、`tmp-xivdaily-library-round5.json`
+  - 顶部标题副文案：`全部 · 1 条`
+  - 顶部筛选 chips：`全部 1` / `已同步 0` / `未同步 1`
+  - 列表统计：`共 1 条 · 当前展示 1 条`
+  - 说明：首页收藏 -> 收藏库展示链路真实可用，本轮修复后顶部筛选计数已与真实收藏数对齐
