@@ -211,7 +211,8 @@ export interface PaperChatResult {
 
 const CANDIDATE_BACKEND_BASE_URLS: string[] = [
   'http://127.0.0.1:8000/',
-  'http://10.0.2.2:8000/'
+  'http://10.0.2.2:8000/',
+  'https://beginnerforever.eu.cc/'
 ];
 const DEFAULT_CONNECT_TIMEOUT_MS: number = 20_000;
 const PAPER_CHAT_TIMEOUT_MS: number = 75_000;

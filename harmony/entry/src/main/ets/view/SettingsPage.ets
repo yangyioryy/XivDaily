@@ -7,6 +7,7 @@ import { AppViewModel } from '../viewmodel/AppViewModel';
 @Component
 export struct SettingsPage {
   @ObjectLink vm: AppViewModel;
+  private pageScroller: Scroller = new Scroller();
   @State private isProfileEditorVisible: boolean = false;
   @State private profileNameDraft: string = '';
   @State private profileAvatarDraft: string = 'study';
@@ -158,6 +159,28 @@ export struct SettingsPage {
 
   private removeProfileAvatarImage(): void {
     this.profileAvatarImageUriDraft = undefined;
+  }
+
+  @Builder
+  private heroPill() {
+    Text('✦')
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .fontColor('#2D6CE8')
+      .width(32)
+      .height(32)
+      .textAlign(TextAlign.Center)
+      .backgroundColor('#EAF2FF')
+      .borderRadius(10);
+  }
+
+  @Builder
+  private dialogBackdrop(onDismiss: () => void) {
+    Row()
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#66000000')
+      .onClick(() => onDismiss());
   }
 
   @Builder
@@ -431,305 +454,361 @@ export struct SettingsPage {
   @Builder
   private themePickerCard() {
     if (this.vm.settingsState.isThemePickerVisible) {
-      Column({ space: 10 }) {
-        Text('选择主题模式')
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        this.settingRow('✦', '跟随系统', '当前已选中则不会主动覆盖系统主题', undefined, () => {
-          this.vm.selectThemeMode('system');
-          this.applyThemeMode('system');
-        });
-        Divider().color('#EEF2F7');
-        this.settingRow('☀', '浅色', '点击切换到浅色主题', undefined, () => {
-          this.vm.selectThemeMode('light');
-          this.applyThemeMode('light');
-        });
-        Divider().color('#EEF2F7');
-        this.settingRow('☾', '深色', '点击切换到深色主题', undefined, () => {
-          this.vm.selectThemeMode('dark');
-          this.applyThemeMode('dark');
-        });
-        Row() {
-          Blank();
-          this.formActionButton('关闭', false, false, () => this.vm.hideThemePicker());
+      Stack({ alignContent: Alignment.Center }) {
+        this.dialogBackdrop(() => this.vm.hideThemePicker());
+        Column({ space: 10 }) {
+          Text('选择主题模式')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#111827');
+          this.settingRow('✦', '跟随系统', '当前已选中则不会主动覆盖系统主题', undefined, () => {
+            this.vm.selectThemeMode('system');
+            this.applyThemeMode('system');
+          });
+          Divider().color('#EEF2F7');
+          this.settingRow('☀', '浅色', '点击切换到浅色主题', undefined, () => {
+            this.vm.selectThemeMode('light');
+            this.applyThemeMode('light');
+          });
+          Divider().color('#EEF2F7');
+          this.settingRow('☾', '深色', '点击切换到深色主题', undefined, () => {
+            this.vm.selectThemeMode('dark');
+            this.applyThemeMode('dark');
+          });
+          Row() {
+            Blank();
+            this.formActionButton('关闭', false, false, () => this.vm.hideThemePicker());
+          }
+          .width('100%');
         }
-        .width('100%');
+        .width('88%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(20);
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(20);
+      .height('100%');
     }
   }
 
   @Builder
   private languagePickerCard() {
     if (this.vm.settingsState.isLanguagePickerVisible) {
-      Column({ space: 10 }) {
-        Text('选择语言')
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        this.settingRow('🌐', '简体中文', '点击切换到简体中文', undefined, () => this.vm.selectLanguage('zh-CN'));
-        Row() {
-          Blank();
-          this.formActionButton('关闭', false, false, () => this.vm.hideLanguagePicker());
+      Stack({ alignContent: Alignment.Center }) {
+        this.dialogBackdrop(() => this.vm.hideLanguagePicker());
+        Column({ space: 10 }) {
+          Text('选择语言')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#111827');
+          this.settingRow('🌐', '简体中文', '点击切换到简体中文', undefined, () => this.vm.selectLanguage('zh-CN'));
+          Row() {
+            Blank();
+            this.formActionButton('关闭', false, false, () => this.vm.hideLanguagePicker());
+          }
+          .width('100%');
         }
-        .width('100%');
+        .width('88%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(20);
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(20);
+      .height('100%');
     }
   }
 
   @Builder
   private zoteroDialogCard() {
     if (this.vm.settingsState.isZoteroDetailDialogVisible) {
-      Column({ space: 12 }) {
-        Text('Zotero 配置')
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        Text(`当前集合：${this.vm.settingsState.zoteroTargetCollectionName}`)
-          .fontSize(13)
-          .fontColor('#6B7280');
-        this.formInput('User ID / Group ID', this.vm.settingsState.zoteroUserIdDraft, '输入用户或群组 ID', (value: string) => {
-          this.vm.updateZoteroUserIdDraft(value);
-        });
-        this.formInput('Library Type', this.vm.settingsState.zoteroLibraryTypeDraft, 'user / group', (value: string) => {
-          this.vm.updateZoteroLibraryTypeDraft(value);
-        });
-        this.formInput('API Key', this.vm.settingsState.zoteroApiKeyDraft, this.vm.settingsState.zoteroApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
-          this.vm.updateZoteroApiKeyDraft(value);
-        });
-        this.formInput('目标集合名称', this.vm.settingsState.zoteroTargetCollectionNameDraft, 'XivDaily', (value: string) => {
-          this.vm.updateZoteroCollectionDraft(value);
-        });
-        Row({ space: 8 }) {
-          this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
-            void this.vm.testZoteroConfig();
+      Stack({ alignContent: Alignment.Center }) {
+        this.dialogBackdrop(() => this.vm.hideZoteroDetailDialog());
+        Column({ space: 12 }) {
+          Text('Zotero 配置')
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#111827');
+          Text(`当前集合：${this.vm.settingsState.zoteroTargetCollectionName}`)
+            .fontSize(13)
+            .fontColor('#6B7280');
+          this.formInput('User ID / Group ID', this.vm.settingsState.zoteroUserIdDraft, '输入用户或群组 ID', (value: string) => {
+            this.vm.updateZoteroUserIdDraft(value);
           });
-          this.formActionButton(this.vm.settingsState.isConfigBusy ? '保存中...' : '保存', true, this.vm.settingsState.isConfigBusy, () => {
-            void this.vm.saveZoteroConfig();
+          this.formInput('Library Type', this.vm.settingsState.zoteroLibraryTypeDraft, 'user / group', (value: string) => {
+            this.vm.updateZoteroLibraryTypeDraft(value);
           });
-          Blank();
-          this.formActionButton('取消', false, false, () => this.vm.hideZoteroDetailDialog());
+          this.formInput('API Key', this.vm.settingsState.zoteroApiKeyDraft, this.vm.settingsState.zoteroApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
+            this.vm.updateZoteroApiKeyDraft(value);
+          });
+          this.formInput('目标集合名称', this.vm.settingsState.zoteroTargetCollectionNameDraft, 'XivDaily', (value: string) => {
+            this.vm.updateZoteroCollectionDraft(value);
+          });
+          Row({ space: 8 }) {
+            this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
+              void this.vm.testZoteroConfig();
+            });
+            this.formActionButton(this.vm.settingsState.isConfigBusy ? '保存中...' : '保存', true, this.vm.settingsState.isConfigBusy, () => {
+              void this.vm.saveZoteroConfig();
+            });
+            Blank();
+            this.formActionButton('取消', false, false, () => this.vm.hideZoteroDetailDialog());
+          }
+          .width('100%');
         }
-        .width('100%');
+        .width('88%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(20);
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(20);
+      .height('100%');
     }
   }
 
   @Builder
   private llmDialogCard() {
     if (this.vm.settingsState.isLlmDetailDialogVisible) {
-      Column({ space: 12 }) {
-        Text('大模型 API 配置')
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        this.formInput('Base URL', this.vm.settingsState.llmBaseUrlDraft, 'https://...', (value: string) => {
-          this.vm.updateLlmBaseUrlDraft(value);
-        });
-        this.formInput('Model', this.vm.settingsState.llmModelDraft, 'grok-4.20-0309-non-reasoning', (value: string) => {
-          this.vm.updateLlmModelDraft(value);
-        });
-        this.formInput('API Key', this.vm.settingsState.llmApiKeyDraft, this.vm.settingsState.llmApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
-          this.vm.updateLlmApiKeyDraft(value);
-        });
-        Row({ space: 8 }) {
-          this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
-            void this.vm.testLlmConfig();
+      Stack({ alignContent: Alignment.Center }) {
+        this.dialogBackdrop(() => this.vm.hideLlmDetailDialog());
+        Column({ space: 12 }) {
+          Text('大模型 API 配置')
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#111827');
+          this.formInput('Base URL', this.vm.settingsState.llmBaseUrlDraft, 'https://...', (value: string) => {
+            this.vm.updateLlmBaseUrlDraft(value);
           });
-          this.formActionButton(this.vm.settingsState.isConfigBusy ? '保存中...' : '保存', true, this.vm.settingsState.isConfigBusy, () => {
-            void this.vm.saveLlmConfig();
+          this.formInput('Model', this.vm.settingsState.llmModelDraft, 'grok-4.20-0309-non-reasoning', (value: string) => {
+            this.vm.updateLlmModelDraft(value);
           });
-          Blank();
-          this.formActionButton('取消', false, false, () => this.vm.hideLlmDetailDialog());
+          this.formInput('API Key', this.vm.settingsState.llmApiKeyDraft, this.vm.settingsState.llmApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
+            this.vm.updateLlmApiKeyDraft(value);
+          });
+          Row({ space: 8 }) {
+            this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
+              void this.vm.testLlmConfig();
+            });
+            this.formActionButton(this.vm.settingsState.isConfigBusy ? '保存中...' : '保存', true, this.vm.settingsState.isConfigBusy, () => {
+              void this.vm.saveLlmConfig();
+            });
+            Blank();
+            this.formActionButton('取消', false, false, () => this.vm.hideLlmDetailDialog());
+          }
+          .width('100%');
         }
-        .width('100%');
+        .width('88%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(20);
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(20);
+      .height('100%');
     }
   }
 
   @Builder
   private otherDialogs() {
     if (this.isProfileEditorVisible) {
-      Column({ space: 12 }) {
-        Text('编辑个人资料')
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        this.formInput('用户名', this.profileNameDraft, 'XivDaily Reader', (value: string) => {
-          this.profileNameDraft = value;
-        });
-        Text('头像预设')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#374151')
-          .width('100%');
-        if (this.profileAvatarImageUriDraft && this.profileAvatarImageUriDraft.length > 0) {
-          Image(this.profileAvatarImageUriDraft)
-            .width(72)
-            .height(72)
-            .borderRadius(36)
-            .objectFit(ImageFit.Cover);
-        }
-        this.chipGroup(['study', 'spark', 'orbit'], this.profileAvatarDraft, (value: string) => {
-          this.profileAvatarDraft = value;
-        });
-        Row({ space: 8 }) {
-          this.formActionButton(this.profileAvatarImageUriDraft ? '更换头像' : '上传头像', false, false, () => {
-            void this.pickProfileAvatar();
+      Stack({ alignContent: Alignment.Center }) {
+        this.dialogBackdrop(() => this.hideProfileEditor());
+        Column({ space: 12 }) {
+          Text('编辑个人资料')
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#111827');
+          this.formInput('用户名', this.profileNameDraft, 'XivDaily Reader', (value: string) => {
+            this.profileNameDraft = value;
           });
-          this.formActionButton('移除图片', false, !this.profileAvatarImageUriDraft, () => this.removeProfileAvatarImage());
+          Text('头像预设')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#374151')
+            .width('100%');
+          if (this.profileAvatarImageUriDraft && this.profileAvatarImageUriDraft.length > 0) {
+            Image(this.profileAvatarImageUriDraft)
+              .width(72)
+              .height(72)
+              .borderRadius(36)
+              .objectFit(ImageFit.Cover);
+          }
+          this.chipGroup(['study', 'spark', 'orbit'], this.profileAvatarDraft, (value: string) => {
+            this.profileAvatarDraft = value;
+          });
+          Row({ space: 8 }) {
+            this.formActionButton(this.profileAvatarImageUriDraft ? '更换头像' : '上传头像', false, false, () => {
+              void this.pickProfileAvatar();
+            });
+            this.formActionButton('移除图片', false, !this.profileAvatarImageUriDraft, () => this.removeProfileAvatarImage());
+          }
+          .width('100%');
+          Text(this.profileAvatarImageUriDraft ? '已选择本地图片头像' : '未选择图片时使用头像预设')
+            .fontSize(13)
+            .fontColor('#6B7280');
+          Row({ space: 8 }) {
+            this.formActionButton('保存', true, false, () => this.saveProfileEditor());
+            this.formActionButton('取消', false, false, () => this.hideProfileEditor());
+          }
+          .width('100%');
         }
-        .width('100%');
-        Text(this.profileAvatarImageUriDraft ? '已选择本地图片头像' : '未选择图片时使用头像预设')
-          .fontSize(13)
-          .fontColor('#6B7280');
-        Row({ space: 8 }) {
-          this.formActionButton('保存', true, false, () => this.saveProfileEditor());
-          this.formActionButton('取消', false, false, () => this.hideProfileEditor());
-        }
-        .width('100%');
+        .width('88%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(20);
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(20);
+      .height('100%');
     }
 
     if (this.vm.settingsState.isAboutDialogVisible) {
-      Column({ space: 10 }) {
-        Text('关于 XivDaily')
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        Text('XivDaily 是面向研究阅读场景的每日论文工作台。当前版本聚焦首页流、收藏同步和趋势摘要体验。')
-          .fontSize(14)
-          .lineHeight(22)
-          .fontColor('#374151');
-        Row() {
-          Blank();
-          this.formActionButton('关闭', false, false, () => this.vm.hideAboutDialog());
+      Stack({ alignContent: Alignment.Center }) {
+        this.dialogBackdrop(() => this.vm.hideAboutDialog());
+        Column({ space: 10 }) {
+          Text('关于 XivDaily')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#111827');
+          Text('XivDaily 是面向研究阅读场景的每日论文工作台。当前版本聚焦首页流、收藏同步和趋势摘要体验。')
+            .fontSize(14)
+            .lineHeight(22)
+            .fontColor('#374151');
+          Row() {
+            Blank();
+            this.formActionButton('关闭', false, false, () => this.vm.hideAboutDialog());
+          }
+          .width('100%');
         }
-        .width('100%');
+        .width('88%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(20);
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(20);
+      .height('100%');
     }
 
     if (this.vm.settingsState.isUpdateDialogVisible) {
-      Column({ space: 10 }) {
-        Text('检查更新')
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        Text('当前版本：v0.1.0\n最新版本：v0.1.0\n更新时间：今天\n当前已经是最新版本。')
-          .fontSize(14)
-          .lineHeight(22)
-          .fontColor('#374151');
-        Row() {
-          Blank();
-          this.formActionButton('关闭', false, false, () => this.vm.hideUpdateDialog());
+      Stack({ alignContent: Alignment.Center }) {
+        this.dialogBackdrop(() => this.vm.hideUpdateDialog());
+        Column({ space: 10 }) {
+          Text('检查更新')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#111827');
+          Text('当前版本：v0.1.0\n最新版本：v0.1.0\n更新时间：今天\n当前已经是最新版本。')
+            .fontSize(14)
+            .lineHeight(22)
+            .fontColor('#374151');
+          Row() {
+            Blank();
+            this.formActionButton('关闭', false, false, () => this.vm.hideUpdateDialog());
+          }
+          .width('100%');
         }
-        .width('100%');
+        .width('88%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(20);
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(20);
+      .height('100%');
     }
 
     if (this.vm.settingsState.isClearCacheDialogVisible) {
-      Column({ space: 10 }) {
-        Text('确认清理缓存')
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        Text('将清理首页列表与趋势提示缓存反馈，不影响收藏库与偏好设置。')
-          .fontSize(14)
-          .lineHeight(22)
-          .fontColor('#374151');
-        Row({ space: 8 }) {
-          this.formActionButton('开始清理', true, false, () => this.vm.clearCache());
-          this.formActionButton('取消', false, false, () => this.vm.hideClearCacheDialog());
+      Stack({ alignContent: Alignment.Center }) {
+        this.dialogBackdrop(() => this.vm.hideClearCacheDialog());
+        Column({ space: 10 }) {
+          Text('确认清理缓存')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#111827');
+          Text('将清理首页列表与趋势提示缓存反馈，不影响收藏库与偏好设置。')
+            .fontSize(14)
+            .lineHeight(22)
+            .fontColor('#374151');
+          Row({ space: 8 }) {
+            this.formActionButton('开始清理', true, false, () => this.vm.clearCache());
+            this.formActionButton('取消', false, false, () => this.vm.hideClearCacheDialog());
+          }
+          .width('100%');
         }
-        .width('100%');
+        .width('88%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(20);
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(20);
+      .height('100%');
     }
   }
 
   build() {
-    Column({ space: AppConstants.SECTION_SPACING }) {
-      Text('设置')
-        .fontSize(28)
-        .fontWeight(FontWeight.Bold)
-        .fontColor('#111827')
-        .width('100%');
+    Stack({ alignContent: Alignment.TopStart }) {
+      Scroll(this.pageScroller) {
+        Column({ space: AppConstants.SECTION_SPACING }) {
+          Row() {
+            Text('设置')
+              .fontSize(28)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#111827');
+            Blank();
+            this.heroPill();
+          }
+          .width('100%');
 
-      this.profileCard();
+          this.profileCard();
 
-      this.sectionTitle('偏好设置');
-      this.preferenceSection();
+          this.sectionTitle('偏好设置');
+          this.preferenceSection();
 
-      this.sectionTitle('集成配置');
-      this.integrationSection();
+          this.sectionTitle('集成配置');
+          this.integrationSection();
 
-      this.sectionTitle('外观');
-      this.appearanceSection();
+          this.sectionTitle('外观');
+          this.appearanceSection();
 
-      this.sectionTitle('其他');
-      this.otherSection();
+          this.sectionTitle('其他');
+          this.otherSection();
 
-      if (this.vm.settingsState.actionMessage) {
-        Text(this.vm.settingsState.actionMessage!)
-          .fontSize(13)
-          .fontColor('#2D6CE8')
-          .padding(12)
-          .backgroundColor('#EAF2FF')
-          .borderRadius(14);
-      }
+          if (this.vm.settingsState.actionMessage) {
+            Text(this.vm.settingsState.actionMessage!)
+              .fontSize(13)
+              .fontColor('#2D6CE8')
+              .padding(12)
+              .backgroundColor('#EAF2FF')
+              .borderRadius(14);
+          }
 
-      if (this.vm.settingsState.errorMessage) {
-        Text(this.vm.settingsState.errorMessage!)
-          .fontSize(13)
-          .fontColor('#B6544A')
-          .padding(12)
-          .backgroundColor('#FFEAEA')
-          .borderRadius(14);
-      }
+          if (this.vm.settingsState.errorMessage) {
+            Text(this.vm.settingsState.errorMessage!)
+              .fontSize(13)
+              .fontColor('#B6544A')
+              .padding(12)
+              .backgroundColor('#FFEAEA')
+              .borderRadius(14);
+          }
 
-      Text('刷新配置状态')
-        .fontSize(15)
-        .fontWeight(FontWeight.Medium)
-        .fontColor('#2D6CE8')
+          Text('刷新配置状态')
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#2D6CE8')
+            .width('100%')
+            .textAlign(TextAlign.Center)
+            .padding({ top: 14, bottom: 14 })
+            .backgroundColor('#FFFFFF')
+            .borderRadius(16)
+            .onClick(() => {
+              void this.vm.refreshIntegrationStatusAction();
+            });
+        }
         .width('100%')
-        .textAlign(TextAlign.Center)
-        .padding({ top: 14, bottom: 14 })
-        .backgroundColor('#FFFFFF')
-        .borderRadius(16)
-        .onClick(() => {
-          void this.vm.refreshIntegrationStatusAction();
-        });
+        .alignItems(HorizontalAlign.Start)
+        .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
+      }
+      .width('100%')
+      .height('100%')
+      .scrollBar(BarState.Off)
+      .scrollable(ScrollDirection.Vertical)
+      .backgroundColor('#F7F9FD');
 
       this.themePickerCard();
       this.languagePickerCard();
@@ -738,8 +817,7 @@ export struct SettingsPage {
       this.otherDialogs();
     }
     .width('100%')
-    .alignItems(HorizontalAlign.Start)
-    .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
+    .height('100%');
   }
 }
 
