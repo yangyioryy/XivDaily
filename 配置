@@ -7,6 +7,14 @@ Harmony 命令行构建验证：
 - hvigor 命令入口：D:\DevEco Studio\tools\hvigor\bin\hvigorw.bat
 - PowerShell 构建命令：
   $env:DEVECO_SDK_HOME='D:\DevEco Studio\sdk'
+  & 'D:\DevEco Studio\tools\hvigor\bin\hvigorw.bat' --stop-daemon
   & 'D:\DevEco Studio\tools\hvigor\bin\hvigorw.bat' assembleHap
 - 当前工程 compileSdkVersion：6.1.0(23)
 - 当前可以成功 assembleHap，但会提示未配置 signingConfigs，所以跳过 HAP 签名
+
+2026-05-19 19:36:20 +08:00 补充：
+- Harmony 首页/设置页最近都用上面的 hvigor 命令做过真实构建验证
+- 当前 shell 里没有直接可用的 `hdc` 命令，所以暂时不能在这里直接抓新的真机截图
+- Harmony 端后端候选地址来自 `harmony/entry/src/main/ets/service/PaperService.ets`
+  - http://127.0.0.1:8000/
+  - https://beginnerforever.eu.cc/

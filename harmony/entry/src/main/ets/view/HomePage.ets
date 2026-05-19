@@ -122,21 +122,26 @@ export struct HomePage {
     this.customTagDraft = '';
   }
 
+  private showToast(message: string): void {
+    try {
+      this.getUIContext().getPromptAction().showToast({
+        message: message
+      });
+    } catch (error) {
+    }
+  }
+
   private async openPaperSource(paper: PaperItem): Promise<void> {
     const hostContext = this.getUIContext().getHostContext();
     if (!hostContext || paper.sourceUrl.trim().length === 0) {
-      this.getUIContext().getPromptAction().showToast({
-        message: '论文链接暂不可用'
-      });
+      this.showToast('论文链接暂不可用');
       return;
     }
 
     try {
       await (hostContext as common.UIAbilityContext).openLink(paper.sourceUrl.trim());
     } catch (error) {
-      this.getUIContext().getPromptAction().showToast({
-        message: '打开论文原文失败'
-      });
+      this.showToast('打开论文原文失败');
     }
   }
 
@@ -164,136 +169,79 @@ export struct HomePage {
   }
 
   @Builder
-  private leadingPill() {
-    Row() {
-      SymbolGlyph($r('sys.symbol.bell'))
-        .fontSize(16)
-        .fontColor(['#2D6CE8']);
-    }
-    .width(32)
-    .height(32)
-    .justifyContent(FlexAlign.Center)
-    .backgroundColor('#EAF2FF')
-    .borderRadius(10);
-  }
-
-  @Builder
   private heroSection() {
-    Column({ space: 10 }) {
+    Column({ space: 14 }) {
       Row() {
-        Column({ space: 4 }) {
-          Text('DAILY DIGEST')
-            .fontSize(12)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#2D6CE8');
-          Text('首页')
-            .fontSize(32)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#111827');
-        }
+        Text('首页')
+          .fontSize(28)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#111827');
         Blank();
-        this.leadingPill();
+        Text(this.vm.homeState.isLoading ? '刷新中' : '刷新')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D6CE8')
+          .opacity(this.vm.homeState.isLoading ? 0.7 : 1)
+          .onClick(() => this.vm.refreshHome());
       }
       .width('100%');
 
       Text(this.heroSubtitle())
         .fontSize(14)
-        .lineHeight(22)
-        .fontColor('#6B7280');
-
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-        Text(this.isSearchActive() ? `搜索中：${this.vm.homeState.searchKeyword}` : this.vm.homeState.selectedCategory)
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#2D6CE8');
-        Text(this.isSearchActive() ? '全 arXiv' : this.dayLabel(this.vm.homeState.selectedDays))
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#475569');
-        if (!this.vm.homeState.dismissedSummary) {
-          Text(this.vm.homeState.trendSummary?.items.length ? `趋势焦点：${this.summaryTitle()}` : '趋势摘要待生成')
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#475569');
-        }
-      }
-      .width('100%');
+        .lineHeight(20)
+        .fontColor('#6B7280')
+        .width('100%');
     }
-    .width('100%')
-    .padding(18)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .width('100%');
   }
 
   @Builder
   private exploreControlCard() {
     Column({ space: 14 }) {
-      Column({ space: 4 }) {
-        Text('探索条件')
-          .fontSize(20)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        Text(this.isSearchActive() ? '当前正在执行全局搜索，可随时退出回到时间流。' : '先限定领域和时间，再决定是否发起全局搜索。')
-          .fontSize(13)
-          .lineHeight(20)
-          .fontColor('#6B7280');
-      }
-
-      Column({ space: 10 }) {
-        Row({ space: 10 }) {
-          Row({ space: 8 }) {
-            Text('⌕')
-              .fontSize(16)
-              .fontColor('#6B7280');
-            TextInput({
-              placeholder: '搜索论文、作者、关键词',
-              text: this.vm.homeState.searchKeywordDraft
-            })
-              .fontSize(15)
-              .layoutWeight(1)
-              .backgroundColor('#F7F9FC')
-              .onChange((value: string) => this.vm.updateSearchKeywordDraft(value))
-              .onSubmit(() => this.vm.submitSearch());
-          }
+      Row({ space: 16 }) {
+        Text('🔎')
+          .fontSize(22);
+        TextInput({
+          placeholder: '搜索论文、作者、关键词',
+          text: this.vm.homeState.searchKeywordDraft
+        })
+          .fontSize(15)
           .layoutWeight(1)
-          .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-          .backgroundColor('#F7F9FC')
-          .borderRadius(16)
-          .border({ width: 1, color: '#E5EBF5' });
+          .backgroundColor('#FFFFFF')
+          .onChange((value: string) => this.vm.updateSearchKeywordDraft(value))
+          .onSubmit(() => this.vm.submitSearch());
+        Text('搜索')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D6CE8')
+          .onClick(() => this.vm.submitSearch());
+      }
+      .width('100%')
+      .padding({ left: 20, right: 20, top: 16, bottom: 16 })
+      .backgroundColor('#FFFFFF')
+      .borderRadius(24)
+      .border({ width: 1, color: '#D9E2F0' });
 
-          Text('搜索')
-            .fontSize(14)
+      if (this.isSearchActive()) {
+        Row() {
+          Blank();
+          Text('退出搜索')
+            .fontSize(13)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#FFFFFF')
-            .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-            .backgroundColor('#2D6CE8')
-            .borderRadius(16)
-            .onClick(() => this.vm.submitSearch());
+            .fontColor('#475569')
+            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+            .backgroundColor('#F1F4FA')
+            .borderRadius(999)
+            .onClick(() => this.vm.clearSearch());
         }
         .width('100%');
-
-        if (this.isSearchActive()) {
-          Row() {
-            Blank();
-            Text('退出搜索')
-              .fontSize(13)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#475569')
-              .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-              .backgroundColor('#F1F4FA')
-              .borderRadius(999)
-              .onClick(() => this.vm.clearSearch());
-          }
-          .width('100%');
-        }
       }
 
       Column({ space: 8 }) {
         Text('领域')
-          .fontSize(16)
+          .fontSize(18)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#475569')
+          .fontColor('#374151')
           .width('100%');
 
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
@@ -391,9 +339,9 @@ export struct HomePage {
 
         Column({ space: 8 }) {
           Text('时间')
-            .fontSize(16)
+            .fontSize(18)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#475569')
+            .fontColor('#374151')
             .width('100%');
 
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
@@ -414,44 +362,24 @@ export struct HomePage {
         .width('100%');
       }
     }
-    .width('100%')
-    .padding(18)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .width('100%');
   }
 
   @Builder
   private paperSectionHeader() {
-    Row() {
-      Column({ space: 4 }) {
-        Text(this.paperSectionTitle())
-          .fontSize(22)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        Text(this.paperSectionSubtitle())
-          .fontSize(14)
-          .lineHeight(20)
-          .fontColor('#6B7280');
-      }
-      Blank();
-      Row({ space: 6 }) {
-        Text('↻')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#2D6CE8');
-        Text('刷新')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#2D6CE8');
-      }
-      .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-      .backgroundColor('#F8FAFC')
-      .borderRadius(999)
-      .border({ width: 1, color: '#D7DEE9' })
-      .onClick(() => this.vm.refreshHome());
+    Column({ space: 4 }) {
+      Text(this.paperSectionTitle())
+        .fontSize(30)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#111827');
+      Text(this.paperSectionSubtitle())
+        .fontSize(14)
+        .lineHeight(20)
+        .fontColor('#6B7280')
+        .textAlign(TextAlign.Center);
     }
-    .width('100%');
+    .width('100%')
+    .alignItems(HorizontalAlign.Center);
   }
 
   @Builder
@@ -782,7 +710,6 @@ export struct HomePage {
   @Builder
   private emptyStateCard() {
     Column({ space: 10 }) {
-      this.leadingPill();
       Text(this.emptyStateTitle())
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
@@ -805,10 +732,6 @@ export struct HomePage {
       this.heroSection();
       this.exploreControlCard();
 
-      if (!this.vm.homeState.dismissedSummary) {
-        this.trendSummaryCard();
-      }
-
       if (this.vm.homeState.errorMessage) {
         Text(this.vm.homeState.errorMessage!)
           .fontSize(13)
@@ -829,6 +752,10 @@ export struct HomePage {
           .padding(12)
           .backgroundColor('#FFF1DD')
           .borderRadius(14);
+      }
+
+      if (!this.vm.homeState.dismissedSummary) {
+        this.trendSummaryCard();
       }
 
       if (this.vm.homeState.actionMessage) {
