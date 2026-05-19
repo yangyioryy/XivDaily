@@ -1,7 +1,7 @@
 import AppConstants from '../common/constants/AppConstants';
 import Context from '@ohos.app.ability.application';
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
-import picker from '@ohos.file.picker';
+import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
 @Component
@@ -127,19 +127,20 @@ export struct SettingsPage {
     this.isProfileEditorVisible = false;
   }
 
-  private async pickProfileAvatar(): Promise<void> {
-    const hostContext = this.getUIContext().getHostContext();
-    if (!hostContext) {
-      this.getUIContext().getPromptAction().showToast({
-        message: '当前无法打开图片选择器'
-      });
-      return;
-    }
-
+  private showToast(message: string): void {
     try {
-      const photoPicker = new picker.PhotoViewPicker(hostContext as Context);
-      const options = new picker.PhotoSelectOptions();
-      options.MIMEType = picker.PhotoViewMIMETypes.IMAGE_TYPE;
+      this.getUIContext().getPromptAction().showToast({
+        message: message
+      });
+    } catch (error) {
+    }
+  }
+
+  private async pickProfileAvatar(): Promise<void> {
+    try {
+      const photoPicker = new photoAccessHelper.PhotoViewPicker();
+      const options = new photoAccessHelper.PhotoSelectOptions();
+      options.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE;
       options.maxSelectNumber = 1;
       const result = await photoPicker.select(options);
       const nextUri = result.photoUris[0];
@@ -147,13 +148,9 @@ export struct SettingsPage {
         return;
       }
       this.profileAvatarImageUriDraft = nextUri;
-      this.getUIContext().getPromptAction().showToast({
-        message: '已选择本地图片头像'
-      });
+      this.showToast('已选择本地图片头像');
     } catch (error) {
-      this.getUIContext().getPromptAction().showToast({
-        message: '选择头像图片失败'
-      });
+      this.showToast('选择头像图片失败');
     }
   }
 
