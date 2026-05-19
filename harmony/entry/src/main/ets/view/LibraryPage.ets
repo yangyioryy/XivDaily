@@ -228,33 +228,33 @@ export struct LibraryPage {
         .borderRadius(4)
         .backgroundColor(color);
       Text(label)
-        .fontSize(13)
+        .fontSize(12)
         .fontColor('#6B7280');
     }
-    .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-    .backgroundColor('#F1F4FA')
-    .borderRadius(12);
+    .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+    .backgroundColor('#F4F7FB')
+    .borderRadius(10);
   }
 
   @Builder
   private favoriteCard(favorite: FavoritePaperItem) {
-    Column({ space: 12 }) {
+    Column({ space: 10 }) {
       Row({ space: 12 }) {
         Column({ space: 4 }) {
           Text(favorite.paper.title)
-            .fontSize(18)
+            .fontSize(16)
             .fontWeight(FontWeight.Medium)
             .fontColor('#111827')
-            .maxLines(3)
+            .maxLines(2)
             .textOverflow({ overflow: TextOverflow.Ellipsis });
           Text(`收藏于 ${favorite.savedAt.slice(0, 10)}`)
-            .fontSize(13)
+            .fontSize(12)
             .fontColor('#6B7280');
         }
         .layoutWeight(1);
-        Text('★')
+        SymbolGlyph($r('sys.symbol.star_fill'))
           .fontSize(18)
-          .fontColor('#D9A441');
+          .fontColor(['#D9A441']);
       }
       .width('100%');
 
@@ -268,14 +268,19 @@ export struct LibraryPage {
       .width('100%');
 
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-        Text('对话')
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#1D4ED8')
-          .padding({ left: 18, right: 18, top: 10, bottom: 10 })
+        Row({ space: 6 }) {
+          SymbolGlyph($r('sys.symbol.paperplane_fill'))
+            .fontSize(14)
+            .fontColor(['#1D4ED8']);
+          Text('对话')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#1D4ED8');
+        }
+          .padding({ left: 14, right: 14, top: 9, bottom: 9 })
           .margin({ right: 8, bottom: 8 })
           .backgroundColor('#EAF2FF')
-          .borderRadius(14)
+          .borderRadius(12)
           .onClick(() => {
             this.vm.selectTab(2);
             if (!this.isPaperSelected(favorite.paper.id)) {
@@ -284,36 +289,46 @@ export struct LibraryPage {
           });
 
         if (favorite.paper.zoteroSyncState !== 'synced') {
-          Text(this.isPaperSyncing(favorite.paper.id) ? '同步中...' : '同步 Zotero')
-            .fontSize(15)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#1D4ED8')
-            .padding({ left: 18, right: 18, top: 10, bottom: 10 })
+          Row({ space: 6 }) {
+            SymbolGlyph($r('sys.symbol.arrow_2_circlepath'))
+              .fontSize(14)
+              .fontColor(['#1D4ED8']);
+            Text(this.isPaperSyncing(favorite.paper.id) ? '同步中...' : '同步 Zotero')
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#1D4ED8');
+          }
+            .padding({ left: 14, right: 14, top: 9, bottom: 9 })
             .margin({ right: 8, bottom: 8 })
             .backgroundColor('#EAF2FF')
-            .borderRadius(14)
+            .borderRadius(12)
             .opacity(this.isPaperSyncing(favorite.paper.id) ? 0.6 : 1)
             .onClick(() => {
               void this.vm.syncFavoriteToZotero(favorite.paper.id);
             });
         }
 
-        Text('删除')
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#B6544A')
-          .padding({ left: 18, right: 18, top: 10, bottom: 10 })
+        Row({ space: 6 }) {
+          SymbolGlyph($r('sys.symbol.trash'))
+            .fontSize(14)
+            .fontColor(['#B6544A']);
+          Text('删除')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#B6544A');
+        }
+          .padding({ left: 14, right: 14, top: 9, bottom: 9 })
           .margin({ right: 8, bottom: 8 })
           .backgroundColor('#FFF1DD')
-          .borderRadius(14)
+          .borderRadius(12)
           .onClick(() => this.vm.deleteFavorite(favorite.paper.id));
       }
       .width('100%');
     }
     .width('100%')
-    .padding(16)
+    .padding(14)
     .backgroundColor('#FFFFFF')
-    .borderRadius(20)
+    .borderRadius(18)
     .border({ width: 1, color: '#E5EBF5' })
     .onClick(() => this.vm.toggleLibrarySelection(favorite.paper.id));
   }
