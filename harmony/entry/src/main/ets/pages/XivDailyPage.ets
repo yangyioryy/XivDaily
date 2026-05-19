@@ -12,7 +12,6 @@ import { SettingsPage } from '../view/SettingsPage';
 struct XivDailyPage {
   @State vm: AppViewModel = new AppViewModel();
   private homeScroller: Scroller = new Scroller();
-  private libraryScroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     this.applyThemeMode();
@@ -94,11 +93,7 @@ struct XivDailyPage {
       .tabBar(this.tabLabel(0, '首页'));
 
       TabContent() {
-        Scroll(this.libraryScroller) {
-          LibraryPage({ vm: this.vm });
-        }
-        .scrollBar(BarState.Off)
-        .scrollable(ScrollDirection.Vertical)
+        LibraryPage({ vm: this.vm })
         .backgroundColor('#F7F9FD');
       }
       .tabBar(this.tabLabel(1, '收藏库'));

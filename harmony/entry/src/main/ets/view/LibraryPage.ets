@@ -5,6 +5,7 @@ import { AppViewModel } from '../viewmodel/AppViewModel';
 @Component
 export struct LibraryPage {
   @ObjectLink vm: AppViewModel;
+  private listScroller: Scroller = new Scroller();
 
   private filteredFavorites(): FavoritePaperItem[] {
     if (this.vm.libraryState.syncFilter === 'all') {
@@ -81,6 +82,56 @@ export struct LibraryPage {
   }
 
   @Builder
+  private heroSection() {
+    Column({ space: 12 }) {
+      Row() {
+        Column({ space: 4 }) {
+          Text('收藏库')
+            .fontSize(28)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#111827');
+          Text(`${this.filterLabel()} · ${this.filteredFavorites().length} 条`)
+            .fontSize(14)
+            .fontColor('#6B7280');
+        }
+        Blank();
+        Row({ space: 8 }) {
+          this.leadingPill('⌕');
+          this.leadingPill('▣');
+        }
+      }
+      .width('100%');
+
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+        Text(`共 ${this.vm.libraryState.favorites.length} 条`)
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D6CE8')
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+          .margin({ right: 8, bottom: 8 })
+          .backgroundColor('#EAF2FF')
+          .borderRadius(999);
+        if (this.filteredFavorites().length > 0) {
+          Text(`当前展示 ${this.filteredFavorites().length} 条`)
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#475569')
+            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+            .margin({ right: 8, bottom: 8 })
+            .backgroundColor('#F8FAFC')
+            .borderRadius(999);
+        }
+      }
+      .width('100%');
+    }
+    .width('100%')
+    .padding(18)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(24)
+    .border({ width: 1, color: '#E5EBF5' });
+  }
+
+  @Builder
   private filterChip(value: string, label: string) {
     Text(label)
       .fontSize(14)
@@ -95,6 +146,28 @@ export struct LibraryPage {
   }
 
   @Builder
+  private filterToolbar() {
+    Column({ space: 12 }) {
+      Text('同步状态')
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#374151');
+
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+        this.filterChip('all', `全部 ${this.vm.libraryState.favorites.length}`);
+        this.filterChip('synced', `已同步 ${this.syncedCount()}`);
+        this.filterChip('not_synced', `未同步 ${this.unsyncedCount()}`);
+      }
+      .width('100%');
+    }
+    .width('100%')
+    .padding(18)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(24)
+    .border({ width: 1, color: '#E5EBF5' });
+  }
+
+  @Builder
   private feedbackCard(title: string, message: string, backgroundColor: string, foregroundColor: string) {
     Column({ space: 4 }) {
       Text(title)
@@ -103,6 +176,7 @@ export struct LibraryPage {
         .fontColor(foregroundColor);
       Text(message)
         .fontSize(13)
+        .lineHeight(20)
         .fontColor(foregroundColor)
         .width('100%');
     }
@@ -151,7 +225,8 @@ export struct LibraryPage {
     .width('100%')
     .padding({ left: 18, right: 18, top: 20, bottom: 20 })
     .backgroundColor('#FFFFFF')
-    .borderRadius(20);
+    .borderRadius(20)
+    .border({ width: 1, color: '#E5EBF5' });
   }
 
   @Builder
@@ -193,16 +268,8 @@ export struct LibraryPage {
       }
       .width('100%');
 
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-        this.statusPill(this.syncStatusLabel(favorite.paper.zoteroSyncState), this.syncStatusColor(favorite.paper.zoteroSyncState));
-        Blank();
-        Text('')
-          .width(0)
-          .height(0);
-      }
-      .width('100%');
-
       Row({ space: 8 }) {
+        this.statusPill(this.syncStatusLabel(favorite.paper.zoteroSyncState), this.syncStatusColor(favorite.paper.zoteroSyncState));
         this.statusPill(this.isPaperSelected(favorite.paper.id) ? '已选中' : '点按可加入批量选择', this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#9CA3AF');
         if (this.isPaperSyncing(favorite.paper.id)) {
           this.statusPill('同步中...', '#2D6CE8');
@@ -257,6 +324,7 @@ export struct LibraryPage {
     .padding(16)
     .backgroundColor('#FFFFFF')
     .borderRadius(20)
+    .border({ width: 1, color: '#E5EBF5' })
     .onClick(() => this.vm.toggleLibrarySelection(favorite.paper.id));
   }
 
@@ -299,73 +367,78 @@ export struct LibraryPage {
     .borderRadius(18);
   }
 
-  build() {
-    Column({ space: AppConstants.SECTION_SPACING }) {
-      Row() {
-        Column({ space: 4 }) {
-          Text('收藏库')
-            .fontSize(28)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#111827');
-          Text(`${this.filterLabel()} · ${this.filteredFavorites().length} 条`)
-            .fontSize(14)
-            .fontColor('#6B7280');
-        }
-        Blank();
-        Row({ space: 8 }) {
-          this.leadingPill('⌕');
-          this.leadingPill('▣');
-        }
-      }
-      .width('100%');
-
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-        this.filterChip('all', `全部 ${this.vm.libraryState.favorites.length}`);
-        this.filterChip('synced', `已同步 ${this.syncedCount()}`);
-        this.filterChip('not_synced', `未同步 ${this.unsyncedCount()}`);
-      }
-      .width('100%');
-
-      if (this.vm.libraryState.actionMessage) {
-        this.feedbackCard('操作反馈', this.vm.libraryState.actionMessage!, '#EAF2FF', '#2D6CE8');
-      }
-
-      if (this.vm.libraryState.errorMessage) {
-        this.feedbackCard('操作提醒', this.vm.libraryState.errorMessage!, '#FFEAEA', '#B6544A');
-      }
-
-      if (this.vm.libraryState.exportContent) {
-        this.exportCard(this.vm.libraryState.exportContent!);
-      }
-
+  @Builder
+  private listSection() {
+    Column({ space: 12 }) {
       Text('收藏论文')
         .fontSize(24)
         .fontWeight(FontWeight.Medium)
         .fontColor('#111827');
 
-      if (this.vm.libraryState.favorites.length === 0) {
-        this.emptyStateCard('还没有收藏论文', '在首页收藏感兴趣的论文后，这里会成为你的研究资料库。');
-      } else if (this.filteredFavorites().length === 0) {
-        this.emptyStateCard('当前筛选下没有结果', '可以切换同步状态，或者检查导出与同步后的收藏记录。');
-      } else {
-        Text(`共 ${this.vm.libraryState.favorites.length} 条 · 当前展示 ${this.filteredFavorites().length} 条`)
-          .fontSize(14)
-          .fontColor('#6B7280');
-
+      Scroll(this.listScroller) {
         Column({ space: 12 }) {
-          ForEach(this.filteredFavorites(), (favorite: FavoritePaperItem) => {
-            this.favoriteCard(favorite);
-          }, (favorite: FavoritePaperItem) => favorite.paper.id);
+          if (this.vm.libraryState.favorites.length === 0) {
+            this.emptyStateCard('还没有收藏论文', '在首页收藏感兴趣的论文后，这里会成为你的研究资料库。');
+          } else if (this.filteredFavorites().length === 0) {
+            this.emptyStateCard('当前筛选下没有结果', '可以切换同步状态，或者检查导出与同步后的收藏记录。');
+          } else {
+            ForEach(this.filteredFavorites(), (favorite: FavoritePaperItem) => {
+              this.favoriteCard(favorite);
+            }, (favorite: FavoritePaperItem) => favorite.paper.id);
+          }
         }
         .width('100%');
       }
+      .width('100%')
+      .layoutWeight(1)
+      .scrollBar(BarState.Off)
+      .scrollable(ScrollDirection.Vertical)
+      .padding(2);
+    }
+    .width('100%')
+    .layoutWeight(1);
+  }
+
+  build() {
+    Stack({ alignContent: Alignment.Bottom }) {
+      Column({ space: AppConstants.SECTION_SPACING }) {
+        this.heroSection();
+        this.filterToolbar();
+
+        if (this.vm.libraryState.actionMessage) {
+          this.feedbackCard('操作反馈', this.vm.libraryState.actionMessage!, '#EAF2FF', '#2D6CE8');
+        }
+
+        if (this.vm.libraryState.errorMessage) {
+          this.feedbackCard('操作提醒', this.vm.libraryState.errorMessage!, '#FFEAEA', '#B6544A');
+        }
+
+        if (this.vm.libraryState.exportContent) {
+          this.exportCard(this.vm.libraryState.exportContent!);
+        }
+
+        this.listSection();
+      }
+      .width('100%')
+      .height('100%')
+      .alignItems(HorizontalAlign.Start)
+      .backgroundColor('#F7F9FD')
+      .padding({
+        left: AppConstants.PAGE_HORIZONTAL_PADDING,
+        right: AppConstants.PAGE_HORIZONTAL_PADDING,
+        top: 20,
+        bottom: this.vm.libraryState.selectedPaperIds.length > 0 ? 108 : 20
+      });
 
       if (this.vm.libraryState.selectedPaperIds.length > 0) {
-        this.batchBottomBar();
+        Row() {
+          this.batchBottomBar();
+        }
+        .width('100%')
+        .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, bottom: 20 });
       }
     }
     .width('100%')
-    .alignItems(HorizontalAlign.Start)
-    .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
+    .height('100%');
   }
 }
