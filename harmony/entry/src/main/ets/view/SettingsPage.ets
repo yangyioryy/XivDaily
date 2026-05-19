@@ -49,24 +49,64 @@ export struct SettingsPage {
   }
 
   private zoteroSubtitle(): string {
-    if (this.vm.settingsState.zoteroConfigured) {
-      return `归档到 Zotero Web 集合 ${this.vm.settingsState.zoteroTargetCollectionName}`;
-    }
-    return '归档到 Zotero Web 集合';
+    return this.integrationSubtitle(
+      this.vm.settingsState.zoteroConfigured,
+      `归档到 Zotero Web 集合 ${this.vm.settingsState.zoteroTargetCollectionName}`,
+      '尚未连接参考文献库'
+    );
   }
 
   private zoteroValue(): string {
-    return this.vm.settingsState.zoteroConfigured ? '已配置' : '未配置';
+    return this.zoteroCollectionBadge();
   }
 
   private llmSubtitle(): string {
-    return this.vm.settingsState.llmConfigured
-      ? '摘要翻译与趋势总结可用'
-      : '摘要翻译和总结暂不可用';
+    return this.integrationSubtitle(
+      this.vm.settingsState.llmConfigured,
+      '摘要翻译与趋势总结可用',
+      '摘要翻译和总结暂不可用'
+    );
   }
 
   private llmValue(): string {
     return this.vm.settingsState.llmConfigured ? '已启用' : '未启用';
+  }
+
+  private integrationSubtitle(configured: boolean, successText: string, idleText: string): string {
+    if (this.vm.settingsState.integrationStatusFailed) {
+      return '状态刷新异常，请稍后重试';
+    }
+    return configured ? successText : idleText;
+  }
+
+  private zoteroCollectionBadge(): string {
+    if (this.vm.settingsState.zoteroTargetCollectionStatus === 'created') {
+      return '已创建';
+    }
+    if (this.vm.settingsState.zoteroTargetCollectionStatus === 'ready') {
+      return '已就绪';
+    }
+    if (this.vm.settingsState.zoteroTargetCollectionStatus === 'error') {
+      return '异常';
+    }
+    if (this.vm.settingsState.zoteroTargetCollectionStatus === 'not_configured') {
+      return '未配置';
+    }
+    return '待确认';
+  }
+
+  private integrationStatusText(configured: boolean): string {
+    if (this.vm.settingsState.integrationStatusFailed) {
+      return '异常';
+    }
+    return configured ? '已配置' : '未配置';
+  }
+
+  private integrationStatusColor(configured: boolean): string {
+    if (this.vm.settingsState.integrationStatusFailed) {
+      return '#B6544A';
+    }
+    return configured ? '#3F7A58' : '#B37B3F';
   }
 
   private avatarPresetLabel(value: string): string {
@@ -159,15 +199,15 @@ export struct SettingsPage {
   }
 
   @Builder
-  private heroPill() {
-    Text('✦')
+  private leadingIcon(iconText: string, highlighted: boolean = false) {
+    Text(iconText)
       .fontSize(16)
       .fontWeight(FontWeight.Medium)
-      .fontColor('#2D6CE8')
+      .fontColor(highlighted ? '#2D6CE8' : '#6B7280')
       .width(32)
       .height(32)
       .textAlign(TextAlign.Center)
-      .backgroundColor('#EAF2FF')
+      .backgroundColor(highlighted ? '#EAF2FF' : '#F1F4FA')
       .borderRadius(10);
   }
 
@@ -183,32 +223,58 @@ export struct SettingsPage {
   @Builder
   private sectionTitle(title: string) {
     Text(title)
-      .fontSize(18)
+      .fontSize(16)
       .fontWeight(FontWeight.Medium)
       .fontColor('#6B7280')
       .width('100%');
   }
 
   @Builder
+  private statusTag(label: string, color: string) {
+    Row({ space: 6 }) {
+      Row()
+        .width(8)
+        .height(8)
+        .borderRadius(4)
+        .backgroundColor(color);
+      Text(label)
+        .fontSize(13)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#6B7280');
+    }
+    .padding({ left: 10, right: 10, top: 7, bottom: 7 })
+    .backgroundColor('#F8FAFC')
+    .borderRadius(12);
+  }
+
+  @Builder
   private profileCard() {
     Row({ space: 14 }) {
-      if (this.vm.settingsState.avatarImageUri && this.vm.settingsState.avatarImageUri.length > 0) {
-        Image(this.vm.settingsState.avatarImageUri)
-          .width(56)
-          .height(56)
-          .borderRadius(28)
-          .objectFit(ImageFit.Cover);
-      } else {
-        Text(this.avatarPresetGlyph(this.vm.settingsState.avatarPreset))
-          .fontSize(24)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#FFFFFF')
-          .width(56)
-          .height(56)
-          .textAlign(TextAlign.Center)
-          .backgroundColor('#0F7A95')
-          .borderRadius(28);
+      Stack({ alignContent: Alignment.Center }) {
+        if (this.vm.settingsState.avatarImageUri && this.vm.settingsState.avatarImageUri.length > 0) {
+          Image(this.vm.settingsState.avatarImageUri)
+            .width(56)
+            .height(56)
+            .borderRadius(28)
+            .objectFit(ImageFit.Cover);
+        } else {
+          Text(this.avatarPresetGlyph(this.vm.settingsState.avatarPreset))
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF')
+            .width(56)
+            .height(56)
+            .textAlign(TextAlign.Center)
+            .backgroundColor('#0F7A95')
+            .borderRadius(28);
+        }
       }
+      .width(64)
+      .height(64)
+      .backgroundColor('#EFF6FF')
+      .borderRadius(32)
+      .border({ width: 1, color: '#D8E3F0' });
+
       Column({ space: 2 }) {
         Row({ space: 6 }) {
           Text(this.vm.settingsState.displayName)
@@ -231,7 +297,8 @@ export struct SettingsPage {
     .width('100%')
     .padding(16)
     .backgroundColor('#FFFFFF')
-    .borderRadius(20)
+    .borderRadius(24)
+    .border({ width: 1, color: '#E5EBF5' })
     .onClick(() => this.showProfileEditor());
   }
 
@@ -274,15 +341,10 @@ export struct SettingsPage {
   }
 
   @Builder
-  private settingRow(icon: string, title: string, subtitle: string, value?: string, action?: () => void, disabled: boolean = false) {
+  private settingRow(icon: string, title: string, subtitle: string, value?: string, action?: () => void, disabled: boolean = false,
+    highlighted: boolean = false) {
     Row({ space: 12 }) {
-      Text(icon)
-        .fontSize(18)
-        .width(32)
-        .height(32)
-        .textAlign(TextAlign.Center)
-        .backgroundColor('#F1F4FA')
-        .borderRadius(10);
+      this.leadingIcon(icon, highlighted);
       Column({ space: 2 }) {
         Text(title)
           .fontSize(16)
@@ -296,20 +358,54 @@ export struct SettingsPage {
       if (value !== undefined) {
         Text(value)
           .fontSize(14)
+          .fontWeight(FontWeight.Medium)
           .fontColor('#6B7280');
       }
-      Text('›')
-        .fontSize(18)
-        .fontColor('#2D6CE8');
+      if (!disabled) {
+        Text('›')
+          .fontSize(18)
+          .fontColor(action ? '#2D6CE8' : '#6B7280');
+      }
     }
     .width('100%')
     .opacity(disabled ? 0.55 : 1)
-    .padding(16)
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
     .onClick(() => {
       if (!disabled && action) {
         action();
       }
     });
+  }
+
+  @Builder
+  private integrationSettingRow(icon: string, title: string, subtitle: string, value: string, configured: boolean, action: () => void) {
+    Row({ space: 12 }) {
+      this.leadingIcon(icon);
+      Column({ space: 2 }) {
+        Text(title)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#111827');
+        Text(subtitle)
+          .fontSize(13)
+          .fontColor('#6B7280');
+      }
+      .layoutWeight(1);
+
+      Text(value)
+        .fontSize(13)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#6B7280');
+
+      this.statusTag(this.integrationStatusText(configured), this.integrationStatusColor(configured));
+
+      Text('›')
+        .fontSize(18)
+        .fontColor('#6B7280');
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .onClick(() => action());
   }
 
   @Builder
@@ -355,13 +451,7 @@ export struct SettingsPage {
     Column({ space: 16 }) {
       Column({ space: 12 }) {
         Row({ space: 12 }) {
-          Text('◧')
-            .fontSize(18)
-            .width(32)
-            .height(32)
-            .textAlign(TextAlign.Center)
-            .backgroundColor('#F1F4FA')
-            .borderRadius(10);
+          this.leadingIcon('◧');
           Column({ space: 2 }) {
             Text('默认关注领域')
               .fontSize(16)
@@ -381,13 +471,7 @@ export struct SettingsPage {
 
       Column({ space: 12 }) {
         Row({ space: 12 }) {
-          Text('◷')
-            .fontSize(18)
-            .width(32)
-            .height(32)
-            .textAlign(TextAlign.Center)
-            .backgroundColor('#F1F4FA')
-            .borderRadius(10);
+          this.leadingIcon('◷');
           Column({ space: 2 }) {
             Text('默认时间窗口')
               .fontSize(16)
@@ -405,33 +489,38 @@ export struct SettingsPage {
       this.settingRow('🌐', '语言', '文章摘要与界面默认语言', this.languageLabel(), () => this.vm.showLanguagePicker());
     }
     .width('100%')
-    .padding(16)
+    .padding(18)
     .backgroundColor('#FFFFFF')
-    .borderRadius(20);
+    .borderRadius(24)
+    .border({ width: 1, color: '#E5EBF5' });
   }
 
   @Builder
   private integrationSection() {
     Column({ space: 0 }) {
-      this.settingRow('⚗', 'Zotero 配置', this.zoteroSubtitle(), this.zoteroValue(), () => this.vm.showZoteroDetailDialog());
+      this.integrationSettingRow('⚗', 'Zotero 配置', this.zoteroSubtitle(), this.zoteroValue(),
+        this.vm.settingsState.zoteroConfigured, () => this.vm.showZoteroDetailDialog());
       Divider().color('#EEF2F7');
-      this.settingRow('✦', '大模型配置', this.llmSubtitle(), this.llmValue(), () => this.vm.showLlmDetailDialog());
+      this.integrationSettingRow('✦', '大模型配置', this.llmSubtitle(), this.llmValue(),
+        this.vm.settingsState.llmConfigured, () => this.vm.showLlmDetailDialog());
     }
     .width('100%')
     .backgroundColor('#FFFFFF')
-    .borderRadius(20);
+    .borderRadius(24)
+    .border({ width: 1, color: '#E5EBF5' });
   }
 
   @Builder
   private appearanceSection() {
     Column({ space: 0 }) {
-      this.settingRow('☾', '主题模式', '支持浅色、深色与跟随系统', this.themeModeLabel(), () => this.vm.showThemePicker());
+      this.settingRow('☾', '主题模式', '支持浅色、深色与跟随系统', this.themeModeLabel(), () => this.vm.showThemePicker(), false, true);
       Divider().color('#EEF2F7');
       this.settingRow('A', '字体大小', '当前版本采用统一阅读字号体系', '标准', undefined, true);
     }
     .width('100%')
     .backgroundColor('#FFFFFF')
-    .borderRadius(20);
+    .borderRadius(24)
+    .border({ width: 1, color: '#E5EBF5' });
   }
 
   @Builder
@@ -445,7 +534,8 @@ export struct SettingsPage {
     }
     .width('100%')
     .backgroundColor('#FFFFFF')
-    .borderRadius(20);
+    .borderRadius(24)
+    .border({ width: 1, color: '#E5EBF5' });
   }
 
   @Builder
@@ -742,15 +832,11 @@ export struct SettingsPage {
     Stack({ alignContent: Alignment.TopStart }) {
       Scroll(this.pageScroller) {
         Column({ space: AppConstants.SECTION_SPACING }) {
-          Row() {
-            Text('设置')
-              .fontSize(28)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#111827');
-            Blank();
-            this.heroPill();
-          }
-          .width('100%');
+          Text('设置')
+            .fontSize(28)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#111827')
+            .width('100%');
 
           this.profileCard();
 
@@ -792,7 +878,8 @@ export struct SettingsPage {
             .textAlign(TextAlign.Center)
             .padding({ top: 14, bottom: 14 })
             .backgroundColor('#FFFFFF')
-            .borderRadius(16)
+            .borderRadius(18)
+            .border({ width: 1, color: '#E5EBF5' })
             .onClick(() => {
               void this.vm.refreshIntegrationStatusAction();
             });

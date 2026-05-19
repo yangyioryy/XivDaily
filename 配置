@@ -38,3 +38,16 @@ Harmony 命令行构建验证：
   - https://beginnerforever.eu.cc/
   - http://127.0.0.1:8000/
 - 说明：虽然 shell 里没有 PATH 级 `hdc`，但上述绝对路径已经验证可用于安装、启动、抓图和拉图
+
+2026-05-19 22:30:00 +08:00 补充：
+- 设备侧 UI 自动操作命令已验证可用：
+  - 点击：`& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 shell "uitest uiInput click <x> <y>"`
+  - 滑动：`& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 shell "uitest uiInput swipe <x1> <y1> <x2> <y2> <velocity>"`
+  - 导出当前布局：`& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 shell "uitest dumpLayout -b com.xivdaily.harmony -p /data/local/tmp/xivdaily-layout.json -a"`
+- 当前 `Pura 90` 实例真实分辨率：`1320x2856`
+- 当前底栏“设置”标签点击坐标已验证可用：`1150 2680`
+- 建议的设置页验收链路：
+  1. `aa start -a EntryAbility -b com.xivdaily.harmony -m entry`
+  2. 等待 3-4 秒
+  3. `uitest uiInput click 1150 2680`
+  4. `snapshot_display` + `file recv`
