@@ -173,22 +173,26 @@ export struct HomePage {
     Column({ space: 14 }) {
       Row() {
         Text('首页')
-          .fontSize(28)
+          .fontSize(24)
           .fontWeight(FontWeight.Bold)
           .fontColor('#111827');
         Blank();
-        Text(this.vm.homeState.isLoading ? '刷新中' : '刷新')
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#2D6CE8')
-          .opacity(this.vm.homeState.isLoading ? 0.7 : 1)
-          .onClick(() => this.vm.refreshHome());
+        Row() {
+          SymbolGlyph($r('sys.symbol.bell_fill'))
+            .fontSize(14)
+            .fontColor(['#2D6CE8']);
+        }
+        .width(34)
+        .height(34)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#E8F0FF')
+        .borderRadius(17);
       }
       .width('100%');
 
       Text(this.heroSubtitle())
-        .fontSize(14)
-        .lineHeight(20)
+        .fontSize(13)
+        .lineHeight(19)
         .fontColor('#6B7280')
         .width('100%');
     }
@@ -367,19 +371,32 @@ export struct HomePage {
 
   @Builder
   private paperSectionHeader() {
-    Column({ space: 4 }) {
-      Text(this.paperSectionTitle())
-        .fontSize(30)
-        .fontWeight(FontWeight.Bold)
-        .fontColor('#111827');
-      Text(this.paperSectionSubtitle())
+    Row() {
+      Column({ space: 4 }) {
+        Text(this.paperSectionTitle())
+          .fontSize(22)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#111827');
+        Text(this.paperSectionSubtitle())
+          .fontSize(13)
+          .lineHeight(19)
+          .fontColor('#6B7280');
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start);
+
+      Text(this.vm.homeState.isLoading ? '刷新中' : '刷新')
         .fontSize(14)
-        .lineHeight(20)
-        .fontColor('#6B7280')
-        .textAlign(TextAlign.Center);
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#2D6CE8')
+        .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+        .backgroundColor('#EAF2FF')
+        .borderRadius(999)
+        .opacity(this.vm.homeState.isLoading ? 0.7 : 1)
+        .onClick(() => this.vm.refreshHome());
     }
     .width('100%')
-    .alignItems(HorizontalAlign.Center);
+    .alignItems(VerticalAlign.Center);
   }
 
   @Builder

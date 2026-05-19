@@ -39,19 +39,19 @@ struct XivDailyPage {
   @Builder
   private tabIcon(index: number) {
     if (index === 0) {
-      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.house_fill' : 'sys.symbol.house'))
+      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.star_fill' : 'sys.symbol.star'))
         .fontSize(19)
         .fontColor([this.vm.selectedTab === index ? '#2D6CE8' : '#6B7280']);
     } else if (index === 1) {
-      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.bookmark_fill' : 'sys.symbol.bookmark'))
+      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.bookmark_book_fill' : 'sys.symbol.bookmark_book_closed'))
         .fontSize(19)
         .fontColor([this.vm.selectedTab === index ? '#2D6CE8' : '#6B7280']);
     } else if (index === 2) {
-      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.paperplane_fill' : 'sys.symbol.paperplane'))
+      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.paperplane_right_fill' : 'sys.symbol.paperplane_fill'))
         .fontSize(19)
         .fontColor([this.vm.selectedTab === index ? '#2D6CE8' : '#6B7280']);
     } else {
-      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.gearshape_fill' : 'sys.symbol.gearshape'))
+      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.slider_horizontal_2_square_fill' : 'sys.symbol.slider_horizontal_2'))
         .fontSize(19)
         .fontColor([this.vm.selectedTab === index ? '#2D6CE8' : '#6B7280']);
     }

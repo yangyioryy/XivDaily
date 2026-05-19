@@ -14,7 +14,27 @@ Harmony 命令行构建验证：
 
 2026-05-19 19:36:20 +08:00 补充：
 - Harmony 首页/设置页最近都用上面的 hvigor 命令做过真实构建验证
-- 当前 shell 里没有直接可用的 `hdc` 命令，所以暂时不能在这里直接抓新的真机截图
+- 当前 shell 里没有 PATH 级 `hdc` 命令，但可以用绝对路径 `D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe`
 - Harmony 端后端候选地址来自 `harmony/entry/src/main/ets/service/PaperService.ets`
-  - http://127.0.0.1:8000/
+
+2026-05-19 21:00:00 +08:00 补充：
+- `hdc` 绝对路径可用：`D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe`
+- 模拟器启动器：`D:\DevEco Studio\tools\emulator\Emulator.exe`
+- 当前已验证可启动的实例：
+  - 名称：`Pura 90`
+  - 启动命令：
+    `& 'D:\DevEco Studio\tools\emulator\Emulator.exe' -start 'Pura 90' -instancePath 'D:\HarmonySDK' -imageRoot 'D:\HarmonySDK'`
+- 当前已验证可用的设备目标：`127.0.0.1:5555`
+- 常用命令：
+  - 查看设备：`& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' list targets`
+  - 启动应用：`& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 shell "aa start -a EntryAbility -b com.xivdaily.harmony -m entry"`
+  - 抓屏：
+    `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 shell snapshot_display -f /data/local/tmp/xivdaily-home.jpeg`
+    `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 file recv /data/local/tmp/xivdaily-home.jpeg 'E:\Grade3-2\HomenyOS\XivDaily\tmp-xivdaily-home.jpeg'`
+  - 安装 HAP：
+    `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 install -r 'E:\Grade3-2\HomenyOS\XivDaily\harmony\entry\build\default\outputs\default\entry-default-unsigned.hap'`
+- 当前 Harmony 端后端候选地址顺序：
+  - http://10.0.2.2:8000/
   - https://beginnerforever.eu.cc/
+  - http://127.0.0.1:8000/
+- 说明：虽然 shell 里没有 PATH 级 `hdc`，但上述绝对路径已经验证可用于安装、启动、抓图和拉图
