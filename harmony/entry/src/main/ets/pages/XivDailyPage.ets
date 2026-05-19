@@ -13,7 +13,6 @@ struct XivDailyPage {
   @State vm: AppViewModel = new AppViewModel();
   private homeScroller: Scroller = new Scroller();
   private libraryScroller: Scroller = new Scroller();
-  private chatScroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     this.applyThemeMode();
@@ -105,11 +104,7 @@ struct XivDailyPage {
       .tabBar(this.tabLabel(1, '收藏库'));
 
       TabContent() {
-        Scroll(this.chatScroller) {
-          ChatPage({ vm: this.vm });
-        }
-        .scrollBar(BarState.Off)
-        .scrollable(ScrollDirection.Vertical)
+        ChatPage({ vm: this.vm })
         .backgroundColor('#F7F9FD');
       }
       .tabBar(this.tabLabel(2, '对话'));
