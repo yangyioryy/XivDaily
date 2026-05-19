@@ -41,40 +41,40 @@ struct XivDailyPage {
   @Builder
   private tabIcon(index: number) {
     if (index === 0) {
-      SymbolGlyph($r('sys.symbol.house'))
-        .fontSize(20)
+      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.house_fill' : 'sys.symbol.house'))
+        .fontSize(19)
         .fontColor([this.vm.selectedTab === index ? '#2D6CE8' : '#6B7280']);
     } else if (index === 1) {
-      SymbolGlyph($r('sys.symbol.bookmark'))
-        .fontSize(20)
+      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.bookmark_fill' : 'sys.symbol.bookmark'))
+        .fontSize(19)
         .fontColor([this.vm.selectedTab === index ? '#2D6CE8' : '#6B7280']);
     } else if (index === 2) {
-      SymbolGlyph($r('sys.symbol.paperplane'))
-        .fontSize(20)
+      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.paperplane_fill' : 'sys.symbol.paperplane'))
+        .fontSize(19)
         .fontColor([this.vm.selectedTab === index ? '#2D6CE8' : '#6B7280']);
     } else {
-      SymbolGlyph($r('sys.symbol.square_grid_2x2'))
-        .fontSize(20)
+      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.gearshape_fill' : 'sys.symbol.gearshape'))
+        .fontSize(19)
         .fontColor([this.vm.selectedTab === index ? '#2D6CE8' : '#6B7280']);
     }
   }
 
   @Builder
   private tabLabel(index: number, label: string) {
-    Column({ space: 4 }) {
+    Column({ space: 5 }) {
       Stack({ alignContent: Alignment.Center }) {
         Row()
-          .width(38)
-          .height(28)
+          .width(42)
+          .height(30)
           .backgroundColor(this.vm.selectedTab === index ? '#DCEBFF' : '#00000000')
-          .borderRadius(14);
+          .borderRadius(15);
         this.tabIcon(index);
       }
-      .width(38)
-      .height(28);
+      .width(42)
+      .height(30);
       Text(label)
         .fontSize(12)
-        .fontWeight(this.vm.selectedTab === index ? FontWeight.Medium : FontWeight.Regular)
+        .fontWeight(this.vm.selectedTab === index ? FontWeight.Bold : FontWeight.Medium)
         .fontColor(this.vm.selectedTab === index ? '#2D6CE8' : '#6B7280');
     }
     .width('100%')
@@ -121,7 +121,7 @@ struct XivDailyPage {
       .tabBar(this.tabLabel(3, '设置'));
     }
     .barHeight(AppConstants.TAB_BAR_HEIGHT)
-    .barBackgroundColor('#F4F8FF')
+    .barBackgroundColor('#FFFFFF')
     .scrollable(false)
     .onChange((index: number) => {
       this.vm.selectTab(index);
