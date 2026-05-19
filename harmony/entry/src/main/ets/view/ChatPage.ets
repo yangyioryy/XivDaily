@@ -124,28 +124,22 @@ export struct ChatPage {
   @Builder
   private paperPickerButton() {
     Row({ space: 10 }) {
-      Column({ space: 4 }) {
-        Text('选择引用论文')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
-        Text(this.pickerSummaryText())
-          .fontSize(13)
-          .fontColor('#6B7280')
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis });
-      }
-      .layoutWeight(1);
-
-      Text(this.pickerExpanded ? '收起' : '展开')
-        .fontSize(13)
+      Text(this.pickerSummaryText())
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#2D6CE8')
+        .layoutWeight(1)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis });
+      Text(this.pickerExpanded ? '▴' : '▾')
+        .fontSize(14)
         .fontWeight(FontWeight.Medium)
         .fontColor('#2D6CE8');
     }
     .width('100%')
-    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .padding({ left: 14, right: 14, top: 12, bottom: 12 })
     .backgroundColor('#F8FAFC')
-    .borderRadius(16)
+    .borderRadius(14)
     .border({ width: 1, color: '#D7DEE9' })
     .onClick(() => {
       this.pickerExpanded = !this.pickerExpanded;
@@ -184,38 +178,17 @@ export struct ChatPage {
 
   @Builder
   private paperPickerCard() {
-    Column({ space: 12 }) {
-      Row() {
-        Column({ space: 4 }) {
-          Text('收藏论文')
-            .fontSize(20)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
-          Text(`最多选择 ${AppConstants.MAX_CHAT_PAPERS} 篇，用于回答时构造上下文。`)
-            .fontSize(13)
-            .lineHeight(20)
-            .fontColor('#6B7280');
-        }
-        Blank();
-        Text(`已选 ${this.vm.chatState.selectedPaperIds.length}/${AppConstants.MAX_CHAT_PAPERS}`)
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#2D6CE8')
-          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-          .backgroundColor('#EAF2FF')
-          .borderRadius(999);
-      }
-      .width('100%');
-
+    Column({ space: 10 }) {
+      Text('收藏论文')
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#5B6472')
+        .width('100%');
       if (this.vm.chatState.favorites.length === 0) {
-        Text('收藏库为空。先去收藏库或首页收藏论文，再回到这里发起对话。')
-          .fontSize(14)
-          .lineHeight(22)
+        Text('收藏库为空')
+          .fontSize(13)
           .fontColor('#6B7280')
-          .width('100%')
-          .padding(14)
-          .backgroundColor('#F8FAFC')
-          .borderRadius(16);
+          .width('100%');
       } else {
         this.paperPickerButton();
 
@@ -239,30 +212,19 @@ export struct ChatPage {
       }
     }
     .width('100%')
-    .padding(18)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .alignItems(HorizontalAlign.Start);
   }
 
   @Builder
   private emptyStateCard() {
-    Column({ space: 10 }) {
-      this.leadingPill();
-      Text('选择收藏论文后开始提问')
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
-        .fontColor('#111827');
-      Text('模型会结合选中的论文标题、摘要和可用全文生成回答。')
-        .fontSize(14)
-        .lineHeight(22)
-        .fontColor('#6B7280')
-        .textAlign(TextAlign.Center);
-    }
-    .width('100%')
-    .padding({ left: 18, right: 18, top: 24, bottom: 24 })
+    Text('选择收藏论文后开始提问')
+      .fontSize(16)
+      .fontColor('#6B7280')
+      .width('100%')
+      .padding({ left: 18, right: 18, top: 24, bottom: 24 })
     .backgroundColor('#FFFFFF')
-    .borderRadius(20);
+    .borderRadius(20)
+    .border({ width: 1, color: '#E5EBF5' });
   }
 
   @Builder
@@ -325,32 +287,6 @@ export struct ChatPage {
   @Builder
   private messagesPanel() {
     Column({ space: 12 }) {
-      Row() {
-        Column({ space: 4 }) {
-          Text('对话记录')
-            .fontSize(20)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
-          Text(this.vm.chatState.messages.length > 0 ? `当前共 ${this.vm.chatState.messages.length} 条消息` : '问题会结合已选论文的上下文回答。')
-            .fontSize(13)
-            .lineHeight(20)
-            .fontColor('#6B7280');
-        }
-        Blank();
-        if (this.vm.chatState.messages.length > 0) {
-          Text('清空')
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#2D6CE8')
-            .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-            .backgroundColor('#F8FAFC')
-            .borderRadius(999)
-            .border({ width: 1, color: '#D7DEE9' })
-            .onClick(() => this.vm.clearConversation());
-        }
-      }
-      .width('100%');
-
       Scroll(this.messageScroller) {
         Column({ space: 10 }) {
           if (this.vm.chatState.messages.length === 0) {
@@ -371,61 +307,48 @@ export struct ChatPage {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .scrollable(ScrollDirection.Vertical)
-      .padding(14)
-      .backgroundColor('#F8FAFC')
-      .borderRadius(20)
-      .border({ width: 1, color: '#E5EBF5' });
+      .padding({ top: 2, bottom: 2 });
     }
     .width('100%')
-    .layoutWeight(1)
-    .padding(18)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .layoutWeight(1);
   }
 
   @Builder
   private composerCard() {
-    Column({ space: 10 }) {
+    Row({ space: 12 }) {
       TextArea({
         placeholder: this.vm.chatState.isSending ? '正在整理论文材料...' : '向选中论文提问',
         text: this.vm.chatState.inputDraft
       })
         .fontSize(15)
         .backgroundColor('#F8FAFC')
-        .borderRadius(18)
+        .borderRadius(16)
         .border({ width: 1, color: '#D7DEE9' })
-        .height(92)
+        .layoutWeight(1)
+        .height(64)
         .enabled(!this.vm.chatState.isSending)
         .onChange((value: string) => this.vm.updateChatDraft(value))
         .onSubmit(() => this.vm.sendChatMessage());
 
-      Row({ space: 12 }) {
-        Text(this.composerHint())
-          .fontSize(13)
-          .fontColor('#6B7280')
-          .layoutWeight(1);
-        Text(this.vm.chatState.isSending ? '发送中...' : '发送')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#FFFFFF')
-          .padding({ left: 16, right: 16, top: 10, bottom: 10 })
-          .backgroundColor('#2D6CE8')
-          .borderRadius(14)
-          .opacity(this.sendActionOpacity())
-          .onClick(() => {
-            if (!this.vm.chatState.isSending) {
-              void this.vm.sendChatMessage();
-            }
-          });
+      Row() {
+        SymbolGlyph($r('sys.symbol.paperplane_fill'))
+          .fontSize(18)
+          .fontColor(['#FFFFFF']);
       }
-      .width('100%');
+      .width(52)
+      .height(52)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor('#6690F2')
+      .borderRadius(26)
+      .opacity(this.sendActionOpacity())
+      .onClick(() => {
+        if (!this.vm.chatState.isSending) {
+          void this.vm.sendChatMessage();
+        }
+      });
     }
     .width('100%')
-    .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .alignItems(VerticalAlign.Center);
   }
 
   build() {
@@ -441,6 +364,18 @@ export struct ChatPage {
             .fontColor('#6B7280');
         }
         Blank();
+        Row({ space: 8 }) {
+          Text('✕')
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#2D6CE8');
+          Text('清空')
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#2D6CE8');
+        }
+        .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+        .onClick(() => this.vm.clearConversation());
         this.leadingPill();
       }
       .width('100%');
