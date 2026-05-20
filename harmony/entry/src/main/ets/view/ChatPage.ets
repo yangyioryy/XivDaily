@@ -1,4 +1,6 @@
 import AppConstants from '../common/constants/AppConstants';
+import Context from '@ohos.app.ability.application';
+import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { FavoritePaperItem, PaperChatMessage, PaperChatUsedPaper } from '../model/AppModels';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
@@ -16,6 +18,19 @@ export struct ChatPage {
   @State private isPickerDialogVisible: boolean = false;
   @State private composerDraft: string = '';
   private messageScroller: Scroller = new Scroller();
+
+  private readSystemColorMode(): string | number | undefined {
+    try {
+      const hostContext = this.getUIContext().getHostContext() as ContextWithColorMode | undefined;
+      return hostContext?.config?.colorMode;
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  private palette(): XivThemePalette {
+    return resolveXivPalette(this.vm.settingsState.themeMode, this.readSystemColorMode());
+  }
 
   private isPaperSelected(paperId: string): boolean {
     return this.vm.chatState.selectedPaperIds.indexOf(paperId) >= 0;
@@ -38,6 +53,7 @@ export struct ChatPage {
   }
 
   // Harmony 端先做一层轻量 Markdown 分块，避免把原始标记直接暴露给用户。
+  // 先把模型输出拆成轻量 Markdown 块，避免原始标记直接暴露给用户，同时保持鸿蒙端渲染稳定。
   private markdownBlocks(content: string): MarkdownBlock[] {
     const blocks: MarkdownBlock[] = [];
     const rawLines = content.replace(/\r\n/g, '\n').split('\n');
@@ -185,6 +201,7 @@ export struct ChatPage {
   }
 
   // 行内样式统一降级成纯文本，优先保证阅读稳定，再逐步补齐复杂 Markdown 能力。
+  // 行内样式先统一降级成纯文本，优先保证阅读稳定，后续再逐步补齐更完整的 Markdown 能力。
   private normalizeMarkdownInline(text: string): string {
     return text
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '$1')
@@ -254,12 +271,12 @@ export struct ChatPage {
       Text('✦')
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#2D6CE8');
+        .fontColor(this.palette().primary);
     }
     .width(32)
     .height(32)
     .justifyContent(FlexAlign.Center)
-    .backgroundColor('#EAF2FF')
+    .backgroundColor(this.palette().primaryContainer)
     .borderRadius(10);
   }
 
@@ -280,17 +297,17 @@ export struct ChatPage {
     Row({ space: 6 }) {
       Text('✓')
         .fontSize(12)
-        .fontColor('#2D6CE8');
+        .fontColor(this.palette().primary);
       Text(favorite.paper.title.slice(0, 18))
         .fontSize(13)
-        .fontColor('#1F2937');
+        .fontColor(this.palette().textPrimary);
       Text('×')
         .fontSize(13)
-        .fontColor('#6B7280');
+        .fontColor(this.palette().textSecondary);
     }
     .padding({ left: 12, right: 12, top: 8, bottom: 8 })
     .margin({ right: 8, bottom: 8 })
-    .backgroundColor('#F1F4FA')
+    .backgroundColor(this.palette().secondaryContainer)
     .borderRadius(12)
     .onClick(() => this.togglePickerSelection(favorite.paper.id));
   }
@@ -302,14 +319,15 @@ export struct ChatPage {
         .width(8)
         .height(8)
         .borderRadius(4)
-        .backgroundColor(usedPaper.status === 'full_text' ? '#3F7A58' : usedPaper.status === 'summary_fallback' ? '#B37B3F' : '#2D6CE8');
+        .backgroundColor(usedPaper.status === 'full_text' ? this.palette().success :
+          usedPaper.status === 'summary_fallback' ? this.palette().warning : this.palette().info);
       Text(this.usedPaperStatusLabel(usedPaper.status))
         .fontSize(13)
-        .fontColor('#6B7280');
+        .fontColor(this.palette().textSecondary);
     }
     .padding({ left: 12, right: 12, top: 8, bottom: 8 })
     .margin({ right: 8, bottom: 8 })
-    .backgroundColor('#F1F4FA')
+    .backgroundColor(this.palette().surfaceVariant)
     .borderRadius(12);
   }
 
@@ -330,18 +348,18 @@ export struct ChatPage {
         .fontSize(this.headingFontSize(block.level))
         .fontWeight(FontWeight.Bold)
         .lineHeight(26)
-        .fontColor('#111827')
+        .fontColor(this.palette().textPrimary)
         .width('100%');
     } else if (block.kind === 'bullet' || block.kind === 'ordered') {
       Row({ space: 8 }) {
         Text(block.marker)
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#374151');
+          .fontColor(this.palette().textTertiary);
         Text(block.text)
           .fontSize(14)
           .lineHeight(22)
-          .fontColor('#374151')
+          .fontColor(this.palette().textTertiary)
           .layoutWeight(1);
       }
       .width('100%')
@@ -350,16 +368,16 @@ export struct ChatPage {
       Text(block.text)
         .fontSize(13)
         .lineHeight(20)
-        .fontColor('#374151')
+        .fontColor(this.palette().textTertiary)
         .width('100%')
         .padding(12)
-        .backgroundColor('#F3F4F6')
+        .backgroundColor(this.palette().surfaceVariant)
         .borderRadius(12);
     } else {
       Text(block.text)
         .fontSize(14)
         .lineHeight(22)
-        .fontColor('#374151')
+        .fontColor(this.palette().textTertiary)
         .width('100%');
     }
   }
@@ -382,20 +400,20 @@ export struct ChatPage {
       Text(this.pickerSummaryText())
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#2D6CE8')
+        .fontColor(this.palette().primary)
         .layoutWeight(1)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
       Text(this.isPickerDialogVisible ? '▴' : '▾')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#2D6CE8');
+        .fontColor(this.palette().primary);
     }
     .width('100%')
     .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-    .backgroundColor('#F8FAFC')
+    .backgroundColor(this.palette().surfaceSubtle)
     .borderRadius(14)
-    .border({ width: 1, color: '#D7DEE9' })
+    .border({ width: 1, color: this.palette().outline })
     .onClick(() => {
       this.showPickerDialog();
     });
@@ -408,47 +426,47 @@ export struct ChatPage {
         Text(this.isPaperSelected(favorite.paper.id) ? '✓' : '')
           .fontSize(14)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#FFFFFF');
+          .fontColor(this.palette().onPrimary);
       }
       .width(28)
       .height(28)
       .justifyContent(FlexAlign.Center)
-      .backgroundColor(this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#FFFFFF')
+      .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().surface)
       .borderRadius(14)
       .border({
         width: 1.5,
-        color: this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#C9D2E3'
+        color: this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline
       });
 
       Column({ space: 2 }) {
         Text(favorite.paper.title)
           .fontSize(15)
           .fontWeight(this.isPaperSelected(favorite.paper.id) ? FontWeight.Medium : FontWeight.Regular)
-          .fontColor('#111827')
+          .fontColor(this.palette().textPrimary)
           .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis });
         Text(`${favorite.paper.primaryCategory} · ${favorite.savedAt.slice(0, 10)}`)
           .fontSize(12)
-          .fontColor('#6B7280');
+          .fontColor(this.palette().textSecondary);
       }
       .layoutWeight(1);
 
       Text(this.isPaperSelected(favorite.paper.id) ? '取消' : '选择')
         .fontSize(13)
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#FFFFFF')
+        .fontColor(this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().onPrimary)
         .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .backgroundColor(this.isPaperSelected(favorite.paper.id) ? '#EAF2FF' : '#2D6CE8')
+        .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().primaryContainer : this.palette().primary)
         .borderRadius(10)
         .onClick(() => this.togglePickerSelection(favorite.paper.id));
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-    .backgroundColor(this.isPaperSelected(favorite.paper.id) ? '#F7FBFF' : '#FFFFFF')
+    .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().surfaceSubtle : this.palette().surface)
     .borderRadius(14)
     .border({
       width: this.isPaperSelected(favorite.paper.id) ? 2 : 1,
-      color: this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#E5E7EB'
+      color: this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline
     });
   }
 
@@ -458,12 +476,12 @@ export struct ChatPage {
       Text('收藏论文')
         .fontSize(18)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#5B6472')
+        .fontColor(this.palette().textSecondary)
         .width('100%');
       if (this.vm.chatState.favorites.length === 0) {
         Text('收藏库为空')
           .fontSize(13)
-          .fontColor('#6B7280')
+          .fontColor(this.palette().textSecondary)
           .width('100%');
       } else {
         this.paperPickerButton();
@@ -486,12 +504,12 @@ export struct ChatPage {
   private emptyStateCard() {
     Text('选择收藏论文后开始提问')
       .fontSize(16)
-      .fontColor('#6B7280')
+      .fontColor(this.palette().textSecondary)
       .width('100%')
       .padding({ left: 18, right: 18, top: 24, bottom: 24 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(this.palette().surface)
     .borderRadius(20)
-    .border({ width: 1, color: '#E5EBF5' });
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
@@ -499,7 +517,7 @@ export struct ChatPage {
     Row()
       .width('100%')
       .height('100%')
-      .backgroundColor('#66000000')
+      .backgroundColor(this.palette().overlay)
       .onClick(() => onDismiss());
   }
 
@@ -513,12 +531,12 @@ export struct ChatPage {
             Text('选择收藏论文')
               .fontSize(20)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#111827');
+              .fontColor(this.palette().textPrimary);
             Blank();
             Text('完成')
               .fontSize(14)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#2D6CE8')
+              .fontColor(this.palette().primary)
               .onClick(() => this.hidePickerDialog());
           }
           .width('100%');
@@ -532,9 +550,9 @@ export struct ChatPage {
         }
         .width('86%')
         .padding(18)
-        .backgroundColor('#FFFFFF')
+        .backgroundColor(this.palette().surface)
         .borderRadius(24)
-        .border({ width: 1, color: '#E5EBF5' });
+        .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
       .height('100%');
@@ -553,7 +571,7 @@ export struct ChatPage {
           Text(message.content)
             .fontSize(14)
             .lineHeight(22)
-            .fontColor('#FFFFFF')
+            .fontColor(this.palette().onPrimary)
             .width('100%');
         } else {
           this.assistantMessageBody(message.content);
@@ -561,11 +579,11 @@ export struct ChatPage {
       }
       .width(message.role === 'user' ? '74%' : '82%')
       .padding(16)
-      .backgroundColor(message.role === 'user' ? '#2D6CE8' : '#FFFFFF')
+      .backgroundColor(message.role === 'user' ? this.palette().primary : this.palette().surface)
       .borderRadius(18)
       .border({
         width: message.role === 'user' ? 0 : 1,
-        color: '#E5EBF5'
+        color: this.palette().outline
       });
 
       if (message.role !== 'user') {
@@ -582,17 +600,17 @@ export struct ChatPage {
         LoadingProgress()
           .width(18)
           .height(18)
-          .color('#6B7280');
+          .color(this.palette().textSecondary);
         Text('正在思考中...')
           .fontSize(14)
-          .fontColor('#6B7280')
+          .fontColor(this.palette().textSecondary)
           .lineHeight(22);
       }
       .width('82%')
       .padding(16)
-      .backgroundColor('#FFFFFF')
+      .backgroundColor(this.palette().surface)
       .borderRadius(18)
-      .border({ width: 1, color: '#E5EBF5' })
+      .border({ width: 1, color: this.palette().outline })
       .alignItems(VerticalAlign.Center);
       Blank();
     }
@@ -636,9 +654,11 @@ export struct ChatPage {
         text: this.composerDraft
       })
         .fontSize(15)
-        .backgroundColor('#F8FAFC')
+        .fontColor(this.palette().textPrimary)
+        .placeholderColor(this.palette().textSecondary)
+        .backgroundColor(this.palette().surfaceSubtle)
         .borderRadius(16)
-        .border({ width: 1, color: '#D7DEE9' })
+        .border({ width: 1, color: this.palette().outline })
         .layoutWeight(1)
         .height(64)
         .enabled(!this.vm.chatState.isSending)
@@ -651,12 +671,12 @@ export struct ChatPage {
       Row() {
         SymbolGlyph($r('sys.symbol.paperplane_fill'))
           .fontSize(18)
-          .fontColor(['#FFFFFF']);
+          .fontColor([this.palette().onPrimary]);
       }
       .width(52)
       .height(52)
       .justifyContent(FlexAlign.Center)
-      .backgroundColor('#6690F2')
+      .backgroundColor(this.palette().primary)
       .borderRadius(26)
       .opacity(this.sendActionOpacity())
       .onClick(() => {
@@ -675,21 +695,21 @@ export struct ChatPage {
             Text('论文对话')
               .fontSize(28)
               .fontWeight(FontWeight.Bold)
-              .fontColor('#111827');
+              .fontColor(this.palette().textPrimary);
             Text(`已选 ${this.vm.chatState.selectedPaperIds.length} 篇 · 最多 ${AppConstants.MAX_CHAT_PAPERS} 篇`)
               .fontSize(14)
-              .fontColor('#6B7280');
+              .fontColor(this.palette().textSecondary);
           }
           Blank();
           Row({ space: 8 }) {
             Text('✕')
               .fontSize(13)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#2D6CE8');
+              .fontColor(this.palette().primary);
             Text('清空')
               .fontSize(13)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#2D6CE8');
+              .fontColor(this.palette().primary);
           }
           .padding({ left: 4, right: 4, top: 6, bottom: 6 })
           .onClick(() => this.vm.clearConversation());
@@ -700,11 +720,12 @@ export struct ChatPage {
         this.paperPickerCard();
 
         if (this.vm.chatState.errorMessage) {
-          this.feedbackStrip(this.vm.chatState.errorMessage!, '#FFEAEA', '#B6544A');
+          this.feedbackStrip(this.vm.chatState.errorMessage!, this.palette().dangerContainer, this.palette().danger);
         }
 
         if (this.vm.chatState.warningMessage) {
-          this.feedbackStrip(this.vm.chatState.warningMessage!, '#FFF1DD', '#B37B3F');
+          this.feedbackStrip(this.vm.chatState.warningMessage!, this.palette().secondaryContainer,
+            this.palette().onSecondaryContainer);
         }
 
         if (this.vm.chatState.usedPapers.length > 0) {
@@ -732,6 +753,14 @@ export struct ChatPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F7F9FD');
+    .backgroundColor(this.palette().background);
   }
+}
+
+interface ColorModeConfig {
+  colorMode?: string | number;
+}
+
+interface ContextWithColorMode extends Context {
+  config?: ColorModeConfig;
 }

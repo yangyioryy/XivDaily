@@ -1,5 +1,7 @@
 import AppConstants from '../common/constants/AppConstants';
+import Context from '@ohos.app.ability.application';
 import common from '@ohos.app.ability.common';
+import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { PaperItem, TrendItem } from '../model/AppModels';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
@@ -9,6 +11,20 @@ export struct HomePage {
   @State private customTagDraft: string = '';
   @State private isAddTagDialogVisible: boolean = false;
   @State private pendingDeletionTag: string = '';
+
+  private readSystemColorMode(): string | number | undefined {
+    try {
+      const hostContext = this.getUIContext().getHostContext() as ContextWithColorMode | undefined;
+      return hostContext?.config?.colorMode;
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  // 首页里有不少独立卡片和提示条，需要在页面内继续读取主题调色板，避免深浅色切换后残留浅色硬编码。
+  private palette(): XivThemePalette {
+    return resolveXivPalette(this.vm.settingsState.themeMode, this.readSystemColorMode());
+  }
 
   private dayLabel(days: number): string {
     return days === 1 ? '24h' : `${days} 天`;
@@ -175,17 +191,17 @@ export struct HomePage {
         Text('首页')
           .fontSize(24)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#111827');
+          .fontColor(this.palette().textPrimary);
         Blank();
         Row() {
           SymbolGlyph($r('sys.symbol.bell_fill'))
             .fontSize(14)
-            .fontColor(['#2D6CE8']);
+            .fontColor([this.palette().primary]);
         }
         .width(34)
         .height(34)
         .justifyContent(FlexAlign.Center)
-        .backgroundColor('#E8F0FF')
+        .backgroundColor(this.palette().primaryContainer)
         .borderRadius(17);
       }
       .width('100%');
@@ -193,9 +209,9 @@ export struct HomePage {
       Text(this.heroSubtitle())
         .fontSize(13)
         .lineHeight(19)
-        .fontColor('#6B7280')
+        .fontColor(this.palette().textSecondary)
         .width('100%');
-    }
+  }
     .width('100%');
   }
 
@@ -211,20 +227,22 @@ export struct HomePage {
         })
           .fontSize(15)
           .layoutWeight(1)
-          .backgroundColor('#FFFFFF')
+          .fontColor(this.palette().textPrimary)
+          .placeholderColor(this.palette().textSecondary)
+          .backgroundColor(this.palette().surface)
           .onChange((value: string) => this.vm.updateSearchKeywordDraft(value))
           .onSubmit(() => this.vm.submitSearch());
         Text('搜索')
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#2D6CE8')
+          .fontColor(this.palette().primary)
           .onClick(() => this.vm.submitSearch());
       }
       .width('100%')
       .padding({ left: 20, right: 20, top: 16, bottom: 16 })
-      .backgroundColor('#FFFFFF')
+      .backgroundColor(this.palette().surface)
       .borderRadius(24)
-      .border({ width: 1, color: '#D9E2F0' });
+      .border({ width: 1, color: this.palette().outline });
 
       if (this.isSearchActive()) {
         Row() {
@@ -232,9 +250,9 @@ export struct HomePage {
           Text('退出搜索')
             .fontSize(13)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#475569')
+            .fontColor(this.palette().textTertiary)
             .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-            .backgroundColor('#F1F4FA')
+            .backgroundColor(this.palette().secondaryContainer)
             .borderRadius(999)
             .onClick(() => this.vm.clearSearch());
         }
@@ -245,7 +263,7 @@ export struct HomePage {
         Text('领域')
           .fontSize(18)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#374151')
+          .fontColor(this.palette().textTertiary)
           .width('100%');
 
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
@@ -253,14 +271,14 @@ export struct HomePage {
             Text(category)
               .fontSize(14)
               .fontWeight(this.isCategorySelected(category) ? FontWeight.Medium : FontWeight.Regular)
-              .fontColor(this.isCategorySelected(category) ? '#FFFFFF' : '#1F2937')
+              .fontColor(this.isCategorySelected(category) ? this.palette().onPrimary : this.palette().textPrimary)
               .padding({ left: 16, right: 16, top: 8, bottom: 8 })
               .margin({ right: 8, bottom: 8 })
-              .backgroundColor(this.isCategorySelected(category) ? '#2D6CE8' : '#F8FAFC')
+              .backgroundColor(this.isCategorySelected(category) ? this.palette().primary : this.palette().surfaceSubtle)
               .borderRadius(14)
               .border({
                 width: this.isCategorySelected(category) ? 0 : 1,
-                color: '#D7DEE9'
+                color: this.palette().outline
               })
               .onClick(() => this.vm.selectCategory(category));
           }, (category: string) => category);
@@ -271,7 +289,7 @@ export struct HomePage {
                 Text(tag)
                   .fontSize(14)
                   .fontWeight(this.isCategorySelected(tag) ? FontWeight.Medium : FontWeight.Regular)
-                  .fontColor(this.isCategorySelected(tag) ? '#FFFFFF' : '#1F2937');
+                  .fontColor(this.isCategorySelected(tag) ? this.palette().onPrimary : this.palette().textPrimary);
               }
               .padding({ left: 16, right: 10, top: 8, bottom: 8 })
               .gesture(
@@ -287,34 +305,35 @@ export struct HomePage {
                 Text('-')
                   .fontSize(12)
                   .fontWeight(FontWeight.Medium)
-                  .fontColor(this.isCategorySelected(tag) ? '#FFFFFF' : '#B6544A')
+                  .fontColor(this.isCategorySelected(tag) ? this.palette().onPrimary : this.palette().danger)
                   .width(22)
                   .height(22)
                   .textAlign(TextAlign.Center)
-                  .backgroundColor(this.isCategorySelected(tag) ? '#8E2D2D' : '#FFEAEA')
+                  .backgroundColor(this.isCategorySelected(tag) ? this.palette().danger : this.palette().dangerContainer)
                   .borderRadius(6)
                   .margin({ left: 2, right: 12, top: 7, bottom: 7 })
                   .onClick(() => this.vm.deleteCustomTag(tag));
               }
             }
             .margin({ right: 8, bottom: 8 })
-            .backgroundColor(this.isCategorySelected(tag) ? '#2D6CE8' : (this.pendingDeletionTag === tag ? '#FFF1DD' : '#F8FAFC'))
+            .backgroundColor(this.isCategorySelected(tag) ? this.palette().primary :
+              (this.pendingDeletionTag === tag ? this.palette().warningContainer : this.palette().surfaceSubtle))
             .borderRadius(14)
             .border({
               width: this.isCategorySelected(tag) ? 0 : 1,
-              color: '#D7DEE9'
+              color: this.palette().outline
             });
           }, (tag: string) => `custom-${tag}`);
 
           Text('+ 添加')
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#2D6CE8')
+            .fontColor(this.palette().primary)
             .padding({ left: 16, right: 16, top: 8, bottom: 8 })
             .margin({ right: 8, bottom: 8 })
-            .backgroundColor('#F8FAFC')
+            .backgroundColor(this.palette().surfaceSubtle)
             .borderRadius(14)
-            .border({ width: 1, color: '#D7DEE9' })
+            .border({ width: 1, color: this.palette().outline })
             .onClick(() => this.showAddTagDialog());
         }
         .width('100%');
@@ -324,20 +343,20 @@ export struct HomePage {
         Text('关键词搜索覆盖全 arXiv；领域只做结果过滤，时间 Pills 会临时隐藏。')
           .fontSize(13)
           .lineHeight(20)
-          .fontColor('#6B7280')
+          .fontColor(this.palette().onSecondaryContainer)
           .width('100%')
           .padding(12)
-          .backgroundColor('#FFF1DD')
+          .backgroundColor(this.palette().secondaryContainer)
           .borderRadius(14);
       } else {
         if (this.vm.homeState.customTags.indexOf(this.vm.homeState.selectedCategory) >= 0) {
           Text('自定义标签会用关键词在全 arXiv 召回论文，适合 embodied-ai 这类研究方向。')
             .fontSize(13)
             .lineHeight(20)
-            .fontColor('#6B7280')
+            .fontColor(this.palette().onSecondaryContainer)
             .width('100%')
             .padding(12)
-            .backgroundColor('#FFF1DD')
+            .backgroundColor(this.palette().secondaryContainer)
             .borderRadius(14);
         }
 
@@ -345,7 +364,7 @@ export struct HomePage {
           Text('时间')
             .fontSize(18)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#374151')
+            .fontColor(this.palette().textTertiary)
             .width('100%');
 
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
@@ -353,12 +372,12 @@ export struct HomePage {
               Text(this.dayLabel(days))
                 .fontSize(14)
                 .fontWeight(this.isDaySelected(days) ? FontWeight.Medium : FontWeight.Regular)
-                .fontColor(this.isDaySelected(days) ? '#1F2937' : '#6B7280')
+                .fontColor(this.isDaySelected(days) ? this.palette().textPrimary : this.palette().textSecondary)
                 .padding({ left: 16, right: 16, top: 8, bottom: 8 })
                 .margin({ right: 8, bottom: 8 })
-                .backgroundColor(this.isDaySelected(days) ? '#F1F4FA' : '#F8FAFC')
+                .backgroundColor(this.isDaySelected(days) ? this.palette().secondaryContainer : this.palette().surfaceSubtle)
                 .borderRadius(12)
-                .border({ width: 1, color: '#D7DEE9' })
+                .border({ width: 1, color: this.palette().outline })
                 .onClick(() => this.vm.selectDays(days));
             }, (days: number) => `${days}`);
           }
@@ -376,11 +395,11 @@ export struct HomePage {
         Text(this.paperSectionTitle())
           .fontSize(22)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#111827');
+          .fontColor(this.palette().textPrimary);
         Text(this.paperSectionSubtitle())
           .fontSize(13)
           .lineHeight(19)
-          .fontColor('#6B7280');
+          .fontColor(this.palette().textSecondary);
       }
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start);
@@ -388,9 +407,9 @@ export struct HomePage {
       Text(this.vm.homeState.isLoading ? '刷新中' : '刷新')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#2D6CE8')
+        .fontColor(this.palette().primary)
         .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .backgroundColor('#EAF2FF')
+        .backgroundColor(this.palette().primaryContainer)
         .borderRadius(999)
         .opacity(this.vm.homeState.isLoading ? 0.7 : 1)
         .onClick(() => this.vm.refreshHome());
@@ -407,19 +426,19 @@ export struct HomePage {
           Text('AI 趋势简报')
             .fontSize(20)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
+            .fontColor(this.palette().textPrimary);
 
           Text(`最近 3 天 · ${this.vm.homeState.selectedCategory}`)
             .fontSize(13)
-            .fontColor('#6B7280');
+            .fontColor(this.palette().textSecondary);
         }
         Blank();
         Text('关闭')
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#2D6CE8')
+          .fontColor(this.palette().primary)
           .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .backgroundColor('#FFFFFF')
+          .backgroundColor(this.palette().surface)
           .borderRadius(999)
           .onClick(() => this.vm.dismissSummary());
       }
@@ -428,25 +447,25 @@ export struct HomePage {
       if (this.vm.homeState.isSummaryLoading) {
         Text('趋势摘要加载中...')
         .fontSize(14)
-        .fontColor('#6B7280')
+        .fontColor(this.palette().textSecondary)
           .width('100%');
       } else if (this.vm.homeState.trendErrorMessage) {
         Text(this.vm.homeState.trendErrorMessage!)
           .fontSize(14)
           .lineHeight(21)
-          .fontColor('#B6544A')
+          .fontColor(this.palette().danger)
           .width('100%')
           .padding(14)
-          .backgroundColor('#FFEAEA')
+          .backgroundColor(this.palette().dangerContainer)
           .borderRadius(16);
       } else if (this.vm.homeState.trendSummary) {
         Text(this.vm.homeState.trendSummary!.intro)
           .fontSize(15)
           .lineHeight(22)
-          .fontColor('#374151')
+          .fontColor(this.palette().onSecondaryContainer)
           .width('100%')
           .padding(14)
-          .backgroundColor('#FDFEFF')
+          .backgroundColor(this.palette().surface)
           .borderRadius(18);
 
         if (this.vm.homeState.summaryExpanded) {
@@ -456,11 +475,11 @@ export struct HomePage {
                 Row({ space: 8 }) {
                   Text('●')
                     .fontSize(12)
-                    .fontColor('#2D6CE8');
+                    .fontColor(this.palette().primary);
                   Text(`${item.rank}. ${item.trendTitle}`)
                     .fontSize(15)
                     .fontWeight(FontWeight.Medium)
-                    .fontColor('#1F2937')
+                    .fontColor(this.palette().textPrimary)
                     .layoutWeight(1);
                 }
                 .width('100%');
@@ -468,12 +487,12 @@ export struct HomePage {
                 Text(item.summary)
                   .fontSize(14)
                   .lineHeight(22)
-                  .fontColor('#6B7280');
+                  .fontColor(this.palette().textSecondary);
                 if (this.representativeTitles(item).length > 0) {
                   Text(`代表论文：${this.representativeTitles(item)}`)
                     .fontSize(13)
                     .lineHeight(20)
-                    .fontColor('#6B7280');
+                    .fontColor(this.palette().textSecondary);
                 }
               };
             }, (item: TrendItem) => `${item.rank}`);
@@ -484,21 +503,21 @@ export struct HomePage {
         Text(this.vm.homeState.summaryExpanded ? '收起趋势详情' : '展开趋势详情')
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#2D6CE8')
+          .fontColor(this.palette().primary)
           .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .backgroundColor('#FDFEFF')
+          .backgroundColor(this.palette().surface)
           .borderRadius(999)
           .onClick(() => this.vm.toggleSummaryExpanded());
       } else {
         Text('暂无趋势摘要')
           .fontSize(14)
-          .fontColor('#6B7280')
+          .fontColor(this.palette().textSecondary)
           .width('100%');
       }
     }
     .width('100%')
     .padding(18)
-    .backgroundColor('#EAF2FF')
+    .backgroundColor(this.palette().primaryContainer)
     .borderRadius(24);
   }
 
@@ -510,25 +529,25 @@ export struct HomePage {
           Text(paper.title)
             .fontSize(18)
             .fontWeight(FontWeight.Medium)
-          .fontColor('#111827')
+          .fontColor(this.palette().textPrimary)
           .layoutWeight(1);
           Text(paper.favoriteState ? '★' : '☆')
             .fontSize(16)
-            .fontColor('#B37B3F');
+            .fontColor(this.palette().warning);
         }
         .width('100%');
 
         Text(paper.authors.join(', '))
           .fontSize(13)
           .lineHeight(20)
-          .fontColor('#6B7280');
+          .fontColor(this.palette().textSecondary);
 
         Text(`${paper.primaryCategory} · ${paper.publishedAt.slice(0, 10)} · Zotero ${paper.zoteroSyncState}`)
           .fontSize(13)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#37527A')
+          .fontColor(this.palette().onPrimaryContainer)
           .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .backgroundColor('#EEF4FF')
+          .backgroundColor(this.palette().primaryContainer)
           .borderRadius(14);
 
         if (this.isPaperExpanded(paper.id)) {
@@ -538,15 +557,15 @@ export struct HomePage {
                 Text('中文翻译')
                   .fontSize(14)
                   .fontWeight(FontWeight.Medium)
-                  .fontColor('#2D6CE8');
+                  .fontColor(this.palette().primary);
                 Text(paper.translatedSummary)
                   .fontSize(14)
                   .lineHeight(22)
-                  .fontColor('#374151');
+                  .fontColor(this.palette().textPrimary);
               }
               .width('100%')
               .padding(14)
-              .backgroundColor('#F7FAFF')
+              .backgroundColor(this.palette().surfaceVariant)
               .borderRadius(16);
             }
 
@@ -554,24 +573,24 @@ export struct HomePage {
               Text('Original Abstract')
                 .fontSize(14)
                 .fontWeight(FontWeight.Medium)
-                .fontColor('#6B7280');
+                .fontColor(this.palette().textSecondary);
               Text(paper.summary)
                 .fontSize(14)
                 .lineHeight(22)
-                .fontColor('#374151');
+                .fontColor(this.palette().textTertiary);
             }
             .width('100%')
             .padding(14)
-            .backgroundColor('#F8FAFC')
+            .backgroundColor(this.palette().surfaceSubtle)
             .borderRadius(16);
 
             if (this.vm.homeState.translationErrors[paper.id]) {
               Text(this.vm.homeState.translationErrors[paper.id])
                 .fontSize(13)
                 .lineHeight(20)
-                .fontColor('#B6544A')
+                .fontColor(this.palette().danger)
                 .padding(12)
-                .backgroundColor('#FFEAEA')
+                .backgroundColor(this.palette().dangerContainer)
                 .borderRadius(14);
             }
           }
@@ -598,20 +617,20 @@ export struct HomePage {
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
         Text(`${this.isPaperExpanded(paper.id) ? '›' : '›'} ${this.isPaperExpanded(paper.id) ? '收起摘要' : '展开摘要'}`)
           .fontSize(14)
-          .fontColor('#2D6CE8')
+          .fontColor(this.palette().onPrimaryContainer)
           .padding({ left: 14, right: 14, top: 8, bottom: 8 })
           .margin({ right: 8, bottom: 8 })
-          .backgroundColor('#EEF4FF')
+          .backgroundColor(this.palette().primaryContainer)
           .borderRadius(12)
           .onClick(() => this.vm.toggleAbstract(paper.id));
 
         if (this.isPaperExpanded(paper.id)) {
           Text(`✦ ${this.isPaperTranslating(paper.id) ? '翻译中...' : '翻译'}`)
             .fontSize(14)
-            .fontColor('#2D6CE8')
+            .fontColor(this.palette().onPrimaryContainer)
             .padding({ left: 14, right: 14, top: 8, bottom: 8 })
             .margin({ right: 8, bottom: 8 })
-            .backgroundColor('#EEF4FF')
+            .backgroundColor(this.palette().primaryContainer)
             .borderRadius(12)
             .opacity(this.isPaperTranslating(paper.id) ? 0.6 : 1)
             .onClick(() => {
@@ -621,20 +640,20 @@ export struct HomePage {
 
         Text(`☆ ${paper.favoriteState ? '取消收藏' : '收藏'}`)
           .fontSize(14)
-          .fontColor('#2D6CE8')
+          .fontColor(this.palette().onPrimaryContainer)
           .padding({ left: 14, right: 14, top: 8, bottom: 8 })
           .margin({ right: 8, bottom: 8 })
-          .backgroundColor('#EEF4FF')
+          .backgroundColor(this.palette().primaryContainer)
           .borderRadius(12)
           .onClick(() => this.vm.toggleFavorite(paper.id));
 
         if (paper.zoteroSyncState !== 'synced') {
           Text(`↻ ${this.isPaperSyncing(paper.id) ? '同步中...' : '同步'}`)
             .fontSize(14)
-            .fontColor('#2D6CE8')
+            .fontColor(this.palette().onPrimaryContainer)
             .padding({ left: 14, right: 14, top: 8, bottom: 8 })
             .margin({ right: 8, bottom: 8 })
-            .backgroundColor('#EEF4FF')
+            .backgroundColor(this.palette().primaryContainer)
             .borderRadius(12)
             .opacity(this.isPaperSyncing(paper.id) ? 0.6 : 1)
             .onClick(() => {
@@ -645,9 +664,9 @@ export struct HomePage {
     }
     .width('100%')
     .padding(18)
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(this.palette().surface)
     .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
@@ -656,18 +675,18 @@ export struct HomePage {
       Text(this.emptyStateTitle())
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#111827');
+        .fontColor(this.palette().textPrimary);
       Text(this.emptyStateSubtitle())
         .fontSize(14)
         .lineHeight(22)
-        .fontColor('#6B7280');
+        .fontColor(this.palette().textSecondary);
     }
     .alignItems(HorizontalAlign.Center)
     .width('100%')
     .padding({ left: 20, right: 20, top: 28, bottom: 28 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(this.palette().surface)
     .borderRadius(20)
-    .border({ width: 1, color: '#E5EBF5' });
+    .border({ width: 1, color: this.palette().outline });
   }
 
   build() {
@@ -679,10 +698,10 @@ export struct HomePage {
         Text(this.vm.homeState.errorMessage!)
           .fontSize(13)
           .lineHeight(20)
-          .fontColor('#B6544A')
+          .fontColor(this.palette().danger)
           .width('100%')
           .padding(12)
-          .backgroundColor('#FFEAEA')
+          .backgroundColor(this.palette().dangerContainer)
           .borderRadius(14);
       }
 
@@ -690,10 +709,10 @@ export struct HomePage {
         Text(this.vm.homeState.listWarning!)
           .fontSize(13)
           .lineHeight(20)
-          .fontColor('#B37B3F')
+          .fontColor(this.palette().onSecondaryContainer)
           .width('100%')
           .padding(12)
-          .backgroundColor('#FFF1DD')
+          .backgroundColor(this.palette().secondaryContainer)
           .borderRadius(14);
       }
 
@@ -705,9 +724,9 @@ export struct HomePage {
         Text(this.vm.homeState.actionMessage!.text)
           .fontSize(13)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#FFFFFF')
+          .fontColor(this.palette().textPrimary)
           .padding({ left: 14, right: 14, top: 10, bottom: 10 })
-          .backgroundColor('#1F2937')
+          .backgroundColor(this.palette().surfaceVariant)
           .borderRadius(999);
       }
 
@@ -729,44 +748,46 @@ export struct HomePage {
           Text('添加自定义标签')
             .fontSize(18)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
+            .fontColor(this.palette().textPrimary);
           Text('输入研究方向，例如 embodied-ai。标签会作为关键词检索论文。')
             .fontSize(13)
-            .fontColor('#6B7280');
+            .fontColor(this.palette().textSecondary);
           TextInput({
             placeholder: '标签名称',
             text: this.customTagDraft
           })
             .fontSize(15)
-            .backgroundColor('#FFFFFF')
+            .fontColor(this.palette().textPrimary)
+            .placeholderColor(this.palette().textSecondary)
+            .backgroundColor(this.palette().surface)
             .borderRadius(14)
-            .border({ width: 1, color: '#D7DEE9' })
+            .border({ width: 1, color: this.palette().outline })
             .padding({ left: 14, right: 14, top: 12, bottom: 12 })
             .onChange((value: string) => this.customTagDraft = value);
           Row({ space: 8 }) {
             Text('添加')
               .fontSize(14)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#FFFFFF')
+              .fontColor(this.palette().onPrimary)
               .padding({ left: 18, right: 18, top: 10, bottom: 10 })
-              .backgroundColor('#2D6CE8')
+              .backgroundColor(this.palette().primary)
               .borderRadius(14)
               .onClick(() => this.confirmAddCustomTag());
             Text('取消')
               .fontSize(14)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#2D6CE8')
+              .fontColor(this.palette().primary)
               .padding({ left: 18, right: 18, top: 10, bottom: 10 })
-              .backgroundColor('#EAF2FF')
+              .backgroundColor(this.palette().primaryContainer)
               .borderRadius(14)
               .onClick(() => this.hideAddTagDialog());
           }
         }
         .width('100%')
         .padding(16)
-        .backgroundColor('#FFFFFF')
+        .backgroundColor(this.palette().surface)
         .borderRadius(20)
-        .border({ width: 1, color: '#E5EBF5' });
+        .border({ width: 1, color: this.palette().outline });
       }
     }
     .width('100%')
@@ -778,4 +799,12 @@ export struct HomePage {
     .alignItems(HorizontalAlign.Start)
     .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
   }
+}
+
+interface ColorModeConfig {
+  colorMode?: string | number;
+}
+
+interface ContextWithColorMode extends Context {
+  config?: ColorModeConfig;
 }

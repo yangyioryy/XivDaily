@@ -1,4 +1,6 @@
 import AppConstants from '../common/constants/AppConstants';
+import Context from '@ohos.app.ability.application';
+import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { FavoritePaperItem } from '../model/AppModels';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
@@ -18,6 +20,19 @@ class LibraryFilterOption {
 export struct LibraryPage {
   @ObjectLink vm: AppViewModel;
   private listScroller: Scroller = new Scroller();
+
+  private readSystemColorMode(): string | number | undefined {
+    try {
+      const hostContext = this.getUIContext().getHostContext() as ContextWithColorMode | undefined;
+      return hostContext?.config?.colorMode;
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  private palette(): XivThemePalette {
+    return resolveXivPalette(this.vm.settingsState.themeMode, this.readSystemColorMode());
+  }
 
   private filteredFavorites(): FavoritePaperItem[] {
     if (this.vm.libraryState.syncFilter === 'all') {
@@ -85,13 +100,14 @@ export struct LibraryPage {
   }
 
   private syncStatusColor(syncState: string): string {
+    // 收藏页状态圆点直接走语义色，和安卓端 status pill 的 synced/failed/pending 保持一致。
     if (syncState === 'synced') {
-      return '#3F7A58';
+      return this.palette().success;
     }
     if (syncState === 'failed') {
-      return '#B6544A';
+      return this.palette().danger;
     }
-    return '#B37B3F';
+    return this.palette().warning;
   }
 
   @Builder
@@ -100,12 +116,12 @@ export struct LibraryPage {
       Text(iconText)
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#2D6CE8');
+        .fontColor(this.palette().primary);
     }
     .width(32)
     .height(32)
     .justifyContent(FlexAlign.Center)
-    .backgroundColor('#EAF2FF')
+    .backgroundColor(this.palette().primaryContainer)
     .borderRadius(10);
   }
 
@@ -117,10 +133,10 @@ export struct LibraryPage {
           Text('收藏库')
             .fontSize(28)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#111827');
+            .fontColor(this.palette().textPrimary);
           Text(`${this.filterLabel()} · ${this.filteredFavorites().length} 条`)
             .fontSize(14)
-            .fontColor('#6B7280');
+            .fontColor(this.palette().textSecondary);
         }
         Blank();
         Row({ space: 8 }) {
@@ -138,12 +154,12 @@ export struct LibraryPage {
     Text(label)
       .fontSize(14)
       .fontWeight(this.isSyncFilterSelected(value) ? FontWeight.Medium : FontWeight.Regular)
-      .fontColor(this.isSyncFilterSelected(value) ? '#1F2937' : '#6B7280')
+      .fontColor(this.isSyncFilterSelected(value) ? this.palette().textPrimary : this.palette().textSecondary)
       .padding({ left: 16, right: 16, top: 8, bottom: 8 })
       .margin({ right: 8, bottom: 8 })
-      .backgroundColor(this.isSyncFilterSelected(value) ? '#F1F4FA' : '#FFFFFF')
+      .backgroundColor(this.isSyncFilterSelected(value) ? this.palette().secondaryContainer : this.palette().surface)
       .borderRadius(12)
-      .border({ width: 1, color: '#D7DEE9' })
+      .border({ width: 1, color: this.palette().outline })
       .onClick(() => this.vm.selectLibraryFilter(value));
   }
 
@@ -182,19 +198,19 @@ export struct LibraryPage {
       Text('BibTeX 导出结果')
         .fontSize(18)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#374151');
+        .fontColor(this.palette().onSecondaryContainer);
       Text('生成后可直接复制到你的文献管理工具中。')
         .fontSize(13)
-        .fontColor('#6B7280');
+        .fontColor(this.palette().onSecondaryContainer);
       Text(content.length > 0 ? content : '未导出任何条目')
         .fontSize(12)
         .lineHeight(18)
-        .fontColor('#374151')
+        .fontColor(this.palette().onSecondaryContainer)
         .width('100%');
     }
     .width('100%')
     .padding(16)
-    .backgroundColor('#F3F8FF')
+    .backgroundColor(this.palette().secondaryContainer)
     .borderRadius(18);
   }
 
@@ -205,18 +221,18 @@ export struct LibraryPage {
       Text(title)
         .fontSize(18)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#111827');
+        .fontColor(this.palette().textPrimary);
       Text(subtitle)
         .fontSize(14)
         .lineHeight(22)
-        .fontColor('#6B7280')
+        .fontColor(this.palette().textSecondary)
         .textAlign(TextAlign.Center);
     }
     .width('100%')
     .padding({ left: 18, right: 18, top: 20, bottom: 20 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(this.palette().surface)
     .borderRadius(20)
-    .border({ width: 1, color: '#E5EBF5' });
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
@@ -229,10 +245,10 @@ export struct LibraryPage {
         .backgroundColor(color);
       Text(label)
         .fontSize(12)
-        .fontColor('#6B7280');
+        .fontColor(this.palette().textSecondary);
     }
     .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-    .backgroundColor('#F4F7FB')
+    .backgroundColor(this.palette().surfaceVariant)
     .borderRadius(10);
   }
 
@@ -244,25 +260,26 @@ export struct LibraryPage {
           Text(favorite.paper.title)
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827')
+            .fontColor(this.palette().textPrimary)
             .maxLines(2)
             .textOverflow({ overflow: TextOverflow.Ellipsis });
           Text(`收藏于 ${favorite.savedAt.slice(0, 10)}`)
             .fontSize(12)
-            .fontColor('#6B7280');
+            .fontColor(this.palette().textSecondary);
         }
         .layoutWeight(1);
         SymbolGlyph($r('sys.symbol.star_fill'))
           .fontSize(18)
-          .fontColor(['#D9A441']);
+          .fontColor([this.palette().warning]);
       }
       .width('100%');
 
       Row({ space: 8 }) {
         this.statusPill(this.syncStatusLabel(favorite.paper.zoteroSyncState), this.syncStatusColor(favorite.paper.zoteroSyncState));
-        this.statusPill(this.isPaperSelected(favorite.paper.id) ? '已选中' : '点按可加入批量选择', this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#9CA3AF');
+        this.statusPill(this.isPaperSelected(favorite.paper.id) ? '已选中' : '点按可加入批量选择',
+          this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline);
         if (this.isPaperSyncing(favorite.paper.id)) {
-          this.statusPill('同步中...', '#2D6CE8');
+          this.statusPill('同步中...', this.palette().primary);
         }
       }
       .width('100%');
@@ -271,15 +288,15 @@ export struct LibraryPage {
         Row({ space: 6 }) {
           SymbolGlyph($r('sys.symbol.paperplane_fill'))
             .fontSize(14)
-            .fontColor(['#1D4ED8']);
+            .fontColor([this.palette().onPrimaryContainer]);
           Text('对话')
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#1D4ED8');
+            .fontColor(this.palette().onPrimaryContainer);
         }
           .padding({ left: 14, right: 14, top: 9, bottom: 9 })
           .margin({ right: 8, bottom: 8 })
-          .backgroundColor('#EAF2FF')
+          .backgroundColor(this.palette().primaryContainer)
           .borderRadius(12)
           .onClick(() => {
             this.vm.selectTab(2);
@@ -292,15 +309,15 @@ export struct LibraryPage {
           Row({ space: 6 }) {
             SymbolGlyph($r('sys.symbol.arrow_2_circlepath'))
               .fontSize(14)
-              .fontColor(['#1D4ED8']);
+              .fontColor([this.palette().onPrimaryContainer]);
             Text(this.isPaperSyncing(favorite.paper.id) ? '同步中...' : '同步 Zotero')
               .fontSize(14)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#1D4ED8');
+              .fontColor(this.palette().onPrimaryContainer);
           }
             .padding({ left: 14, right: 14, top: 9, bottom: 9 })
             .margin({ right: 8, bottom: 8 })
-            .backgroundColor('#EAF2FF')
+            .backgroundColor(this.palette().primaryContainer)
             .borderRadius(12)
             .opacity(this.isPaperSyncing(favorite.paper.id) ? 0.6 : 1)
             .onClick(() => {
@@ -311,15 +328,15 @@ export struct LibraryPage {
         Row({ space: 6 }) {
           SymbolGlyph($r('sys.symbol.trash'))
             .fontSize(14)
-            .fontColor(['#B6544A']);
+            .fontColor([this.palette().danger]);
           Text('删除')
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#B6544A');
+            .fontColor(this.palette().danger);
         }
           .padding({ left: 14, right: 14, top: 9, bottom: 9 })
           .margin({ right: 8, bottom: 8 })
-          .backgroundColor('#FFF1DD')
+          .backgroundColor(this.palette().dangerContainer)
           .borderRadius(12)
           .onClick(() => this.vm.deleteFavorite(favorite.paper.id));
       }
@@ -327,9 +344,9 @@ export struct LibraryPage {
     }
     .width('100%')
     .padding(14)
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(this.palette().surface)
     .borderRadius(18)
-    .border({ width: 1, color: '#E5EBF5' })
+    .border({ width: 1, color: this.palette().outline })
     .onClick(() => this.vm.toggleLibrarySelection(favorite.paper.id));
   }
 
@@ -339,36 +356,36 @@ export struct LibraryPage {
       Text(`已选 ${this.vm.libraryState.selectedPaperIds.length}`)
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#F8FAFC')
+        .fontColor(this.palette().textPrimary)
         .layoutWeight(1);
       Text('全选')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#F8FAFC')
+        .fontColor(this.palette().textPrimary)
         .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .backgroundColor('#334155')
+        .backgroundColor(this.palette().surfaceSubtle)
         .borderRadius(12)
         .onClick(() => this.vm.selectAllLibraryPapers(this.filteredFavorites().map((favorite: FavoritePaperItem) => favorite.paper.id)));
       Text('导出')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#F8FAFC')
+        .fontColor(this.palette().textPrimary)
         .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .backgroundColor('#334155')
+        .backgroundColor(this.palette().surfaceSubtle)
         .borderRadius(12)
         .onClick(() => this.vm.exportSelectedBibtex());
       Text('删除')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#FCA5A5')
+        .fontColor(this.palette().danger)
         .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .backgroundColor('#334155')
+        .backgroundColor(this.palette().surfaceSubtle)
         .borderRadius(12)
         .onClick(() => this.vm.deleteSelectedFavorites());
     }
     .width('100%')
     .padding(14)
-    .backgroundColor('#111827')
+    .backgroundColor(this.palette().surfaceVariant)
     .borderRadius(18);
   }
 
@@ -378,13 +395,13 @@ export struct LibraryPage {
       Text('收藏论文')
         .fontSize(24)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#111827')
+        .fontColor(this.palette().textPrimary)
         .width('100%');
 
       if (this.totalFavoriteCount() > 0 && this.filteredFavorites().length > 0) {
         Text(this.visibleCountText())
           .fontSize(13)
-          .fontColor('#6B7280')
+          .fontColor(this.palette().textSecondary)
           .width('100%');
       }
 
@@ -419,11 +436,13 @@ export struct LibraryPage {
         this.filterToolbar();
 
         if (this.vm.libraryState.actionMessage) {
-          this.feedbackCard('操作反馈', this.vm.libraryState.actionMessage!, '#EAF2FF', '#2D6CE8');
+          this.feedbackCard('操作反馈', this.vm.libraryState.actionMessage!, this.palette().primaryContainer,
+            this.palette().onPrimaryContainer);
         }
 
         if (this.vm.libraryState.errorMessage) {
-          this.feedbackCard('操作提醒', this.vm.libraryState.errorMessage!, '#FFEAEA', '#B6544A');
+          this.feedbackCard('操作提醒', this.vm.libraryState.errorMessage!, this.palette().dangerContainer,
+            this.palette().danger);
         }
 
         if (this.vm.libraryState.exportContent) {
@@ -435,7 +454,7 @@ export struct LibraryPage {
       .width('100%')
       .height('100%')
       .alignItems(HorizontalAlign.Start)
-      .backgroundColor('#F7F9FD')
+      .backgroundColor(this.palette().background)
       .padding({
         left: AppConstants.PAGE_HORIZONTAL_PADDING,
         right: AppConstants.PAGE_HORIZONTAL_PADDING,
@@ -454,4 +473,12 @@ export struct LibraryPage {
     .width('100%')
     .height('100%');
   }
+}
+
+interface ColorModeConfig {
+  colorMode?: string | number;
+}
+
+interface ContextWithColorMode extends Context {
+  config?: ColorModeConfig;
 }
