@@ -80,8 +80,8 @@ export struct HomePage {
     if (this.isSearchActive()) {
       return `全 arXiv 搜索：${this.vm.homeState.searchKeyword}，分类过滤：${this.vm.homeState.selectedCategory}`;
     }
-    const countSuffix = this.vm.homeState.papers.length > 0 ? ` · ${this.vm.homeState.papers.length} 篇` : '';
-    return `围绕 ${this.vm.homeState.selectedCategory} 的最新研究流${countSuffix}`;
+    // Android 首页这里不追加“n 篇”数量后缀，鸿蒙端保持同一条副标题文案，避免跨端截图时出现肉眼可见差异。
+    return `围绕 ${this.vm.homeState.selectedCategory} 的最新研究流`;
   }
 
   private emptyStateTitle(): string {
