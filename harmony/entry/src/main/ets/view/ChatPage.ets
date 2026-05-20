@@ -257,12 +257,17 @@ export struct ChatPage {
   }
 
   private submitComposer(): void {
-    if (!this.canSendMessage()) {
+    if (this.vm.chatState.isSending) {
       return;
     }
     this.vm.updateChatDraft(this.composerDraft);
-    this.composerDraft = '';
-    void this.vm.sendChatMessage();
+    const sendTask = this.vm.sendChatMessage();
+    // 只有真正进入发送态时才清空输入框；如果是未选论文或问题为空，就保留用户输入，
+    // 让错误反馈和 Android 一样由 ViewModel 统一给出，而不是在 UI 层静默吞掉。
+    if (this.vm.chatState.isSending) {
+      this.composerDraft = '';
+    }
+    void sendTask;
   }
 
   @Builder

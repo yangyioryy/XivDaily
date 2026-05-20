@@ -68,6 +68,10 @@ export struct HomePage {
     return '围绕当天筛选范围快速浏览、收藏和同步论文。';
   }
 
+  private isFeedRefreshing(): boolean {
+    return this.vm.homeState.isLoading || this.vm.homeState.isSummaryLoading;
+  }
+
   private paperSectionTitle(): string {
     return this.vm.homeState.isLoading ? '论文加载中...' : '论文列表';
   }
@@ -404,15 +408,18 @@ export struct HomePage {
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start);
 
-      Text(this.vm.homeState.isLoading ? '刷新中' : '刷新')
+      Text(this.isFeedRefreshing() ? '刷新中' : '刷新')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().primary)
         .padding({ left: 12, right: 12, top: 8, bottom: 8 })
         .backgroundColor(this.palette().primaryContainer)
         .borderRadius(999)
-        .opacity(this.vm.homeState.isLoading ? 0.7 : 1)
-        .onClick(() => this.vm.refreshHome());
+        .opacity(this.isFeedRefreshing() ? 0.7 : 1)
+        .onClick(() => {
+          // Android 刷新入口会同时刷新论文列表和趋势摘要，鸿蒙端这里保持同一条链路。
+          void this.vm.refreshFeed();
+        });
     }
     .width('100%')
     .alignItems(VerticalAlign.Center);
