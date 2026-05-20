@@ -2,6 +2,14 @@ import AppConstants from '../common/constants/AppConstants';
 import { FavoritePaperItem, PaperChatMessage, PaperChatUsedPaper } from '../model/AppModels';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
+interface MarkdownBlock {
+  id: string;
+  kind: string;
+  text: string;
+  marker: string;
+  level: number;
+}
+
 @Component
 export struct ChatPage {
   @ObjectLink vm: AppViewModel;
@@ -27,6 +35,164 @@ export struct ChatPage {
       return '摘要降级';
     }
     return '未读取';
+  }
+
+  // Harmony 端先做一层轻量 Markdown 分块，避免把原始标记直接暴露给用户。
+  private markdownBlocks(content: string): MarkdownBlock[] {
+    const blocks: MarkdownBlock[] = [];
+    const rawLines = content.replace(/\r\n/g, '\n').split('\n');
+    let paragraphLines: string[] = [];
+    let codeLines: string[] = [];
+    let isInCodeFence = false;
+    let blockIndex = 0;
+
+    const pushParagraph = (): void => {
+      if (paragraphLines.length === 0) {
+        return;
+      }
+      blocks.push({
+        id: `paragraph-${blockIndex}`,
+        kind: 'paragraph',
+        text: this.normalizeMarkdownInline(paragraphLines.join(' ')),
+        marker: '',
+        level: 0
+      });
+      blockIndex += 1;
+      paragraphLines = [];
+    };
+
+    const pushCodeBlock = (): void => {
+      if (codeLines.length === 0) {
+        return;
+      }
+      blocks.push({
+        id: `code-${blockIndex}`,
+        kind: 'code',
+        text: codeLines.join('\n'),
+        marker: '',
+        level: 0
+      });
+      blockIndex += 1;
+      codeLines = [];
+    };
+
+    for (let i = 0; i < rawLines.length; i += 1) {
+      const line = rawLines[i];
+      const trimmedLine = line.trim();
+
+      if (trimmedLine.startsWith('```')) {
+        pushParagraph();
+        if (isInCodeFence) {
+          pushCodeBlock();
+        }
+        isInCodeFence = !isInCodeFence;
+        continue;
+      }
+
+      if (isInCodeFence) {
+        codeLines.push(line);
+        continue;
+      }
+
+      if (trimmedLine.length === 0) {
+        pushParagraph();
+        continue;
+      }
+
+      if (trimmedLine.startsWith('# ')) {
+        pushParagraph();
+        blocks.push({
+          id: `heading-${blockIndex}`,
+          kind: 'heading',
+          text: this.normalizeMarkdownInline(trimmedLine.slice(2)),
+          marker: '',
+          level: 1
+        });
+        blockIndex += 1;
+        continue;
+      }
+
+      if (trimmedLine.startsWith('## ')) {
+        pushParagraph();
+        blocks.push({
+          id: `heading-${blockIndex}`,
+          kind: 'heading',
+          text: this.normalizeMarkdownInline(trimmedLine.slice(3)),
+          marker: '',
+          level: 2
+        });
+        blockIndex += 1;
+        continue;
+      }
+
+      if (trimmedLine.startsWith('### ')) {
+        pushParagraph();
+        blocks.push({
+          id: `heading-${blockIndex}`,
+          kind: 'heading',
+          text: this.normalizeMarkdownInline(trimmedLine.slice(4)),
+          marker: '',
+          level: 3
+        });
+        blockIndex += 1;
+        continue;
+      }
+
+      if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+        pushParagraph();
+        blocks.push({
+          id: `bullet-${blockIndex}`,
+          kind: 'bullet',
+          text: this.normalizeMarkdownInline(trimmedLine.slice(2)),
+          marker: '•',
+          level: 0
+        });
+        blockIndex += 1;
+        continue;
+      }
+
+      const orderedMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
+      if (orderedMatch) {
+        pushParagraph();
+        blocks.push({
+          id: `ordered-${blockIndex}`,
+          kind: 'ordered',
+          text: this.normalizeMarkdownInline(orderedMatch[2]),
+          marker: `${orderedMatch[1]}.`,
+          level: 0
+        });
+        blockIndex += 1;
+        continue;
+      }
+
+      paragraphLines.push(trimmedLine);
+    }
+
+    pushParagraph();
+    pushCodeBlock();
+
+    if (blocks.length === 0) {
+      blocks.push({
+        id: 'paragraph-empty',
+        kind: 'paragraph',
+        text: this.normalizeMarkdownInline(content),
+        marker: '',
+        level: 0
+      });
+    }
+
+    return blocks;
+  }
+
+  // 行内样式统一降级成纯文本，优先保证阅读稳定，再逐步补齐复杂 Markdown 能力。
+  private normalizeMarkdownInline(text: string): string {
+    return text
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '$1')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/(\*\*|__|~~)/g, '')
+      .replace(/^\>\s?/g, '')
+      .trim();
   }
 
   private pickerSummaryText(): string {
@@ -137,7 +303,7 @@ export struct ChatPage {
         .height(8)
         .borderRadius(4)
         .backgroundColor(usedPaper.status === 'full_text' ? '#3F7A58' : usedPaper.status === 'summary_fallback' ? '#B37B3F' : '#2D6CE8');
-      Text(`${this.usedPaperStatusLabel(usedPaper.status)} · ${usedPaper.title.slice(0, 14)}`)
+      Text(this.usedPaperStatusLabel(usedPaper.status))
         .fontSize(13)
         .fontColor('#6B7280');
     }
@@ -145,6 +311,69 @@ export struct ChatPage {
     .margin({ right: 8, bottom: 8 })
     .backgroundColor('#F1F4FA')
     .borderRadius(12);
+  }
+
+  private headingFontSize(level: number): number {
+    if (level <= 1) {
+      return 18;
+    }
+    if (level === 2) {
+      return 16;
+    }
+    return 15;
+  }
+
+  @Builder
+  private markdownBlock(block: MarkdownBlock) {
+    if (block.kind === 'heading') {
+      Text(block.text)
+        .fontSize(this.headingFontSize(block.level))
+        .fontWeight(FontWeight.Bold)
+        .lineHeight(26)
+        .fontColor('#111827')
+        .width('100%');
+    } else if (block.kind === 'bullet' || block.kind === 'ordered') {
+      Row({ space: 8 }) {
+        Text(block.marker)
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#374151');
+        Text(block.text)
+          .fontSize(14)
+          .lineHeight(22)
+          .fontColor('#374151')
+          .layoutWeight(1);
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Top);
+    } else if (block.kind === 'code') {
+      Text(block.text)
+        .fontSize(13)
+        .lineHeight(20)
+        .fontColor('#374151')
+        .width('100%')
+        .padding(12)
+        .backgroundColor('#F3F4F6')
+        .borderRadius(12);
+    } else {
+      Text(block.text)
+        .fontSize(14)
+        .lineHeight(22)
+        .fontColor('#374151')
+        .width('100%');
+    }
+  }
+
+  @Builder
+  private assistantMessageBody(content: string) {
+    // 助手回复按块渲染，尽量贴近 Android 端的正文阅读体验。
+    Column({ space: 10 }) {
+      ForEach(this.markdownBlocks(content), (block: MarkdownBlock) => {
+        this.markdownBlock(block);
+      }, (block: MarkdownBlock) => block.id);
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start);
   }
 
   @Builder
@@ -319,16 +548,16 @@ export struct ChatPage {
         Blank();
       }
 
-      Column({ space: 8 }) {
-        Text(message.role === 'user' ? '你' : '助手')
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(message.role === 'user' ? '#DBEAFE' : '#6B7280');
-        Text(message.content)
-          .fontSize(14)
-          .lineHeight(22)
-          .fontColor(message.role === 'user' ? '#FFFFFF' : '#374151')
-          .width('100%');
+      Column() {
+        if (message.role === 'user') {
+          Text(message.content)
+            .fontSize(14)
+            .lineHeight(22)
+            .fontColor('#FFFFFF')
+            .width('100%');
+        } else {
+          this.assistantMessageBody(message.content);
+        }
       }
       .width(message.role === 'user' ? '74%' : '82%')
       .padding(16)
@@ -349,21 +578,22 @@ export struct ChatPage {
   @Builder
   private thinkingBubble() {
     Row() {
-      Column({ space: 8 }) {
-        Text('助手')
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#6B7280');
+      Row({ space: 10 }) {
+        LoadingProgress()
+          .width(18)
+          .height(18)
+          .color('#6B7280');
         Text('正在思考中...')
           .fontSize(14)
           .fontColor('#6B7280')
-          .width('100%');
+          .lineHeight(22);
       }
       .width('82%')
       .padding(16)
       .backgroundColor('#FFFFFF')
       .borderRadius(18)
-      .border({ width: 1, color: '#E5EBF5' });
+      .border({ width: 1, color: '#E5EBF5' })
+      .alignItems(VerticalAlign.Center);
       Blank();
     }
     .width('100%');
@@ -478,17 +708,11 @@ export struct ChatPage {
         }
 
         if (this.vm.chatState.usedPapers.length > 0) {
-          Column({ space: 10 }) {
-            Text('上下文来源')
-              .fontSize(16)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#374151');
-            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-              ForEach(this.vm.chatState.usedPapers, (usedPaper: PaperChatUsedPaper) => {
-                this.sourceStatusChip(usedPaper);
-              }, (usedPaper: PaperChatUsedPaper) => usedPaper.paperId);
-            }
-            .width('100%');
+          // Android 端只保留来源状态 pill，这里同步去掉“上下文来源”和论文标题。
+          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+            ForEach(this.vm.chatState.usedPapers, (usedPaper: PaperChatUsedPaper) => {
+              this.sourceStatusChip(usedPaper);
+            }, (usedPaper: PaperChatUsedPaper) => usedPaper.paperId);
           }
           .width('100%');
         }
