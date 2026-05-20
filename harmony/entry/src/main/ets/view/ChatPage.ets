@@ -6,16 +6,16 @@ import { AppViewModel } from '../viewmodel/AppViewModel';
 export struct ChatPage {
   @ObjectLink vm: AppViewModel;
   @State private isPickerDialogVisible: boolean = false;
-  @State private selectedPaperIdsSnapshot: string[] = [];
+  @State private composerDraft: string = '';
   private messageScroller: Scroller = new Scroller();
 
   private isPaperSelected(paperId: string): boolean {
-    return this.selectedPaperIdsSnapshot.indexOf(paperId) >= 0;
+    return this.vm.chatState.selectedPaperIds.indexOf(paperId) >= 0;
   }
 
   private selectedFavorites(): FavoritePaperItem[] {
     return this.vm.chatState.favorites.filter((favorite: FavoritePaperItem) => {
-      return this.selectedPaperIdsSnapshot.indexOf(favorite.paper.id) >= 0;
+      return this.vm.chatState.selectedPaperIds.indexOf(favorite.paper.id) >= 0;
     });
   }
 
@@ -37,12 +37,11 @@ export struct ChatPage {
     return `已选 ${selected.length} 篇：${selected.map((favorite: FavoritePaperItem) => favorite.paper.title.slice(0, 12)).join(' / ')}`;
   }
 
-  private syncSelectedPaperIdsSnapshot(): void {
-    this.selectedPaperIdsSnapshot = this.vm.chatState.selectedPaperIds.slice();
+  private syncComposerDraft(): void {
+    this.composerDraft = this.vm.chatState.inputDraft;
   }
 
   private showPickerDialog(): void {
-    this.syncSelectedPaperIdsSnapshot();
     this.isPickerDialogVisible = true;
   }
 
@@ -51,33 +50,18 @@ export struct ChatPage {
   }
 
   private togglePickerSelection(paperId: string): void {
-    const existed = this.selectedPaperIdsSnapshot.indexOf(paperId) >= 0;
-    if (existed) {
-      const nextIds = this.selectedPaperIdsSnapshot.filter((id: string) => id !== paperId);
-      this.selectedPaperIdsSnapshot = nextIds;
-      this.vm.chatState.selectedPaperIds = nextIds;
-      this.vm.chatState.errorMessage = undefined;
-      return;
-    }
-    if (this.selectedPaperIdsSnapshot.length >= AppConstants.MAX_CHAT_PAPERS) {
-      this.vm.chatState.errorMessage = '一次最多选择 3 篇论文';
-      return;
-    }
-    const nextIds = [...this.selectedPaperIdsSnapshot, paperId];
-    this.selectedPaperIdsSnapshot = nextIds;
-    this.vm.chatState.selectedPaperIds = nextIds;
-    this.vm.chatState.errorMessage = undefined;
+    this.vm.toggleChatPaper(paperId);
   }
 
   private canSendMessage(): boolean {
     return !this.vm.chatState.isSending
-      && this.selectedPaperIdsSnapshot.length > 0
-      && this.vm.chatState.inputDraft.trim().length > 0;
+      && this.vm.chatState.selectedPaperIds.length > 0
+      && this.composerDraft.trim().length > 0;
   }
 
   private composerHint(): string {
-    if (this.selectedPaperIdsSnapshot.length > 0) {
-      return `将基于 ${this.selectedPaperIdsSnapshot.length} 篇收藏论文回答`;
+    if (this.vm.chatState.selectedPaperIds.length > 0) {
+      return `将基于 ${this.vm.chatState.selectedPaperIds.length} 篇收藏论文回答`;
     }
     return '先选择收藏论文，再开始提问';
   }
@@ -87,6 +71,15 @@ export struct ChatPage {
       return 0.6;
     }
     return this.canSendMessage() ? 1 : 0.72;
+  }
+
+  private submitComposer(): void {
+    if (!this.canSendMessage()) {
+      return;
+    }
+    this.vm.updateChatDraft(this.composerDraft);
+    this.composerDraft = '';
+    void this.vm.sendChatMessage();
   }
 
   @Builder
@@ -118,10 +111,10 @@ export struct ChatPage {
 
   @Builder
   private selectionChip(favorite: FavoritePaperItem) {
-      Row({ space: 6 }) {
-        Text('✓')
-          .fontSize(12)
-          .fontColor('#2D6CE8');
+    Row({ space: 6 }) {
+      Text('✓')
+        .fontSize(12)
+        .fontColor('#2D6CE8');
       Text(favorite.paper.title.slice(0, 18))
         .fontSize(13)
         .fontColor('#1F2937');
@@ -410,7 +403,7 @@ export struct ChatPage {
     Row({ space: 12 }) {
       TextArea({
         placeholder: this.vm.chatState.isSending ? '正在整理论文材料...' : '向选中论文提问',
-        text: this.vm.chatState.inputDraft
+        text: this.composerDraft
       })
         .fontSize(15)
         .backgroundColor('#F8FAFC')
@@ -419,8 +412,11 @@ export struct ChatPage {
         .layoutWeight(1)
         .height(64)
         .enabled(!this.vm.chatState.isSending)
-        .onChange((value: string) => this.vm.updateChatDraft(value))
-        .onSubmit(() => this.vm.sendChatMessage());
+        .onChange((value: string) => {
+          this.composerDraft = value;
+          this.vm.updateChatDraft(value);
+        })
+        .onSubmit(() => this.submitComposer());
 
       Row() {
         SymbolGlyph($r('sys.symbol.paperplane_fill'))
@@ -434,9 +430,7 @@ export struct ChatPage {
       .borderRadius(26)
       .opacity(this.sendActionOpacity())
       .onClick(() => {
-        if (!this.vm.chatState.isSending) {
-          void this.vm.sendChatMessage();
-        }
+        this.submitComposer();
       });
     }
     .width('100%')
@@ -452,7 +446,7 @@ export struct ChatPage {
               .fontSize(28)
               .fontWeight(FontWeight.Bold)
               .fontColor('#111827');
-            Text(`已选 ${this.selectedPaperIdsSnapshot.length} 篇 · 最多 ${AppConstants.MAX_CHAT_PAPERS} 篇`)
+            Text(`已选 ${this.vm.chatState.selectedPaperIds.length} 篇 · 最多 ${AppConstants.MAX_CHAT_PAPERS} 篇`)
               .fontSize(14)
               .fontColor('#6B7280');
           }
@@ -505,7 +499,10 @@ export struct ChatPage {
       .width('100%')
       .height('100%')
       .alignItems(HorizontalAlign.Start)
-      .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
+      .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 })
+      .onAppear(() => {
+        this.syncComposerDraft();
+      });
 
       this.pickerDialogCard();
     }

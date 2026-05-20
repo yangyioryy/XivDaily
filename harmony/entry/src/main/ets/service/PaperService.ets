@@ -14,8 +14,13 @@ import { PaperQuery } from '../model/ApiModels';
 
 interface RequestOptions {
   method?: http.RequestMethod;
-  bodyText?: string;
+  body?: string | Object | ArrayBuffer;
+  header?: JsonRequestHeader;
   readTimeoutMs?: number;
+}
+
+interface JsonRequestHeader {
+  'Content-Type': string;
 }
 
 interface PaperDto {
@@ -435,6 +440,14 @@ export class PaperService {
         if (response.responseCode < 200 || response.responseCode >= 300) {
           throw new Error(this.buildHttpErrorMessage(response.responseCode, responseText));
         }
+        hilog.info(
+          0x0000,
+          'XivDaily',
+          'PaperService request success. url=%{public}s code=%{public}s bytes=%{public}s',
+          requestUrl,
+          `${response.responseCode}`,
+          `${responseText.length}`
+        );
         return this.parseJson<T>(responseText);
       } catch (error) {
         lastError = this.normalizeError(error);
@@ -459,8 +472,11 @@ export class PaperService {
       readTimeout: options && options.readTimeoutMs ? options.readTimeoutMs : DEFAULT_CONNECT_TIMEOUT_MS,
       connectTimeout: DEFAULT_CONNECT_TIMEOUT_MS
     };
-    if (options && options.bodyText) {
-      requestOptions.extraData = options.bodyText;
+    if (options && options.header) {
+      requestOptions.header = options.header;
+    }
+    if (options && options.body !== undefined) {
+      requestOptions.extraData = options.body;
     }
     return requestOptions;
   }
@@ -473,10 +489,14 @@ export class PaperService {
     return options;
   }
 
-  private createJsonOptions<T>(payload: T, method?: http.RequestMethod, readTimeoutMs?: number): RequestOptions {
+  private createJsonOptions<T extends Object>(payload: T, method?: http.RequestMethod, readTimeoutMs?: number): RequestOptions {
+    const header: JsonRequestHeader = {
+      'Content-Type': 'application/json'
+    };
     const options: RequestOptions = {
       method: method ? method : http.RequestMethod.POST,
-      bodyText: JSON.stringify(payload),
+      body: payload,
+      header: header,
       readTimeoutMs: readTimeoutMs ? readTimeoutMs : DEFAULT_CONNECT_TIMEOUT_MS
     };
     return options;
