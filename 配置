@@ -64,4 +64,32 @@ Harmony 命令行构建验证：
   - 顶部标题副文案：`全部 · 1 条`
   - 顶部筛选 chips：`全部 1` / `已同步 0` / `未同步 1`
   - 列表统计：`共 1 条 · 当前展示 1 条`
-  - 说明：首页收藏 -> 收藏库展示链路真实可用，本轮修复后顶部筛选计数已与真实收藏数对齐
+- 说明：首页收藏 -> 收藏库展示链路真实可用，本轮修复后顶部筛选计数已与真实收藏数对齐
+
+2026-05-20 03:35:00 +08:00 补充：
+- 当前可直接拉起鸿蒙端的命令已再次验证可用：
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 shell "aa start -a EntryAbility -b com.xivdaily.harmony"`
+- 当前聊天页真机验收证据：
+  - 最终截图：`tmp-xivdaily-chat-final5.jpeg`
+  - 最终布局：`tmp-xivdaily-chat-final5.json`
+  - 已确认：
+    - assistant 气泡不再显示 `你 / 助手`
+    - 不再显示 `上下文来源`
+    - 来源区域只保留状态 pill，例如 `摘要降级`
+    - assistant 正文不再直接暴露 Markdown 原始符号
+- 当前 Harmony 命令行截图能力已再次验证可用：
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 shell "snapshot_display -f /data/local/tmp/<name>.jpeg"`
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 file recv /data/local/tmp/<name>.jpeg 'E:\Grade3-2\HomenyOS\XivDaily\<name>.jpeg'`
+- 当前设置页常用验收链路：
+  1. `aa start -a EntryAbility -b com.xivdaily.harmony`
+  2. `uitest uiInput click 1120 2680` 进入“设置”页签
+  3. 如需看到集成配置区域，先执行：
+     `uitest uiInput swipe 660 2100 660 1200 300`
+  4. 再用 `snapshot_display` / `dumpLayout` 抓图与导出布局
+- 当前设置页证据：
+  - 页签截图：`tmp-xivdaily-settings-page5.jpeg`
+  - 下滚后截图：`tmp-xivdaily-settings-scroll5.jpeg`
+- 本轮新增对齐点：
+  - `SettingsPage.ets` 中 Zotero `Library Type` 已从自由文本输入改为 Android 同款二选一（`个人库` / `群组库`）
+  - 当前已完成 `assembleHap` 与 `install -r` 真实验证
+  - 由于 `uitest uiInput click` 对该设置行的自动化点按未稳定拉起弹窗，暂未拿到该弹窗的真机截图；后续若继续做设置页回归，优先复用上面的启动、滚动和抓图命令

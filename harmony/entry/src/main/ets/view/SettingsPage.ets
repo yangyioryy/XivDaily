@@ -621,9 +621,16 @@ export struct SettingsPage {
           this.formInput('User ID / Group ID', this.vm.settingsState.zoteroUserIdDraft, '输入用户或群组 ID', (value: string) => {
             this.vm.updateZoteroUserIdDraft(value);
           });
-          this.formInput('Library Type', this.vm.settingsState.zoteroLibraryTypeDraft, 'user / group', (value: string) => {
-            this.vm.updateZoteroLibraryTypeDraft(value);
-          });
+          Text('Library Type')
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#374151');
+          // 界面使用中文选项，但最终仍保存为 Zotero API 需要的 user / group 常量。
+          this.chipGroup(['个人库', '群组库'],
+            this.vm.settingsState.zoteroLibraryTypeDraft === 'group' ? '群组库' : '个人库',
+            (value: string) => {
+              this.vm.updateZoteroLibraryTypeDraft(value === '群组库' ? 'group' : 'user');
+            });
           this.formInput('API Key', this.vm.settingsState.zoteroApiKeyDraft, this.vm.settingsState.zoteroApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
             this.vm.updateZoteroApiKeyDraft(value);
           });
