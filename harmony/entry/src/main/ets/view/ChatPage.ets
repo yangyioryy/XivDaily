@@ -5,16 +5,17 @@ import { AppViewModel } from '../viewmodel/AppViewModel';
 @Component
 export struct ChatPage {
   @ObjectLink vm: AppViewModel;
-  @State private pickerExpanded: boolean = false;
+  @State private isPickerDialogVisible: boolean = false;
+  @State private selectedPaperIdsSnapshot: string[] = [];
   private messageScroller: Scroller = new Scroller();
 
   private isPaperSelected(paperId: string): boolean {
-    return this.vm.chatState.selectedPaperIds.indexOf(paperId) >= 0;
+    return this.selectedPaperIdsSnapshot.indexOf(paperId) >= 0;
   }
 
   private selectedFavorites(): FavoritePaperItem[] {
     return this.vm.chatState.favorites.filter((favorite: FavoritePaperItem) => {
-      return this.vm.chatState.selectedPaperIds.indexOf(favorite.paper.id) >= 0;
+      return this.selectedPaperIdsSnapshot.indexOf(favorite.paper.id) >= 0;
     });
   }
 
@@ -36,15 +37,47 @@ export struct ChatPage {
     return `已选 ${selected.length} 篇：${selected.map((favorite: FavoritePaperItem) => favorite.paper.title.slice(0, 12)).join(' / ')}`;
   }
 
+  private syncSelectedPaperIdsSnapshot(): void {
+    this.selectedPaperIdsSnapshot = this.vm.chatState.selectedPaperIds.slice();
+  }
+
+  private showPickerDialog(): void {
+    this.syncSelectedPaperIdsSnapshot();
+    this.isPickerDialogVisible = true;
+  }
+
+  private hidePickerDialog(): void {
+    this.isPickerDialogVisible = false;
+  }
+
+  private togglePickerSelection(paperId: string): void {
+    const existed = this.selectedPaperIdsSnapshot.indexOf(paperId) >= 0;
+    if (existed) {
+      const nextIds = this.selectedPaperIdsSnapshot.filter((id: string) => id !== paperId);
+      this.selectedPaperIdsSnapshot = nextIds;
+      this.vm.chatState.selectedPaperIds = nextIds;
+      this.vm.chatState.errorMessage = undefined;
+      return;
+    }
+    if (this.selectedPaperIdsSnapshot.length >= AppConstants.MAX_CHAT_PAPERS) {
+      this.vm.chatState.errorMessage = '一次最多选择 3 篇论文';
+      return;
+    }
+    const nextIds = [...this.selectedPaperIdsSnapshot, paperId];
+    this.selectedPaperIdsSnapshot = nextIds;
+    this.vm.chatState.selectedPaperIds = nextIds;
+    this.vm.chatState.errorMessage = undefined;
+  }
+
   private canSendMessage(): boolean {
     return !this.vm.chatState.isSending
-      && this.vm.chatState.selectedPaperIds.length > 0
+      && this.selectedPaperIdsSnapshot.length > 0
       && this.vm.chatState.inputDraft.trim().length > 0;
   }
 
   private composerHint(): string {
-    if (this.vm.chatState.selectedPaperIds.length > 0) {
-      return `将基于 ${this.vm.chatState.selectedPaperIds.length} 篇收藏论文回答`;
+    if (this.selectedPaperIdsSnapshot.length > 0) {
+      return `将基于 ${this.selectedPaperIdsSnapshot.length} 篇收藏论文回答`;
     }
     return '先选择收藏论文，再开始提问';
   }
@@ -85,10 +118,10 @@ export struct ChatPage {
 
   @Builder
   private selectionChip(favorite: FavoritePaperItem) {
-    Row({ space: 6 }) {
-      Text('✓')
-        .fontSize(12)
-        .fontColor('#2D6CE8');
+      Row({ space: 6 }) {
+        Text('✓')
+          .fontSize(12)
+          .fontColor('#2D6CE8');
       Text(favorite.paper.title.slice(0, 18))
         .fontSize(13)
         .fontColor('#1F2937');
@@ -100,7 +133,7 @@ export struct ChatPage {
     .margin({ right: 8, bottom: 8 })
     .backgroundColor('#F1F4FA')
     .borderRadius(12)
-    .onClick(() => this.vm.toggleChatPaper(favorite.paper.id));
+    .onClick(() => this.togglePickerSelection(favorite.paper.id));
   }
 
   @Builder
@@ -131,7 +164,7 @@ export struct ChatPage {
         .layoutWeight(1)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
-      Text(this.pickerExpanded ? '▴' : '▾')
+      Text(this.isPickerDialogVisible ? '▴' : '▾')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
         .fontColor('#2D6CE8');
@@ -142,16 +175,29 @@ export struct ChatPage {
     .borderRadius(14)
     .border({ width: 1, color: '#D7DEE9' })
     .onClick(() => {
-      this.pickerExpanded = !this.pickerExpanded;
+      this.showPickerDialog();
     });
   }
 
   @Builder
   private pickerOption(favorite: FavoritePaperItem) {
-    Row({ space: 10 }) {
-      Text(this.isPaperSelected(favorite.paper.id) ? '☑' : '☐')
-        .fontSize(18)
-        .fontColor('#2D6CE8');
+    Row({ space: 12 }) {
+      Row() {
+        Text(this.isPaperSelected(favorite.paper.id) ? '✓' : '')
+          .fontSize(14)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FFFFFF');
+      }
+      .width(28)
+      .height(28)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#FFFFFF')
+      .borderRadius(14)
+      .border({
+        width: 1.5,
+        color: this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#C9D2E3'
+      });
+
       Column({ space: 2 }) {
         Text(favorite.paper.title)
           .fontSize(15)
@@ -164,16 +210,24 @@ export struct ChatPage {
           .fontColor('#6B7280');
       }
       .layoutWeight(1);
+
+      Text(this.isPaperSelected(favorite.paper.id) ? '取消' : '选择')
+        .fontSize(13)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#FFFFFF')
+        .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+        .backgroundColor(this.isPaperSelected(favorite.paper.id) ? '#EAF2FF' : '#2D6CE8')
+        .borderRadius(10)
+        .onClick(() => this.togglePickerSelection(favorite.paper.id));
     }
     .width('100%')
-    .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
     .backgroundColor(this.isPaperSelected(favorite.paper.id) ? '#F7FBFF' : '#FFFFFF')
     .borderRadius(14)
     .border({
-      width: this.isPaperSelected(favorite.paper.id) ? 1.5 : 1,
+      width: this.isPaperSelected(favorite.paper.id) ? 2 : 1,
       color: this.isPaperSelected(favorite.paper.id) ? '#2D6CE8' : '#E5E7EB'
-    })
-    .onClick(() => this.vm.toggleChatPaper(favorite.paper.id));
+    });
   }
 
   @Builder
@@ -191,15 +245,6 @@ export struct ChatPage {
           .width('100%');
       } else {
         this.paperPickerButton();
-
-        if (this.pickerExpanded) {
-          Column({ space: 10 }) {
-            ForEach(this.vm.chatState.favorites, (favorite: FavoritePaperItem) => {
-              this.pickerOption(favorite);
-            }, (favorite: FavoritePaperItem) => favorite.paper.id);
-          }
-          .width('100%');
-        }
 
         if (this.selectedFavorites().length > 0) {
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
@@ -225,6 +270,53 @@ export struct ChatPage {
     .backgroundColor('#FFFFFF')
     .borderRadius(20)
     .border({ width: 1, color: '#E5EBF5' });
+  }
+
+  @Builder
+  private dialogBackdrop(onDismiss: () => void) {
+    Row()
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#66000000')
+      .onClick(() => onDismiss());
+  }
+
+  @Builder
+  private pickerDialogCard() {
+    if (this.isPickerDialogVisible) {
+      Stack({ alignContent: Alignment.Center }) {
+        this.dialogBackdrop(() => this.hidePickerDialog());
+        Column({ space: 14 }) {
+          Row() {
+            Text('选择收藏论文')
+              .fontSize(20)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#111827');
+            Blank();
+            Text('完成')
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#2D6CE8')
+              .onClick(() => this.hidePickerDialog());
+          }
+          .width('100%');
+
+          Column({ space: 10 }) {
+            ForEach(this.vm.chatState.favorites, (favorite: FavoritePaperItem) => {
+              this.pickerOption(favorite);
+            }, (favorite: FavoritePaperItem) => favorite.paper.id);
+          }
+          .width('100%');
+        }
+        .width('86%')
+        .padding(18)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(24)
+        .border({ width: 1, color: '#E5EBF5' });
+      }
+      .width('100%')
+      .height('100%');
+    }
   }
 
   @Builder
@@ -352,67 +444,73 @@ export struct ChatPage {
   }
 
   build() {
-    Column({ space: AppConstants.SECTION_SPACING }) {
-      Row() {
-        Column({ space: 4 }) {
-          Text('论文对话')
-            .fontSize(28)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#111827');
-          Text(`已选 ${this.vm.chatState.selectedPaperIds.length} 篇 · 最多 ${AppConstants.MAX_CHAT_PAPERS} 篇`)
-            .fontSize(14)
-            .fontColor('#6B7280');
+    Stack({ alignContent: Alignment.TopStart }) {
+      Column({ space: AppConstants.SECTION_SPACING }) {
+        Row() {
+          Column({ space: 4 }) {
+            Text('论文对话')
+              .fontSize(28)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#111827');
+            Text(`已选 ${this.selectedPaperIdsSnapshot.length} 篇 · 最多 ${AppConstants.MAX_CHAT_PAPERS} 篇`)
+              .fontSize(14)
+              .fontColor('#6B7280');
+          }
+          Blank();
+          Row({ space: 8 }) {
+            Text('✕')
+              .fontSize(13)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#2D6CE8');
+            Text('清空')
+              .fontSize(13)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#2D6CE8');
+          }
+          .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+          .onClick(() => this.vm.clearConversation());
+          this.leadingPill();
         }
-        Blank();
-        Row({ space: 8 }) {
-          Text('✕')
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#2D6CE8');
-          Text('清空')
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#2D6CE8');
+        .width('100%');
+
+        this.paperPickerCard();
+
+        if (this.vm.chatState.errorMessage) {
+          this.feedbackStrip(this.vm.chatState.errorMessage!, '#FFEAEA', '#B6544A');
         }
-        .padding({ left: 4, right: 4, top: 6, bottom: 6 })
-        .onClick(() => this.vm.clearConversation());
-        this.leadingPill();
-      }
-      .width('100%');
 
-      this.paperPickerCard();
+        if (this.vm.chatState.warningMessage) {
+          this.feedbackStrip(this.vm.chatState.warningMessage!, '#FFF1DD', '#B37B3F');
+        }
 
-      if (this.vm.chatState.errorMessage) {
-        this.feedbackStrip(this.vm.chatState.errorMessage!, '#FFEAEA', '#B6544A');
-      }
-
-      if (this.vm.chatState.warningMessage) {
-        this.feedbackStrip(this.vm.chatState.warningMessage!, '#FFF1DD', '#B37B3F');
-      }
-
-      if (this.vm.chatState.usedPapers.length > 0) {
-        Column({ space: 10 }) {
-          Text('上下文来源')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#374151');
-          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-            ForEach(this.vm.chatState.usedPapers, (usedPaper: PaperChatUsedPaper) => {
-              this.sourceStatusChip(usedPaper);
-            }, (usedPaper: PaperChatUsedPaper) => usedPaper.paperId);
+        if (this.vm.chatState.usedPapers.length > 0) {
+          Column({ space: 10 }) {
+            Text('上下文来源')
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#374151');
+            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+              ForEach(this.vm.chatState.usedPapers, (usedPaper: PaperChatUsedPaper) => {
+                this.sourceStatusChip(usedPaper);
+              }, (usedPaper: PaperChatUsedPaper) => usedPaper.paperId);
+            }
+            .width('100%');
           }
           .width('100%');
         }
-        .width('100%');
-      }
 
-      this.messagesPanel();
-      this.composerCard();
+        this.messagesPanel();
+        this.composerCard();
+      }
+      .width('100%')
+      .height('100%')
+      .alignItems(HorizontalAlign.Start)
+      .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
+
+      this.pickerDialogCard();
     }
     .width('100%')
     .height('100%')
-    .alignItems(HorizontalAlign.Start)
-    .backgroundColor('#F7F9FD')
-    .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
+    .backgroundColor('#F7F9FD');
   }
 }
