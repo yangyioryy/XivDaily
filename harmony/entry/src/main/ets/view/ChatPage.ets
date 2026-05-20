@@ -15,6 +15,7 @@ interface MarkdownBlock {
 @Component
 export struct ChatPage {
   @ObjectLink vm: AppViewModel;
+  @State private isPickerExpanded: boolean = false;
   @State private isPickerDialogVisible: boolean = false;
   @State private composerDraft: string = '';
   private messageScroller: Scroller = new Scroller();
@@ -224,6 +225,10 @@ export struct ChatPage {
     this.composerDraft = this.vm.chatState.inputDraft;
   }
 
+  private togglePickerExpanded(): void {
+    this.isPickerExpanded = !this.isPickerExpanded;
+  }
+
   private showPickerDialog(): void {
     this.isPickerDialogVisible = true;
   }
@@ -409,7 +414,7 @@ export struct ChatPage {
         .layoutWeight(1)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
-      Text(this.isPickerDialogVisible ? '▴' : '▾')
+      Text(this.isPickerExpanded ? '^' : 'v')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().primary);
@@ -420,12 +425,13 @@ export struct ChatPage {
     .borderRadius(14)
     .border({ width: 1, color: this.palette().outline })
     .onClick(() => {
-      this.showPickerDialog();
+      this.togglePickerExpanded();
     });
   }
 
   @Builder
   private pickerOption(favorite: FavoritePaperItem) {
+    // Android 端是下拉菜单里的整行切换，这里对齐成整行点击，避免全屏蒙层打断对话流。
     Row({ space: 12 }) {
       Row() {
         Text(this.isPaperSelected(favorite.paper.id) ? '✓' : '')
@@ -476,6 +482,49 @@ export struct ChatPage {
   }
 
   @Builder
+  private inlinePickerOption(favorite: FavoritePaperItem) {
+    Row({ space: 12 }) {
+      Row() {
+        Text(this.isPaperSelected(favorite.paper.id) ? 'v' : '')
+          .fontSize(13)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.palette().onPrimary);
+      }
+      .width(24)
+      .height(24)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().surface)
+      .borderRadius(12)
+      .border({
+        width: 1.5,
+        color: this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline
+      });
+
+      Column({ space: 2 }) {
+        Text(favorite.paper.title)
+          .fontSize(15)
+          .fontWeight(this.isPaperSelected(favorite.paper.id) ? FontWeight.Medium : FontWeight.Regular)
+          .fontColor(this.palette().textPrimary)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis });
+        Text(`${favorite.paper.primaryCategory} 路 ${favorite.savedAt.slice(0, 10)}`)
+          .fontSize(12)
+          .fontColor(this.palette().textSecondary);
+      }
+      .layoutWeight(1);
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().surfaceSubtle : this.palette().surface)
+    .borderRadius(14)
+    .border({
+      width: this.isPaperSelected(favorite.paper.id) ? 2 : 1,
+      color: this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline
+    })
+    .onClick(() => this.togglePickerSelection(favorite.paper.id));
+  }
+
+  @Builder
   private paperPickerCard() {
     Column({ space: 10 }) {
       Text('收藏论文')
@@ -490,6 +539,20 @@ export struct ChatPage {
           .width('100%');
       } else {
         this.paperPickerButton();
+
+        if (this.isPickerExpanded) {
+          // Android 端这里是 DropdownMenu，Harmony 先收敛成按钮下方轻量展开面板，避免遮罩打断输入流。
+          Column({ space: 8 }) {
+            ForEach(this.vm.chatState.favorites, (favorite: FavoritePaperItem) => {
+              this.inlinePickerOption(favorite);
+            }, (favorite: FavoritePaperItem) => favorite.paper.id);
+          }
+          .width('100%')
+          .padding(10)
+          .backgroundColor(this.palette().surface)
+          .borderRadius(18)
+          .border({ width: 1, color: this.palette().outline });
+        }
 
         if (this.selectedFavorites().length > 0) {
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
