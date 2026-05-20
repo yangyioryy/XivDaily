@@ -2,6 +2,7 @@ import AppConstants from '../common/constants/AppConstants';
 import Context from '@ohos.app.ability.application';
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
+import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
 @Component
@@ -12,6 +13,19 @@ export struct SettingsPage {
   @State private profileNameDraft: string = '';
   @State private profileAvatarDraft: string = 'study';
   @State private profileAvatarImageUriDraft?: string = undefined;
+
+  private readSystemColorMode(): string | number | undefined {
+    try {
+      const hostContext = this.getUIContext().getHostContext() as ContextWithColorMode | undefined;
+      return hostContext?.config?.colorMode;
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  private palette(): XivThemePalette {
+    return resolveXivPalette(this.vm.settingsState.themeMode, this.readSystemColorMode());
+  }
 
   private applyThemeMode(themeMode: string): void {
     const uiContext = this.getUIContext();
@@ -104,9 +118,9 @@ export struct SettingsPage {
 
   private integrationStatusColor(configured: boolean): string {
     if (this.vm.settingsState.integrationStatusFailed) {
-      return '#B6544A';
+      return this.palette().danger;
     }
-    return configured ? '#3F7A58' : '#B37B3F';
+    return configured ? this.palette().success : this.palette().warning;
   }
 
   private avatarPresetLabel(value: string): string {
@@ -137,6 +151,24 @@ export struct SettingsPage {
       return '围绕主题持续追踪';
     }
     return '保持每日研究敏感度';
+  }
+
+  private zoteroLibraryTypeLabel(value?: string): string {
+    if (value === 'group') {
+      return '群组库';
+    }
+    if (value === 'user') {
+      return '个人库';
+    }
+    return '未知';
+  }
+
+  private zoteroDetailMessage(): string {
+    let message = `配置状态：${this.integrationStatusText(this.vm.settingsState.zoteroConfigured)}\n同步位置：Zotero Web API 集合，不是本机 D:\\Zotero 文件夹\n目标集合：${this.vm.settingsState.zoteroTargetCollectionName}\n集合状态：${this.zoteroCollectionBadge()}\n库类型：${this.zoteroLibraryTypeLabel(this.vm.settingsState.zoteroLibraryType)}\n用户 ID：${this.vm.settingsState.zoteroUserId ?? '未提供'}`;
+    if (this.vm.settingsState.zoteroTargetCollectionKey && this.vm.settingsState.zoteroTargetCollectionKey.length > 0) {
+      message = `${message}\n集合 Key：${this.vm.settingsState.zoteroTargetCollectionKey}`;
+    }
+    return message;
   }
 
   private defaultCategoryOptions(): string[] {
@@ -203,11 +235,11 @@ export struct SettingsPage {
     Text(iconText)
       .fontSize(16)
       .fontWeight(FontWeight.Medium)
-      .fontColor(highlighted ? '#2D6CE8' : '#6B7280')
+      .fontColor(highlighted ? this.palette().primary : this.palette().textSecondary)
       .width(32)
       .height(32)
       .textAlign(TextAlign.Center)
-      .backgroundColor(highlighted ? '#EAF2FF' : '#F1F4FA')
+      .backgroundColor(highlighted ? this.palette().primaryContainer : this.palette().secondaryContainer)
       .borderRadius(10);
   }
 
@@ -216,7 +248,7 @@ export struct SettingsPage {
     Row()
       .width('100%')
       .height('100%')
-      .backgroundColor('#66000000')
+      .backgroundColor(this.palette().overlay)
       .onClick(() => onDismiss());
   }
 
@@ -225,7 +257,7 @@ export struct SettingsPage {
     Text(title)
       .fontSize(16)
       .fontWeight(FontWeight.Medium)
-      .fontColor('#6B7280')
+      .fontColor(this.palette().textSecondary)
       .width('100%');
   }
 
@@ -240,10 +272,10 @@ export struct SettingsPage {
       Text(label)
         .fontSize(13)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#6B7280');
+        .fontColor(this.palette().textSecondary);
     }
     .padding({ left: 10, right: 10, top: 7, bottom: 7 })
-    .backgroundColor('#F8FAFC')
+    .backgroundColor(this.palette().surfaceSubtle)
     .borderRadius(12);
   }
 
@@ -258,47 +290,47 @@ export struct SettingsPage {
             .borderRadius(28)
             .objectFit(ImageFit.Cover);
         } else {
+          // 头像预设直接复用主色容器文字色，和 Android 端 ProfileCard 的 fallback 表现保持一致。
           Text(this.avatarPresetGlyph(this.vm.settingsState.avatarPreset))
             .fontSize(24)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#FFFFFF')
+            .fontColor(this.palette().onPrimaryContainer)
             .width(56)
             .height(56)
             .textAlign(TextAlign.Center)
-            .backgroundColor('#0F7A95')
             .borderRadius(28);
         }
       }
       .width(64)
       .height(64)
-      .backgroundColor('#EFF6FF')
+      .backgroundColor(this.palette().primaryContainer)
       .borderRadius(32)
-      .border({ width: 1, color: '#D8E3F0' });
+      .border({ width: 1, color: this.palette().outline });
 
       Column({ space: 2 }) {
         Row({ space: 6 }) {
           Text(this.vm.settingsState.displayName)
             .fontSize(18)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
+            .fontColor(this.palette().textPrimary);
           Text('✎')
             .fontSize(14)
-            .fontColor('#6B7280');
+            .fontColor(this.palette().textSecondary);
         }
         Text(this.profileSubtitle())
           .fontSize(13)
-          .fontColor('#6B7280');
+          .fontColor(this.palette().textSecondary);
       }
       .layoutWeight(1);
       Text('›')
         .fontSize(18)
-        .fontColor('#6B7280');
+        .fontColor(this.palette().textSecondary);
     }
     .width('100%')
     .padding(16)
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(this.palette().surface)
     .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' })
+    .border({ width: 1, color: this.palette().outline })
     .onClick(() => this.showProfileEditor());
   }
 
@@ -309,12 +341,12 @@ export struct SettingsPage {
         Text(value)
           .fontSize(14)
           .fontWeight(selectedValue === value ? FontWeight.Medium : FontWeight.Regular)
-          .fontColor(selectedValue === value ? '#1F2937' : '#6B7280')
+          .fontColor(selectedValue === value ? this.palette().textPrimary : this.palette().textSecondary)
           .padding({ left: 16, right: 16, top: 8, bottom: 8 })
           .margin({ right: 8, bottom: 8 })
-          .backgroundColor(selectedValue === value ? '#F1F4FA' : '#FFFFFF')
+          .backgroundColor(selectedValue === value ? this.palette().secondaryContainer : this.palette().surface)
           .borderRadius(12)
-          .border({ width: 1, color: '#D7DEE9' })
+          .border({ width: 1, color: this.palette().outline })
           .onClick(() => onSelect(value));
       }, (value: string) => value);
     }
@@ -328,12 +360,12 @@ export struct SettingsPage {
         Text(value === 1 ? '24h' : `${value} 天`)
           .fontSize(14)
           .fontWeight(selectedValue === value ? FontWeight.Medium : FontWeight.Regular)
-          .fontColor(selectedValue === value ? '#1F2937' : '#6B7280')
+          .fontColor(selectedValue === value ? this.palette().textPrimary : this.palette().textSecondary)
           .padding({ left: 16, right: 16, top: 8, bottom: 8 })
           .margin({ right: 8, bottom: 8 })
-          .backgroundColor(selectedValue === value ? '#F1F4FA' : '#FFFFFF')
+          .backgroundColor(selectedValue === value ? this.palette().secondaryContainer : this.palette().surface)
           .borderRadius(12)
-          .border({ width: 1, color: '#D7DEE9' })
+          .border({ width: 1, color: this.palette().outline })
           .onClick(() => onSelect(value));
       }, (value: number) => `${value}`);
     }
@@ -349,22 +381,22 @@ export struct SettingsPage {
         Text(title)
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
+          .fontColor(this.palette().textPrimary);
         Text(subtitle)
           .fontSize(13)
-          .fontColor('#6B7280');
+          .fontColor(this.palette().textSecondary);
       }
       .layoutWeight(1);
       if (value !== undefined) {
         Text(value)
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#6B7280');
+          .fontColor(this.palette().textSecondary);
       }
       if (!disabled) {
         Text('›')
           .fontSize(18)
-          .fontColor(action ? '#2D6CE8' : '#6B7280');
+          .fontColor(action ? this.palette().primary : this.palette().textSecondary);
       }
     }
     .width('100%')
@@ -385,23 +417,23 @@ export struct SettingsPage {
         Text(title)
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#111827');
+          .fontColor(this.palette().textPrimary);
         Text(subtitle)
           .fontSize(13)
-          .fontColor('#6B7280');
+          .fontColor(this.palette().textSecondary);
       }
       .layoutWeight(1);
 
       Text(value)
         .fontSize(13)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#6B7280');
+        .fontColor(this.palette().textSecondary);
 
       this.statusTag(this.integrationStatusText(configured), this.integrationStatusColor(configured));
 
       Text('›')
         .fontSize(18)
-        .fontColor('#6B7280');
+        .fontColor(this.palette().textSecondary);
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
@@ -413,16 +445,18 @@ export struct SettingsPage {
     Column({ space: 6 }) {
       Text(label)
         .fontSize(13)
-        .fontColor('#6B7280')
+        .fontColor(this.palette().textSecondary)
         .width('100%');
       TextInput({
         placeholder: placeholder,
         text: text
       })
         .fontSize(15)
-        .backgroundColor('#FFFFFF')
+        .fontColor(this.palette().textPrimary)
+        .placeholderColor(this.palette().textSecondary)
+        .backgroundColor(this.palette().surface)
         .borderRadius(14)
-        .border({ width: 1, color: '#D7DEE9' })
+        .border({ width: 1, color: this.palette().outline })
         .padding({ left: 14, right: 14, top: 12, bottom: 12 })
         .onChange((value: string) => onChange(value));
     }
@@ -434,9 +468,9 @@ export struct SettingsPage {
     Text(label)
       .fontSize(14)
       .fontWeight(FontWeight.Medium)
-      .fontColor(primary ? '#FFFFFF' : '#2D6CE8')
+      .fontColor(primary ? this.palette().onPrimary : this.palette().primary)
       .padding({ left: 18, right: 18, top: 10, bottom: 10 })
-      .backgroundColor(primary ? '#2D6CE8' : '#EAF2FF')
+      .backgroundColor(primary ? this.palette().primary : this.palette().primaryContainer)
       .borderRadius(14)
       .opacity(disabled ? 0.6 : 1)
       .onClick(() => {
@@ -456,10 +490,10 @@ export struct SettingsPage {
             Text('默认关注领域')
               .fontSize(16)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#111827');
+              .fontColor(this.palette().textPrimary);
             Text(this.vm.settingsState.defaultCategory)
               .fontSize(13)
-              .fontColor('#6B7280');
+              .fontColor(this.palette().textSecondary);
           }
         }
         this.chipGroup(this.defaultCategoryOptions(), this.vm.settingsState.defaultCategory, (value: string) => {
@@ -467,7 +501,7 @@ export struct SettingsPage {
         });
       }
 
-      Divider().color('#EEF2F7');
+      Divider().color(this.palette().divider);
 
       Column({ space: 12 }) {
         Row({ space: 12 }) {
@@ -476,23 +510,23 @@ export struct SettingsPage {
             Text('默认时间窗口')
               .fontSize(16)
               .fontWeight(FontWeight.Medium)
-              .fontColor('#111827');
+              .fontColor(this.palette().textPrimary);
             Text(this.vm.settingsState.defaultDays === 1 ? '24h' : `${this.vm.settingsState.defaultDays} 天`)
               .fontSize(13)
-              .fontColor('#6B7280');
+              .fontColor(this.palette().textSecondary);
           }
         }
         this.numberChipGroup([1, 3, 7, 30], this.vm.settingsState.defaultDays, (value: number) => this.vm.updateDefaultDays(value));
       }
 
-      Divider().color('#EEF2F7');
+      Divider().color(this.palette().divider);
       this.settingRow('🌐', '语言', '文章摘要与界面默认语言', this.languageLabel(), () => this.vm.showLanguagePicker());
     }
     .width('100%')
     .padding(18)
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(this.palette().surface)
     .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
@@ -500,42 +534,42 @@ export struct SettingsPage {
     Column({ space: 0 }) {
       this.integrationSettingRow('⚗', 'Zotero 配置', this.zoteroSubtitle(), this.zoteroValue(),
         this.vm.settingsState.zoteroConfigured, () => this.vm.showZoteroDetailDialog());
-      Divider().color('#EEF2F7');
+      Divider().color(this.palette().divider);
       this.integrationSettingRow('✦', '大模型配置', this.llmSubtitle(), this.llmValue(),
         this.vm.settingsState.llmConfigured, () => this.vm.showLlmDetailDialog());
     }
     .width('100%')
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(this.palette().surface)
     .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
   private appearanceSection() {
     Column({ space: 0 }) {
       this.settingRow('☾', '主题模式', '支持浅色、深色与跟随系统', this.themeModeLabel(), () => this.vm.showThemePicker(), false, true);
-      Divider().color('#EEF2F7');
+      Divider().color(this.palette().divider);
       this.settingRow('A', '字体大小', '当前版本采用统一阅读字号体系', '标准', undefined, true);
     }
     .width('100%')
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(this.palette().surface)
     .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
   private otherSection() {
     Column({ space: 0 }) {
       this.settingRow('▣', '清除缓存', '清理本地缓存的列表与摘要内容', this.vm.settingsState.cacheStatusText, () => this.vm.showClearCacheDialog());
-      Divider().color('#EEF2F7');
+      Divider().color(this.palette().divider);
       this.settingRow('↻', '检查更新', '查看当前版本与后续更新说明', 'v0.1.0', () => this.vm.showUpdateDialog());
-      Divider().color('#EEF2F7');
+      Divider().color(this.palette().divider);
       this.settingRow('i', '关于我们', '了解 XivDaily 的定位与版本信息', undefined, () => this.vm.showAboutDialog());
     }
     .width('100%')
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(this.palette().surface)
     .borderRadius(24)
-    .border({ width: 1, color: '#E5EBF5' });
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
@@ -547,21 +581,24 @@ export struct SettingsPage {
           Text('选择主题模式')
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
-          this.settingRow('✦', '跟随系统', '当前已选中则不会主动覆盖系统主题', undefined, () => {
+            .fontColor(this.palette().textPrimary);
+          this.settingRow(this.vm.settingsState.themeMode === 'system' ? '✦' : '›', '跟随系统',
+            this.vm.settingsState.themeMode === 'system' ? '当前已选中' : '点击切换到该选项', undefined, () => {
             this.vm.selectThemeMode('system');
             this.applyThemeMode('system');
-          });
-          Divider().color('#EEF2F7');
-          this.settingRow('☀', '浅色', '点击切换到浅色主题', undefined, () => {
+          }, false, this.vm.settingsState.themeMode === 'system');
+          Divider().color(this.palette().divider);
+          this.settingRow(this.vm.settingsState.themeMode === 'light' ? '✦' : '›', '浅色',
+            this.vm.settingsState.themeMode === 'light' ? '当前已选中' : '点击切换到该选项', undefined, () => {
             this.vm.selectThemeMode('light');
             this.applyThemeMode('light');
-          });
-          Divider().color('#EEF2F7');
-          this.settingRow('☾', '深色', '点击切换到深色主题', undefined, () => {
+          }, false, this.vm.settingsState.themeMode === 'light');
+          Divider().color(this.palette().divider);
+          this.settingRow(this.vm.settingsState.themeMode === 'dark' ? '✦' : '›', '深色',
+            this.vm.settingsState.themeMode === 'dark' ? '当前已选中' : '点击切换到该选项', undefined, () => {
             this.vm.selectThemeMode('dark');
             this.applyThemeMode('dark');
-          });
+          }, false, this.vm.settingsState.themeMode === 'dark');
           Row() {
             Blank();
             this.formActionButton('关闭', false, false, () => this.vm.hideThemePicker());
@@ -570,8 +607,9 @@ export struct SettingsPage {
         }
         .width('88%')
         .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(20);
+        .backgroundColor(this.palette().surface)
+        .borderRadius(20)
+        .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
       .height('100%');
@@ -587,8 +625,8 @@ export struct SettingsPage {
           Text('选择语言')
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
-          this.settingRow('🌐', '简体中文', '点击切换到简体中文', undefined, () => this.vm.selectLanguage('zh-CN'));
+            .fontColor(this.palette().textPrimary);
+          this.settingRow('✦', '简体中文', '当前已选中', undefined, () => this.vm.selectLanguage('zh-CN'), false, true);
           Row() {
             Blank();
             this.formActionButton('关闭', false, false, () => this.vm.hideLanguagePicker());
@@ -597,8 +635,9 @@ export struct SettingsPage {
         }
         .width('88%')
         .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(20);
+        .backgroundColor(this.palette().surface)
+        .borderRadius(20)
+        .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
       .height('100%');
@@ -614,17 +653,25 @@ export struct SettingsPage {
           Text('Zotero 配置')
             .fontSize(18)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
+            .fontColor(this.palette().textPrimary);
+          Text(this.zoteroDetailMessage())
+            .fontSize(13)
+            .lineHeight(20)
+            .fontColor(this.palette().onSecondaryContainer)
+            .width('100%')
+            .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+            .backgroundColor(this.palette().secondaryContainer)
+            .borderRadius(16);
           Text(`当前集合：${this.vm.settingsState.zoteroTargetCollectionName}`)
             .fontSize(13)
-            .fontColor('#6B7280');
+            .fontColor(this.palette().textSecondary);
           this.formInput('User ID / Group ID', this.vm.settingsState.zoteroUserIdDraft, '输入用户或群组 ID', (value: string) => {
             this.vm.updateZoteroUserIdDraft(value);
           });
           Text('Library Type')
             .fontSize(13)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#374151');
+            .fontColor(this.palette().textTertiary);
           // 界面使用中文选项，但最终仍保存为 Zotero API 需要的 user / group 常量。
           this.chipGroup(['个人库', '群组库'],
             this.vm.settingsState.zoteroLibraryTypeDraft === 'group' ? '群组库' : '个人库',
@@ -651,8 +698,9 @@ export struct SettingsPage {
         }
         .width('88%')
         .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(20);
+        .backgroundColor(this.palette().surface)
+        .borderRadius(20)
+        .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
       .height('100%');
@@ -668,7 +716,7 @@ export struct SettingsPage {
           Text('大模型 API 配置')
             .fontSize(18)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
+            .fontColor(this.palette().textPrimary);
           this.formInput('Base URL', this.vm.settingsState.llmBaseUrlDraft, 'https://...', (value: string) => {
             this.vm.updateLlmBaseUrlDraft(value);
           });
@@ -692,8 +740,9 @@ export struct SettingsPage {
         }
         .width('88%')
         .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(20);
+        .backgroundColor(this.palette().surface)
+        .borderRadius(20)
+        .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
       .height('100%');
@@ -709,14 +758,14 @@ export struct SettingsPage {
           Text('编辑个人资料')
             .fontSize(18)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
+            .fontColor(this.palette().textPrimary);
           this.formInput('用户名', this.profileNameDraft, 'XivDaily Reader', (value: string) => {
             this.profileNameDraft = value;
           });
           Text('头像预设')
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#374151')
+            .fontColor(this.palette().textTertiary)
             .width('100%');
           if (this.profileAvatarImageUriDraft && this.profileAvatarImageUriDraft.length > 0) {
             Image(this.profileAvatarImageUriDraft)
@@ -737,7 +786,7 @@ export struct SettingsPage {
           .width('100%');
           Text(this.profileAvatarImageUriDraft ? '已选择本地图片头像' : '未选择图片时使用头像预设')
             .fontSize(13)
-            .fontColor('#6B7280');
+            .fontColor(this.palette().textSecondary);
           Row({ space: 8 }) {
             this.formActionButton('保存', true, false, () => this.saveProfileEditor());
             this.formActionButton('取消', false, false, () => this.hideProfileEditor());
@@ -746,8 +795,9 @@ export struct SettingsPage {
         }
         .width('88%')
         .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(20);
+        .backgroundColor(this.palette().surface)
+        .borderRadius(20)
+        .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
       .height('100%');
@@ -760,11 +810,11 @@ export struct SettingsPage {
           Text('关于 XivDaily')
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
+            .fontColor(this.palette().textPrimary);
           Text('XivDaily 是面向研究阅读场景的每日论文工作台。当前版本聚焦首页流、收藏同步和趋势摘要体验。')
             .fontSize(14)
             .lineHeight(22)
-            .fontColor('#374151');
+            .fontColor(this.palette().textTertiary);
           Row() {
             Blank();
             this.formActionButton('关闭', false, false, () => this.vm.hideAboutDialog());
@@ -773,8 +823,9 @@ export struct SettingsPage {
         }
         .width('88%')
         .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(20);
+        .backgroundColor(this.palette().surface)
+        .borderRadius(20)
+        .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
       .height('100%');
@@ -787,11 +838,11 @@ export struct SettingsPage {
           Text('检查更新')
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
+            .fontColor(this.palette().textPrimary);
           Text('当前版本：v0.1.0\n最新版本：v0.1.0\n更新时间：今天\n当前已经是最新版本。')
             .fontSize(14)
             .lineHeight(22)
-            .fontColor('#374151');
+            .fontColor(this.palette().textTertiary);
           Row() {
             Blank();
             this.formActionButton('关闭', false, false, () => this.vm.hideUpdateDialog());
@@ -800,8 +851,9 @@ export struct SettingsPage {
         }
         .width('88%')
         .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(20);
+        .backgroundColor(this.palette().surface)
+        .borderRadius(20)
+        .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
       .height('100%');
@@ -814,11 +866,11 @@ export struct SettingsPage {
           Text('确认清理缓存')
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#111827');
+            .fontColor(this.palette().textPrimary);
           Text('将清理首页列表与趋势提示缓存反馈，不影响收藏库与偏好设置。')
             .fontSize(14)
             .lineHeight(22)
-            .fontColor('#374151');
+            .fontColor(this.palette().textTertiary);
           Row({ space: 8 }) {
             this.formActionButton('开始清理', true, false, () => this.vm.clearCache());
             this.formActionButton('取消', false, false, () => this.vm.hideClearCacheDialog());
@@ -827,8 +879,9 @@ export struct SettingsPage {
         }
         .width('88%')
         .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(20);
+        .backgroundColor(this.palette().surface)
+        .borderRadius(20)
+        .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
       .height('100%');
@@ -842,7 +895,7 @@ export struct SettingsPage {
           Text('设置')
             .fontSize(28)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#111827')
+            .fontColor(this.palette().textPrimary)
             .width('100%');
 
           this.profileCard();
@@ -862,31 +915,31 @@ export struct SettingsPage {
           if (this.vm.settingsState.actionMessage) {
             Text(this.vm.settingsState.actionMessage!)
               .fontSize(13)
-              .fontColor('#2D6CE8')
+              .fontColor(this.palette().primary)
               .padding(12)
-              .backgroundColor('#EAF2FF')
+              .backgroundColor(this.palette().primaryContainer)
               .borderRadius(14);
           }
 
           if (this.vm.settingsState.errorMessage) {
             Text(this.vm.settingsState.errorMessage!)
               .fontSize(13)
-              .fontColor('#B6544A')
+              .fontColor(this.palette().danger)
               .padding(12)
-              .backgroundColor('#FFEAEA')
+              .backgroundColor(this.palette().dangerContainer)
               .borderRadius(14);
           }
 
           Text('刷新配置状态')
             .fontSize(15)
             .fontWeight(FontWeight.Medium)
-            .fontColor('#2D6CE8')
+            .fontColor(this.palette().primary)
             .width('100%')
             .textAlign(TextAlign.Center)
             .padding({ top: 14, bottom: 14 })
-            .backgroundColor('#FFFFFF')
+            .backgroundColor(this.palette().surface)
             .borderRadius(18)
-            .border({ width: 1, color: '#E5EBF5' })
+            .border({ width: 1, color: this.palette().outline })
             .onClick(() => {
               void this.vm.refreshIntegrationStatusAction();
             });
@@ -899,7 +952,7 @@ export struct SettingsPage {
       .height('100%')
       .scrollBar(BarState.Off)
       .scrollable(ScrollDirection.Vertical)
-      .backgroundColor('#F7F9FD');
+      .backgroundColor(this.palette().background);
 
       this.themePickerCard();
       this.languagePickerCard();
@@ -916,6 +969,11 @@ interface ColorModeHostContext {
   setColorMode(colorMode: number): void;
 }
 
+interface ColorModeConfig {
+  colorMode?: string | number;
+}
+
 interface ContextWithColorMode extends Context {
   setColorMode(colorMode: number): void;
+  config?: ColorModeConfig;
 }
