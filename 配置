@@ -93,3 +93,25 @@ Harmony 命令行构建验证：
   - `SettingsPage.ets` 中 Zotero `Library Type` 已从自由文本输入改为 Android 同款二选一（`个人库` / `群组库`）
   - 当前已完成 `assembleHap` 与 `install -r` 真实验证
   - 由于 `uitest uiInput click` 对该设置行的自动化点按未稳定拉起弹窗，暂未拿到该弹窗的真机截图；后续若继续做设置页回归，优先复用上面的启动、滚动和抓图命令
+2026-05-20 11:30:00 +08:00 补充：
+- 当前优先使用的鸿蒙命令行环境变量与路径：
+  - `DEVECO_SDK_HOME=D:\DevEco Studio\sdk`
+  - `hvigorw.bat=D:\DevEco Studio\tools\hvigor\bin\hvigorw.bat`
+  - `hdc.exe=D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe`
+  - `HAP 输出=E:\Grade3-2\HomenyOS\XivDaily\harmony\entry\build\default\outputs\default\entry-default-unsigned.hap`
+- 当前常用真机构建命令：
+  - `$env:DEVECO_SDK_HOME='D:\DevEco Studio\sdk'`
+  - `& 'D:\DevEco Studio\tools\hvigor\bin\hvigorw.bat' assembleHap`
+- 当前常用安装与启动命令：
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 install -r 'E:\Grade3-2\HomenyOS\XivDaily\harmony\entry\build\default\outputs\default\entry-default-unsigned.hap'`
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 shell "aa start -a EntryAbility -b com.xivdaily.harmony"`
+- 当前常用取证命令：
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 shell "uitest dumpLayout -b com.xivdaily.harmony -p /data/local/tmp/tmp-xivdaily-current.json -a"`
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 shell "snapshot_display -f /data/local/tmp/tmp-xivdaily-current.jpeg"`
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 file recv /data/local/tmp/tmp-xivdaily-current.json 'E:\Grade3-2\HomenyOS\XivDaily\tmp-xivdaily-current.json'`
+  - `& 'D:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe' -t 127.0.0.1:5555 file recv /data/local/tmp/tmp-xivdaily-current.jpeg 'E:\Grade3-2\HomenyOS\XivDaily\tmp-xivdaily-current.jpeg'`
+- 后端备注：
+  - 本地后端由用户本机进程提供
+  - 云端后端：`https://beginnerforever.eu.cc`
+- 说明：
+  - 根目录 `tmp-xivdaily-*` 是鸿蒙端运行时截图和布局证据，默认不要删除。

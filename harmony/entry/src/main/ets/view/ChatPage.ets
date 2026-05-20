@@ -414,7 +414,7 @@ export struct ChatPage {
         .layoutWeight(1)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
-      Text(this.isPickerExpanded ? '^' : 'v')
+      Text(this.isPickerExpanded ? '▴' : '▾')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().primary);
@@ -483,9 +483,10 @@ export struct ChatPage {
 
   @Builder
   private inlinePickerOption(favorite: FavoritePaperItem) {
+    // Android 端这里是 DropdownMenuItem，Harmony 端保持整行可点，避免额外按钮打断浏览节奏。
     Row({ space: 12 }) {
       Row() {
-        Text(this.isPaperSelected(favorite.paper.id) ? 'v' : '')
+        Text(this.isPaperSelected(favorite.paper.id) ? '✓' : '')
           .fontSize(13)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.palette().onPrimary);
