@@ -1,14 +1,26 @@
 import AppConstants from '../common/constants/AppConstants';
 import Context from '@ohos.app.ability.application';
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
+import bundleManager from '@ohos.bundle.bundleManager';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { AppViewModel } from '../viewmodel/AppViewModel';
+
+const FALLBACK_APP_VERSION_NAME: string = '0.1.0';
+
+function resolveAppVersionName(): string {
+  try {
+    return bundleManager.getBundleInfoForSelfSync(bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT).versionName;
+  } catch (error) {
+    return FALLBACK_APP_VERSION_NAME;
+  }
+}
 
 @Component
 export struct SettingsPage {
   @ObjectLink vm: AppViewModel;
   private pageScroller: Scroller = new Scroller();
+  private readonly appVersionName: string = resolveAppVersionName();
   @State private isProfileEditorVisible: boolean = false;
   @State private profileNameDraft: string = '';
   @State private profileAvatarDraft: string = 'study';
@@ -183,6 +195,18 @@ export struct SettingsPage {
     return `本地研究档案 · ${this.avatarPresetSubtitle(this.vm.settingsState.avatarPreset)}`;
   }
 
+  private appVersionLabel(): string {
+    return `v${this.appVersionName}`;
+  }
+
+  private updateDialogMessage(): string {
+    return `当前版本：${this.appVersionLabel()}\n最新版本：${this.appVersionLabel()}\n更新时间：今天\n当前已经是最新版本。`;
+  }
+
+  private aboutDialogMessage(): string {
+    return 'XivDaily 是面向研究阅读场景的每日论文工作台。\n当前版本聚焦首页流、收藏同步和趋势摘要体验。';
+  }
+
   private showProfileEditor(): void {
     this.profileNameDraft = this.vm.settingsState.displayName;
     this.profileAvatarDraft = this.vm.settingsState.avatarPreset;
@@ -335,10 +359,11 @@ export struct SettingsPage {
   }
 
   @Builder
-  private chipGroup(values: string[], selectedValue: string, onSelect: (value: string) => void) {
+  private chipGroup(values: string[], selectedValue: string, onSelect: (value: string) => void,
+    labelMapper: (value: string) => string = (value: string) => value) {
     Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
       ForEach(values, (value: string) => {
-        Text(value)
+        Text(labelMapper(value))
           .fontSize(14)
           .fontWeight(selectedValue === value ? FontWeight.Medium : FontWeight.Regular)
           .fontColor(selectedValue === value ? this.palette().textPrimary : this.palette().textSecondary)
@@ -441,7 +466,8 @@ export struct SettingsPage {
   }
 
   @Builder
-  private formInput(label: string, text: string, placeholder: string, onChange: (value: string) => void) {
+  private formInput(label: string, text: string, placeholder: string, onChange: (value: string) => void,
+    isPassword: boolean = false) {
     Column({ space: 6 }) {
       Text(label)
         .fontSize(13)
@@ -454,6 +480,10 @@ export struct SettingsPage {
         .fontSize(15)
         .fontColor(this.palette().textPrimary)
         .placeholderColor(this.palette().textSecondary)
+        // API Key 输入要和 Android 一样默认遮蔽，避免在设置弹窗里直接明文暴露凭据。
+        .type(isPassword ? InputType.Password : InputType.Normal)
+        .showPasswordIcon(false)
+        .showPassword(false)
         .backgroundColor(this.palette().surface)
         .borderRadius(14)
         .border({ width: 1, color: this.palette().outline })
@@ -562,7 +592,7 @@ export struct SettingsPage {
     Column({ space: 0 }) {
       this.settingRow('▣', '清除缓存', '清理本地缓存的列表与摘要内容', this.vm.settingsState.cacheStatusText, () => this.vm.showClearCacheDialog());
       Divider().color(this.palette().divider);
-      this.settingRow('↻', '检查更新', '查看当前版本与后续更新说明', 'v0.1.0', () => this.vm.showUpdateDialog());
+      this.settingRow('↻', '检查更新', '查看当前版本与后续更新说明', this.appVersionLabel(), () => this.vm.showUpdateDialog());
       Divider().color(this.palette().divider);
       this.settingRow('i', '关于我们', '了解 XivDaily 的定位与版本信息', undefined, () => this.vm.showAboutDialog());
     }
@@ -680,7 +710,7 @@ export struct SettingsPage {
             });
           this.formInput('API Key', this.vm.settingsState.zoteroApiKeyDraft, this.vm.settingsState.zoteroApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
             this.vm.updateZoteroApiKeyDraft(value);
-          });
+          }, true);
           this.formInput('目标集合名称', this.vm.settingsState.zoteroTargetCollectionNameDraft, 'XivDaily', (value: string) => {
             this.vm.updateZoteroCollectionDraft(value);
           });
@@ -725,7 +755,7 @@ export struct SettingsPage {
           });
           this.formInput('API Key', this.vm.settingsState.llmApiKeyDraft, this.vm.settingsState.llmApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
             this.vm.updateLlmApiKeyDraft(value);
-          });
+          }, true);
           Row({ space: 8 }) {
             this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
               void this.vm.testLlmConfig();
@@ -774,9 +804,10 @@ export struct SettingsPage {
               .borderRadius(36)
               .objectFit(ImageFit.Cover);
           }
+          // 头像预设显示中文标签，但内部仍保持和 Android 一致的 preset code，便于状态存储与回写。
           this.chipGroup(['study', 'spark', 'orbit'], this.profileAvatarDraft, (value: string) => {
             this.profileAvatarDraft = value;
-          });
+          }, (value: string) => this.avatarPresetLabel(value));
           Row({ space: 8 }) {
             this.formActionButton(this.profileAvatarImageUriDraft ? '更换头像' : '上传头像', false, false, () => {
               void this.pickProfileAvatar();
@@ -811,13 +842,13 @@ export struct SettingsPage {
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().textPrimary);
-          Text('XivDaily 是面向研究阅读场景的每日论文工作台。当前版本聚焦首页流、收藏同步和趋势摘要体验。')
+          Text(this.aboutDialogMessage())
             .fontSize(14)
             .lineHeight(22)
             .fontColor(this.palette().textTertiary);
           Row() {
             Blank();
-            this.formActionButton('关闭', false, false, () => this.vm.hideAboutDialog());
+            this.formActionButton('知道了', false, false, () => this.vm.hideAboutDialog());
           }
           .width('100%');
         }
@@ -839,13 +870,13 @@ export struct SettingsPage {
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().textPrimary);
-          Text('当前版本：v0.1.0\n最新版本：v0.1.0\n更新时间：今天\n当前已经是最新版本。')
+          Text(this.updateDialogMessage())
             .fontSize(14)
             .lineHeight(22)
             .fontColor(this.palette().textTertiary);
           Row() {
             Blank();
-            this.formActionButton('关闭', false, false, () => this.vm.hideUpdateDialog());
+            this.formActionButton('知道了', false, false, () => this.vm.hideUpdateDialog());
           }
           .width('100%');
         }
@@ -872,7 +903,9 @@ export struct SettingsPage {
             .lineHeight(22)
             .fontColor(this.palette().textTertiary);
           Row({ space: 8 }) {
-            this.formActionButton('开始清理', true, false, () => this.vm.clearCache());
+            this.formActionButton('开始清理', true, false, () => {
+              void this.vm.clearCache();
+            });
             this.formActionButton('取消', false, false, () => this.vm.hideClearCacheDialog());
           }
           .width('100%');

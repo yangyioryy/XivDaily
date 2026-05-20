@@ -606,6 +606,12 @@ export class AppViewModel {
     this.settingsState.isClearCacheDialogVisible = false;
   }
 
+  private wait(delayMs: number): Promise<void> {
+    return new Promise((resolve: () => void) => {
+      setTimeout(() => resolve(), delayMs);
+    });
+  }
+
   updateProfile(displayName: string, avatarPreset: string, avatarImageUri?: string): void {
     const normalizedName = displayName.trim().length > 0 ? displayName.trim() : 'XivDaily Reader';
     this.settingsState.displayName = normalizedName;
@@ -617,9 +623,13 @@ export class AppViewModel {
     this.settingsState.errorMessage = undefined;
   }
 
-  clearCache(): void {
-    // 当前版本先提供真实反馈闭环，避免“可点但没有结果”的空入口。
+  async clearCache(): Promise<void> {
+    // 这里直接对齐 Android 的两段反馈：先让用户看到“清理中”，再落到“刚刚完成”。
     this.settingsState.isClearCacheDialogVisible = false;
+    this.settingsState.cacheStatusText = '清理中';
+    this.settingsState.actionMessage = '正在清理首页列表与趋势缓存提示';
+    this.settingsState.errorMessage = undefined;
+    await this.wait(800);
     this.settingsState.cacheStatusText = '刚刚完成';
     this.settingsState.actionMessage = '缓存已清理完成';
     this.settingsState.errorMessage = undefined;
