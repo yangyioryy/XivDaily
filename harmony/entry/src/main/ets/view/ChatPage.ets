@@ -16,7 +16,6 @@ interface MarkdownBlock {
 export struct ChatPage {
   @ObjectLink vm: AppViewModel;
   @State private isPickerExpanded: boolean = false;
-  @State private isPickerDialogVisible: boolean = false;
   @State private composerDraft: string = '';
   private messageScroller: Scroller = new Scroller();
 
@@ -229,14 +228,6 @@ export struct ChatPage {
     this.isPickerExpanded = !this.isPickerExpanded;
   }
 
-  private showPickerDialog(): void {
-    this.isPickerDialogVisible = true;
-  }
-
-  private hidePickerDialog(): void {
-    this.isPickerDialogVisible = false;
-  }
-
   private togglePickerSelection(paperId: string): void {
     this.vm.toggleChatPaper(paperId);
   }
@@ -430,60 +421,9 @@ export struct ChatPage {
   }
 
   @Builder
-  private pickerOption(favorite: FavoritePaperItem) {
-    // Android 端是下拉菜单里的整行切换，这里对齐成整行点击，避免全屏蒙层打断对话流。
-    Row({ space: 12 }) {
-      Row() {
-        Text(this.isPaperSelected(favorite.paper.id) ? '✓' : '')
-          .fontSize(14)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.palette().onPrimary);
-      }
-      .width(28)
-      .height(28)
-      .justifyContent(FlexAlign.Center)
-      .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().surface)
-      .borderRadius(14)
-      .border({
-        width: 1.5,
-        color: this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline
-      });
-
-      Column({ space: 2 }) {
-        Text(favorite.paper.title)
-          .fontSize(15)
-          .fontWeight(this.isPaperSelected(favorite.paper.id) ? FontWeight.Medium : FontWeight.Regular)
-          .fontColor(this.palette().textPrimary)
-          .maxLines(2)
-          .textOverflow({ overflow: TextOverflow.Ellipsis });
-        Text(`${favorite.paper.primaryCategory} · ${favorite.savedAt.slice(0, 10)}`)
-          .fontSize(12)
-          .fontColor(this.palette().textSecondary);
-      }
-      .layoutWeight(1);
-
-      Text(this.isPaperSelected(favorite.paper.id) ? '取消' : '选择')
-        .fontSize(13)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().onPrimary)
-        .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().primaryContainer : this.palette().primary)
-        .borderRadius(10)
-        .onClick(() => this.togglePickerSelection(favorite.paper.id));
-    }
-    .width('100%')
-    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-    .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().surfaceSubtle : this.palette().surface)
-    .borderRadius(14)
-    .border({
-      width: this.isPaperSelected(favorite.paper.id) ? 2 : 1,
-      color: this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline
-    });
-  }
-
-  @Builder
   private inlinePickerOption(favorite: FavoritePaperItem) {
     // Android 端这里是 DropdownMenuItem，Harmony 端保持整行可点，避免额外按钮打断浏览节奏。
+    // 次级信息里的分类与日期分隔符也保持成“·”，避免出现当前鸿蒙端的错误字符。
     Row({ space: 12 }) {
       Row() {
         Text(this.isPaperSelected(favorite.paper.id) ? '✓' : '')
@@ -508,7 +448,7 @@ export struct ChatPage {
           .fontColor(this.palette().textPrimary)
           .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis });
-        Text(`${favorite.paper.primaryCategory} 路 ${favorite.savedAt.slice(0, 10)}`)
+        Text(`${favorite.paper.primaryCategory} · ${favorite.savedAt.slice(0, 10)}`)
           .fontSize(12)
           .fontColor(this.palette().textSecondary);
       }
@@ -579,53 +519,6 @@ export struct ChatPage {
     .backgroundColor(this.palette().surface)
     .borderRadius(20)
     .border({ width: 1, color: this.palette().outline });
-  }
-
-  @Builder
-  private dialogBackdrop(onDismiss: () => void) {
-    Row()
-      .width('100%')
-      .height('100%')
-      .backgroundColor(this.palette().overlay)
-      .onClick(() => onDismiss());
-  }
-
-  @Builder
-  private pickerDialogCard() {
-    if (this.isPickerDialogVisible) {
-      Stack({ alignContent: Alignment.Center }) {
-        this.dialogBackdrop(() => this.hidePickerDialog());
-        Column({ space: 14 }) {
-          Row() {
-            Text('选择收藏论文')
-              .fontSize(20)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.palette().textPrimary);
-            Blank();
-            Text('完成')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.palette().primary)
-              .onClick(() => this.hidePickerDialog());
-          }
-          .width('100%');
-
-          Column({ space: 10 }) {
-            ForEach(this.vm.chatState.favorites, (favorite: FavoritePaperItem) => {
-              this.pickerOption(favorite);
-            }, (favorite: FavoritePaperItem) => favorite.paper.id);
-          }
-          .width('100%');
-        }
-        .width('86%')
-        .padding(18)
-        .backgroundColor(this.palette().surface)
-        .borderRadius(24)
-        .border({ width: 1, color: this.palette().outline });
-      }
-      .width('100%')
-      .height('100%');
-    }
   }
 
   @Builder
@@ -817,8 +710,6 @@ export struct ChatPage {
       .onAppear(() => {
         this.syncComposerDraft();
       });
-
-      this.pickerDialogCard();
     }
     .width('100%')
     .height('100%')
