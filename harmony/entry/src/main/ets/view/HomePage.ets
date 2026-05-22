@@ -747,14 +747,20 @@ export struct HomePage {
         .backgroundColor('#66000000')
         .onClick(() => this.hideAddTagDialog());
 
-      Column({ space: 12 }) {
+      Column({ space: 14 }) {
         Text('添加自定义标签')
           .fontSize(18)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().textPrimary);
         Text('输入研究方向，例如 embodied-ai。标签会作为关键词检索论文。')
           .fontSize(13)
-          .fontColor(this.palette().textSecondary);
+          .lineHeight(20)
+          .fontColor(this.palette().textSecondary)
+          .width('100%');
+        Text('标签名称')
+          .fontSize(13)
+          .fontColor(this.palette().textSecondary)
+          .width('100%');
         TextInput({
           placeholder: '标签名称',
           text: this.customTagDraft
@@ -762,10 +768,10 @@ export struct HomePage {
           .fontSize(15)
           .fontColor(this.palette().textPrimary)
           .placeholderColor(this.palette().textSecondary)
-          .backgroundColor(this.palette().surface)
-          .borderRadius(14)
+          .backgroundColor(this.palette().surfaceSubtle)
+          .borderRadius(12)
           .border({ width: 1, color: this.palette().outline })
-          .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+          .padding({ left: 14, right: 14, top: 10, bottom: 10 })
           .onChange((value: string) => this.customTagDraft = value)
           .onClick(() => {});
         Row({ space: 8 }) {
@@ -773,29 +779,23 @@ export struct HomePage {
           Text('取消')
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().primary)
-            .padding({ left: 18, right: 18, top: 10, bottom: 10 })
-            .backgroundColor(this.palette().primaryContainer)
-            .borderRadius(14)
+            .fontColor(this.palette().textSecondary)
+            .padding({ left: 8, right: 8, top: 8, bottom: 8 })
             .onClick(() => this.hideAddTagDialog());
           Text('添加')
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().onPrimary)
-            .padding({ left: 18, right: 18, top: 10, bottom: 10 })
-            .backgroundColor(this.palette().primary)
-            .borderRadius(14)
+            .fontColor(this.palette().primary)
+            .padding({ left: 8, right: 8, top: 8, bottom: 8 })
             .onClick(() => this.confirmAddCustomTag());
         }
         .width('100%')
         .justifyContent(FlexAlign.End);
       }
-      .width('100%')
-      .margin({ left: 24, right: 24 })
-      .padding(16)
+      .width('88%')
+      .padding(20)
       .backgroundColor(this.palette().surface)
-      .borderRadius(20)
-      .border({ width: 1, color: this.palette().outline })
+      .borderRadius(24)
       .onClick(() => {});
     }
     .width('100%')
