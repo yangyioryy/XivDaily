@@ -222,9 +222,11 @@ export struct HomePage {
   @Builder
   private exploreControlCard() {
     Column({ space: 14 }) {
-      Row({ space: 16 }) {
-        Text('🔎')
-          .fontSize(22);
+      Row({ space: 10 }) {
+        Text('⌕')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().textSecondary);
         TextInput({
           placeholder: '搜索论文、作者、关键词',
           text: this.vm.homeState.searchKeywordDraft
@@ -241,22 +243,25 @@ export struct HomePage {
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().textTertiary)
-            .padding({ left: 10, right: 10, top: 8, bottom: 8 })
-            .margin({ right: 8 })
+            .width(28)
+            .height(28)
+            .textAlign(TextAlign.Center)
             .backgroundColor(this.palette().surfaceSubtle)
-            .borderRadius(999)
+            .borderRadius(14)
             .onClick(() => this.vm.clearSearch());
         }
         Text('搜索')
-          .fontSize(15)
+          .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().primary)
+          .padding({ left: 8, right: 8, top: 8, bottom: 8 })
           .onClick(() => this.vm.submitSearch());
       }
       .width('100%')
-      .padding({ left: 20, right: 20, top: 16, bottom: 16 })
+      .alignItems(VerticalAlign.Center)
+      .padding({ left: 14, right: 10, top: 10, bottom: 10 })
       .backgroundColor(this.palette().surface)
-      .borderRadius(24)
+      .borderRadius(18)
       .border({ width: 1, color: this.palette().outline });
 
       Column({ space: 8 }) {
