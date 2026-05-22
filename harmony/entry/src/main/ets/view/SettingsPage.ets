@@ -322,6 +322,13 @@ export struct SettingsPage {
   }
 
   @Builder
+  private sectionDivider() {
+    Divider()
+      .color(this.palette().divider)
+      .margin({ left: 56, right: 18 });
+  }
+
+  @Builder
   private statusTag(label: string, color: string) {
     Row({ space: 6 }) {
       Row()
@@ -613,7 +620,7 @@ export struct SettingsPage {
         });
       }
 
-      Divider().color(this.palette().divider);
+      this.sectionDivider();
 
       Column({ space: 12 }) {
         Row({ space: 12 }) {
@@ -631,7 +638,7 @@ export struct SettingsPage {
         this.numberChipGroup([1, 3, 7, 30], this.vm.settingsState.defaultDays, (value: number) => this.vm.updateDefaultDays(value));
       }
 
-      Divider().color(this.palette().divider);
+      this.sectionDivider();
       this.settingRow('🌐', '语言', '文章摘要与界面默认语言', this.languageLabel(), () => this.vm.showLanguagePicker());
     }
     .width('100%')
@@ -646,7 +653,7 @@ export struct SettingsPage {
     Column({ space: 0 }) {
       this.integrationSettingRow('⚗', 'Zotero 配置', this.zoteroSubtitle(), this.zoteroValue(),
         this.vm.settingsState.zoteroConfigured, () => this.vm.showZoteroDetailDialog());
-      Divider().color(this.palette().divider);
+      this.sectionDivider();
       this.integrationSettingRow('✦', '大模型配置', this.llmSubtitle(), this.llmValue(),
         this.vm.settingsState.llmConfigured, () => this.vm.showLlmDetailDialog());
     }
@@ -660,7 +667,7 @@ export struct SettingsPage {
   private appearanceSection() {
     Column({ space: 0 }) {
       this.settingRow('☾', '主题模式', '支持浅色、深色与跟随系统', this.themeModeLabel(), () => this.vm.showThemePicker(), false, true);
-      Divider().color(this.palette().divider);
+      this.sectionDivider();
       this.settingRow('A', '字体大小', '当前版本采用统一阅读字号体系', '标准', undefined, true);
     }
     .width('100%')
@@ -673,9 +680,9 @@ export struct SettingsPage {
   private otherSection() {
     Column({ space: 0 }) {
       this.settingRow('▣', '清除缓存', '清理本地缓存的列表与摘要内容', this.vm.settingsState.cacheStatusText, () => this.vm.showClearCacheDialog());
-      Divider().color(this.palette().divider);
+      this.sectionDivider();
       this.settingRow('↻', '检查更新', '查看当前版本与后续更新说明', this.appVersionLabel(), () => this.vm.showUpdateDialog());
-      Divider().color(this.palette().divider);
+      this.sectionDivider();
       this.settingRow('i', '关于我们', '了解 XivDaily 的定位与版本信息', undefined, () => this.vm.showAboutDialog());
     }
     .width('100%')
@@ -697,13 +704,13 @@ export struct SettingsPage {
               this.vm.selectThemeMode('system');
               this.applyThemeMode('system');
             }, false, this.vm.settingsState.themeMode === 'system');
-            Divider().color(this.palette().divider);
+            this.sectionDivider();
             this.settingRow(this.vm.settingsState.themeMode === 'light' ? '✦' : '›', '浅色',
               this.vm.settingsState.themeMode === 'light' ? '当前已选中' : '点击切换到该选项', undefined, () => {
               this.vm.selectThemeMode('light');
               this.applyThemeMode('light');
             }, false, this.vm.settingsState.themeMode === 'light');
-            Divider().color(this.palette().divider);
+            this.sectionDivider();
             this.settingRow(this.vm.settingsState.themeMode === 'dark' ? '✦' : '›', '深色',
               this.vm.settingsState.themeMode === 'dark' ? '当前已选中' : '点击切换到该选项', undefined, () => {
               this.vm.selectThemeMode('dark');
