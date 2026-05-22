@@ -5,6 +5,18 @@ import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { FavoritePaperItem, PaperChatMessage, PaperChatUsedPaper } from '../model/AppModels';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
+interface MarkdownInlineSegment {
+  id: string;
+  kind: string;
+  text: string;
+  url?: string;
+}
+
+interface MarkdownLinkRef {
+  label: string;
+  url: string;
+}
+
 interface MarkdownBlock {
   id: string;
   kind: string;
@@ -12,6 +24,8 @@ interface MarkdownBlock {
   marker: string;
   level: number;
   linkUrl?: string;
+  segments?: MarkdownInlineSegment[];
+  links?: MarkdownLinkRef[];
 }
 
 @Component
@@ -91,15 +105,18 @@ export struct ChatPage {
       if (paragraphLines.length === 0) {
         return;
       }
-      const paragraphText = this.normalizeMarkdownInline(paragraphLines.join(' '));
-      const standaloneLink = this.extractStandaloneLink(paragraphText);
+      const paragraphMarkdown = paragraphLines.join(' ').trim();
+      const standaloneLink = this.extractStandaloneLink(paragraphMarkdown);
+      const parsedParagraph = this.parseInlineMarkdown(paragraphMarkdown, `paragraph-${blockIndex}`);
       blocks.push({
         id: `paragraph-${blockIndex}`,
         kind: standaloneLink ? 'link' : 'paragraph',
-        text: standaloneLink?.label ?? paragraphText,
+        text: standaloneLink?.label ?? parsedParagraph.plainText,
         marker: '',
         level: 0,
-        linkUrl: standaloneLink?.url
+        linkUrl: standaloneLink?.url,
+        segments: standaloneLink ? undefined : parsedParagraph.segments,
+        links: standaloneLink ? undefined : parsedParagraph.links
       });
       blockIndex += 1;
       paragraphLines = [];
@@ -145,12 +162,15 @@ export struct ChatPage {
 
       if (trimmedLine.startsWith('# ')) {
         pushParagraph();
+        const parsedHeading = this.parseInlineMarkdown(trimmedLine.slice(2), `heading-${blockIndex}`);
         blocks.push({
           id: `heading-${blockIndex}`,
           kind: 'heading',
-          text: this.normalizeMarkdownInline(trimmedLine.slice(2)),
+          text: parsedHeading.plainText,
           marker: '',
-          level: 1
+          level: 1,
+          segments: parsedHeading.segments,
+          links: parsedHeading.links
         });
         blockIndex += 1;
         continue;
@@ -158,12 +178,15 @@ export struct ChatPage {
 
       if (trimmedLine.startsWith('## ')) {
         pushParagraph();
+        const parsedHeading = this.parseInlineMarkdown(trimmedLine.slice(3), `heading-${blockIndex}`);
         blocks.push({
           id: `heading-${blockIndex}`,
           kind: 'heading',
-          text: this.normalizeMarkdownInline(trimmedLine.slice(3)),
+          text: parsedHeading.plainText,
           marker: '',
-          level: 2
+          level: 2,
+          segments: parsedHeading.segments,
+          links: parsedHeading.links
         });
         blockIndex += 1;
         continue;
@@ -171,12 +194,15 @@ export struct ChatPage {
 
       if (trimmedLine.startsWith('### ')) {
         pushParagraph();
+        const parsedHeading = this.parseInlineMarkdown(trimmedLine.slice(4), `heading-${blockIndex}`);
         blocks.push({
           id: `heading-${blockIndex}`,
           kind: 'heading',
-          text: this.normalizeMarkdownInline(trimmedLine.slice(4)),
+          text: parsedHeading.plainText,
           marker: '',
-          level: 3
+          level: 3,
+          segments: parsedHeading.segments,
+          links: parsedHeading.links
         });
         blockIndex += 1;
         continue;
@@ -184,12 +210,15 @@ export struct ChatPage {
 
       if (trimmedLine.startsWith('> ')) {
         pushParagraph();
+        const parsedQuote = this.parseInlineMarkdown(trimmedLine.slice(2), `quote-${blockIndex}`);
         blocks.push({
           id: `quote-${blockIndex}`,
           kind: 'quote',
-          text: this.normalizeMarkdownInline(trimmedLine.slice(2)),
+          text: parsedQuote.plainText,
           marker: '',
-          level: 0
+          level: 0,
+          segments: parsedQuote.segments,
+          links: parsedQuote.links
         });
         blockIndex += 1;
         continue;
@@ -197,12 +226,15 @@ export struct ChatPage {
 
       if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
         pushParagraph();
+        const parsedBullet = this.parseInlineMarkdown(trimmedLine.slice(2), `bullet-${blockIndex}`);
         blocks.push({
           id: `bullet-${blockIndex}`,
           kind: 'bullet',
-          text: this.normalizeMarkdownInline(trimmedLine.slice(2)),
+          text: parsedBullet.plainText,
           marker: '•',
-          level: 0
+          level: 0,
+          segments: parsedBullet.segments,
+          links: parsedBullet.links
         });
         blockIndex += 1;
         continue;
@@ -211,12 +243,15 @@ export struct ChatPage {
       const orderedMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
       if (orderedMatch) {
         pushParagraph();
+        const parsedOrdered = this.parseInlineMarkdown(orderedMatch[2], `ordered-${blockIndex}`);
         blocks.push({
           id: `ordered-${blockIndex}`,
           kind: 'ordered',
-          text: this.normalizeMarkdownInline(orderedMatch[2]),
+          text: parsedOrdered.plainText,
           marker: `${orderedMatch[1]}.`,
-          level: 0
+          level: 0,
+          segments: parsedOrdered.segments,
+          links: parsedOrdered.links
         });
         blockIndex += 1;
         continue;
@@ -229,32 +264,123 @@ export struct ChatPage {
     pushCodeBlock();
 
     if (blocks.length === 0) {
+      const parsedFallback = this.parseInlineMarkdown(content, 'paragraph-empty');
       blocks.push({
         id: 'paragraph-empty',
         kind: 'paragraph',
-        text: this.normalizeMarkdownInline(content),
+        text: parsedFallback.plainText,
         marker: '',
-        level: 0
+        level: 0,
+        segments: parsedFallback.segments,
+        links: parsedFallback.links
       });
     }
 
     return blocks;
   }
 
-  // 行内样式统一降级成纯文本，优先保证阅读稳定，再逐步补齐复杂 Markdown 能力。
-  // 行内样式先统一降级成纯文本，优先保证阅读稳定，后续再逐步补齐更完整的 Markdown 能力。
-  private normalizeMarkdownInline(text: string): string {
-    return text
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '图像: $1 ($2)')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
-      .replace(/`([^`]+)`/g, '$1')
-      .replace(/(\*\*|__|~~)/g, '')
-      .replace(/^\>\s?/g, '')
-      .trim();
+  private parseInlineMarkdown(text: string, blockIdPrefix: string): {
+    plainText: string;
+    segments: MarkdownInlineSegment[];
+    links: MarkdownLinkRef[];
+  } {
+    const normalized = text.replace(/^\>\s?/g, '');
+    const inlinePattern = /!\[([^\]]*)\]\((https?:\/\/[^)]+)\)|\[([^\]]+)\]\((https?:\/\/[^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|__([^_]+)__|~~([^~]+)~~|\*([^*\n]+)\*|_([^_\n]+)_/g;
+    const segments: MarkdownInlineSegment[] = [];
+    const links: MarkdownLinkRef[] = [];
+    let segmentIndex = 0;
+    let lastIndex = 0;
+
+    const pushTextSegment = (value: string): void => {
+      if (value.length === 0) {
+        return;
+      }
+      segments.push({
+        id: `${blockIdPrefix}-segment-${segmentIndex}`,
+        kind: 'text',
+        text: value
+      });
+      segmentIndex += 1;
+    };
+
+    let match: RegExpExecArray | null;
+    while ((match = inlinePattern.exec(normalized)) !== null) {
+      if (match.index > lastIndex) {
+        pushTextSegment(normalized.slice(lastIndex, match.index));
+      }
+
+      let kind = 'text';
+      let segmentText = '';
+      let url: string | undefined = undefined;
+
+      if (match[1] !== undefined && match[2] !== undefined) {
+        const altText = match[1].trim();
+        kind = 'link';
+        segmentText = altText.length > 0 ? `图像: ${altText}` : '图像链接';
+        url = match[2].trim();
+      } else if (match[3] !== undefined && match[4] !== undefined) {
+        kind = 'link';
+        segmentText = match[3].trim();
+        url = match[4].trim();
+      } else if (match[5] !== undefined) {
+        kind = 'code';
+        segmentText = match[5];
+      } else if (match[6] !== undefined || match[7] !== undefined) {
+        kind = 'strong';
+        segmentText = match[6] ?? match[7] ?? '';
+      } else if (match[8] !== undefined) {
+        kind = 'strike';
+        segmentText = match[8];
+      } else if (match[9] !== undefined || match[10] !== undefined) {
+        kind = 'emphasis';
+        segmentText = match[9] ?? match[10] ?? '';
+      }
+
+      if (segmentText.length > 0) {
+        segments.push({
+          id: `${blockIdPrefix}-segment-${segmentIndex}`,
+          kind: kind,
+          text: segmentText,
+          url: url
+        });
+        segmentIndex += 1;
+        if (url) {
+          links.push({
+            label: segmentText,
+            url: url
+          });
+        }
+      }
+
+      lastIndex = inlinePattern.lastIndex;
+    }
+
+    if (lastIndex < normalized.length) {
+      pushTextSegment(normalized.slice(lastIndex));
+    }
+
+    if (segments.length === 0) {
+      pushTextSegment(normalized);
+    }
+
+    return {
+      plainText: segments.map((segment: MarkdownInlineSegment) => segment.text).join('').replace(/\s+/g, ' ').trim(),
+      segments: segments,
+      links: links
+    };
   }
 
   private extractStandaloneLink(text: string): { label: string; url: string } | undefined {
-    const markdownLinkMatch = text.match(/^\[?([^\]]+?)\]?\s*\((https?:\/\/[^)]+)\)$/);
+    const trimmed = text.trim();
+    const imageMatch = trimmed.match(/^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/);
+    if (imageMatch) {
+      return {
+        label: imageMatch[1].trim().length > 0 ? `图像: ${imageMatch[1].trim()}` : '图像链接',
+        url: imageMatch[2].trim()
+      };
+    }
+
+    const markdownLinkMatch = trimmed.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);
     if (markdownLinkMatch) {
       return {
         label: markdownLinkMatch[1].trim(),
@@ -262,7 +388,7 @@ export struct ChatPage {
       };
     }
 
-    const urlMatch = text.match(/^(https?:\/\/\S+)$/);
+    const urlMatch = trimmed.match(/^(https?:\/\/\S+)$/);
     if (urlMatch) {
       return {
         label: urlMatch[1],
@@ -404,24 +530,106 @@ export struct ChatPage {
   }
 
   @Builder
+  private markdownInlineSpan(segment: MarkdownInlineSegment, defaultColor: string) {
+    if (segment.kind === 'strong') {
+      Span(segment.text)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(defaultColor);
+    } else if (segment.kind === 'emphasis') {
+      Span(segment.text)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(defaultColor);
+    } else if (segment.kind === 'code') {
+      Span(segment.text)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().primary);
+    } else if (segment.kind === 'link') {
+      Span(segment.text)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().primary);
+    } else if (segment.kind === 'strike') {
+      Span(segment.text)
+        .fontColor(this.palette().textSecondary);
+    } else {
+      Span(segment.text)
+        .fontColor(defaultColor);
+    }
+  }
+
+  @Builder
+  private markdownInlineText(block: MarkdownBlock, fontSize: number, lineHeight: number, defaultColor: string) {
+    if (block.segments && block.segments.length > 0) {
+      Text() {
+        ForEach(block.segments, (segment: MarkdownInlineSegment) => {
+          this.markdownInlineSpan(segment, defaultColor);
+        }, (segment: MarkdownInlineSegment) => segment.id);
+      }
+      .fontSize(fontSize)
+      .lineHeight(lineHeight)
+      .fontColor(defaultColor)
+      .width('100%');
+    } else {
+      Text(block.text)
+        .fontSize(fontSize)
+        .lineHeight(lineHeight)
+        .fontColor(defaultColor)
+        .width('100%');
+    }
+  }
+
+  @Builder
+  private markdownInlineLinkChip(link: MarkdownLinkRef) {
+    Row({ space: 4 }) {
+      Text('↗')
+        .fontSize(12)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().primary);
+      Text(link.label)
+        .fontSize(12)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().primary)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis });
+    }
+    .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+    .margin({ right: 8, bottom: 6 })
+    .backgroundColor(this.palette().primaryContainer)
+    .borderRadius(10)
+    .onClick(() => {
+      void this.openExternalLink(link.url);
+    });
+  }
+
+  @Builder
+  private markdownInlineLinkStrip(block: MarkdownBlock) {
+    if (block.links && block.links.length > 0) {
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+        ForEach(block.links, (link: MarkdownLinkRef) => {
+          this.markdownInlineLinkChip(link);
+        }, (link: MarkdownLinkRef) => `${block.id}-${link.url}`);
+      }
+      .width('100%');
+    }
+  }
+
+  @Builder
   private markdownBlock(block: MarkdownBlock) {
     if (block.kind === 'heading') {
-      Text(block.text)
-        .fontSize(this.headingFontSize(block.level))
-        .fontWeight(FontWeight.Bold)
-        .lineHeight(26)
-        .fontColor(this.palette().textPrimary)
-        .width('100%');
+      Column({ space: block.links && block.links.length > 0 ? 8 : 0 }) {
+        this.markdownInlineText(block, this.headingFontSize(block.level), 26, this.palette().textPrimary);
+        this.markdownInlineLinkStrip(block);
+      }
+      .width('100%');
     } else if (block.kind === 'bullet' || block.kind === 'ordered') {
       Row({ space: 8 }) {
         Text(block.marker)
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().textTertiary);
-        Text(block.text)
-          .fontSize(14)
-          .lineHeight(22)
-          .fontColor(this.palette().textTertiary)
+        Column({ space: block.links && block.links.length > 0 ? 8 : 0 }) {
+          this.markdownInlineText(block, 14, 22, this.palette().textTertiary);
+          this.markdownInlineLinkStrip(block);
+        }
           .layoutWeight(1);
       }
       .width('100%')
@@ -442,10 +650,10 @@ export struct ChatPage {
           .height('100%')
           .backgroundColor(this.palette().primary)
           .borderRadius(999);
-        Text(block.text)
-          .fontSize(14)
-          .lineHeight(22)
-          .fontColor(this.palette().textTertiary)
+        Column({ space: block.links && block.links.length > 0 ? 8 : 0 }) {
+          this.markdownInlineText(block, 14, 22, this.palette().textTertiary);
+          this.markdownInlineLinkStrip(block);
+        }
           .layoutWeight(1);
       }
       .width('100%')
@@ -477,11 +685,11 @@ export struct ChatPage {
         }
       });
     } else {
-      Text(block.text)
-        .fontSize(14)
-        .lineHeight(22)
-        .fontColor(this.palette().textTertiary)
-        .width('100%');
+      Column({ space: block.links && block.links.length > 0 ? 8 : 0 }) {
+        this.markdownInlineText(block, 14, 22, this.palette().textTertiary);
+        this.markdownInlineLinkStrip(block);
+      }
+      .width('100%');
     }
   }
 
