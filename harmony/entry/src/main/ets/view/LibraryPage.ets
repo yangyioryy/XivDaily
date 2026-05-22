@@ -378,7 +378,7 @@ export struct LibraryPage {
     Row({ space: 6 }) {
       if (iconText !== undefined && iconText.length > 0) {
         Text(iconText)
-          .fontSize(13)
+          .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().onPrimary);
       }
@@ -387,9 +387,9 @@ export struct LibraryPage {
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().onPrimary);
     }
-    .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+    .padding({ left: 12, right: 12, top: 8, bottom: 8 })
     .backgroundColor(this.palette().primary)
-    .borderRadius(12)
+    .borderRadius(10)
     .alignItems(VerticalAlign.Center)
     .onClick(() => action());
   }
@@ -398,15 +398,15 @@ export struct LibraryPage {
   private batchDangerActionButton(action: () => void) {
     Row() {
       SymbolGlyph($r('sys.symbol.trash'))
-        .fontSize(14)
+        .fontSize(16)
         .fontColor([this.palette().danger]);
     }
-    .width(36)
-    .height(36)
+    .width(40)
+    .height(40)
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
     .backgroundColor(this.palette().dangerContainer)
-    .borderRadius(12)
+    .borderRadius(10)
     .onClick(() => action());
   }
 
@@ -431,7 +431,7 @@ export struct LibraryPage {
     .width('100%')
     .padding(12)
     .backgroundColor(this.batchBarBackgroundColor())
-    .borderRadius(18);
+    .borderRadius(10);
   }
 
   @Builder
