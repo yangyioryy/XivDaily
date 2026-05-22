@@ -465,8 +465,7 @@ export struct ChatPage {
     .height(32)
     .justifyContent(FlexAlign.Center)
     .backgroundColor(this.palette().primaryContainer)
-    .borderRadius(10)
-    .border({ width: 1, color: this.palette().outline });
+    .borderRadius(10);
   }
 
   @Builder
@@ -718,7 +717,7 @@ export struct ChatPage {
 
   @Builder
   private paperPickerButton() {
-    Row({ space: 10 }) {
+    Row({ space: 8 }) {
       Text(this.pickerSummaryText())
         .fontSize(13)
         .fontWeight(FontWeight.Medium)
@@ -726,22 +725,15 @@ export struct ChatPage {
         .layoutWeight(1)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
-      Row() {
-        Text(this.isPickerExpanded ? '▴' : '▾')
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().textSecondary);
-      }
-      .width(24)
-      .height(24)
-      .justifyContent(FlexAlign.Center)
-      .backgroundColor(this.palette().surfaceSubtle)
-      .borderRadius(12);
+      Text(this.isPickerExpanded ? '▴' : '▾')
+        .fontSize(13)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().textSecondary);
     }
     .width('100%')
-    .padding({ left: 14, right: 12, top: 10, bottom: 10 })
+    .padding({ left: 12, right: 12, top: 10, bottom: 10 })
     .backgroundColor(this.palette().surface)
-    .borderRadius(14)
+    .borderRadius(12)
     .border({ width: 1, color: this.isPickerExpanded ? this.palette().primary : this.palette().outline })
     .onClick(() => {
       this.togglePickerExpanded();
@@ -756,12 +748,12 @@ export struct ChatPage {
         .fontWeight(FontWeight.Medium)
         .fontColor(selected ? this.palette().primary : this.palette().textSecondary);
     }
-    .width(22)
-    .height(22)
+    .width(20)
+    .height(20)
     .justifyContent(FlexAlign.Center)
     .backgroundColor(selected ? this.palette().primaryContainer : this.palette().surface)
-    .borderRadius(11)
-    .border({ width: 1.5, color: selected ? this.palette().primary : this.palette().outline });
+    .borderRadius(10)
+    .border({ width: 1, color: selected ? this.palette().primary : this.palette().outline });
   }
 
   @Builder
@@ -786,11 +778,11 @@ export struct ChatPage {
     }
     .width('100%')
     .alignItems(VerticalAlign.Center)
-    .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+    .padding({ left: 12, right: 12, top: 10, bottom: 10 })
     .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().surfaceSubtle : this.palette().surface)
-    .borderRadius(16)
+    .borderRadius(12)
     .border({
-      width: this.isPaperSelected(favorite.paper.id) ? 2 : 1,
+      width: this.isPaperSelected(favorite.paper.id) ? 1 : 0,
       color: this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline
     })
     .onClick(() => this.togglePickerSelection(favorite.paper.id));
@@ -857,10 +849,9 @@ export struct ChatPage {
     }
     .alignItems(HorizontalAlign.Center)
     .width('100%')
-    .padding({ left: 18, right: 18, top: 18, bottom: 18 })
+    .padding({ left: 16, right: 16, top: 18, bottom: 18 })
     .backgroundColor(this.palette().surface)
-    .borderRadius(18)
-    .border({ width: 1, color: this.palette().outline });
+    .borderRadius(16);
   }
 
   @Builder
@@ -1003,25 +994,25 @@ export struct ChatPage {
         Row() {
           Column({ space: 4 }) {
             Text('论文对话')
-              .fontSize(24)
-              .fontWeight(FontWeight.Bold)
+              .fontSize(22)
+              .fontWeight(FontWeight.Medium)
               .fontColor(this.palette().textPrimary);
             Text(`已选 ${this.vm.chatState.selectedPaperIds.length} 篇 · 最多 ${AppConstants.MAX_CHAT_PAPERS} 篇`)
               .fontSize(13)
               .fontColor(this.palette().textSecondary);
           }
           Blank();
-          Row({ space: 8 }) {
+          Row({ space: 6 }) {
             Text('✕')
-              .fontSize(13)
+              .fontSize(14)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.palette().primary);
             Text('清空')
-              .fontSize(13)
+              .fontSize(14)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.palette().primary);
           }
-          .padding({ left: 8, right: 8, top: 6, bottom: 6 })
+          .padding({ left: 8, right: 8, top: 8, bottom: 8 })
           .borderRadius(999)
           .onClick(() => this.vm.clearConversation());
           this.leadingPill();
