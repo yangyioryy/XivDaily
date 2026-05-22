@@ -720,25 +720,48 @@ export struct ChatPage {
   private paperPickerButton() {
     Row({ space: 10 }) {
       Text(this.pickerSummaryText())
-        .fontSize(14)
+        .fontSize(13)
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().primary)
+        .fontColor(this.palette().textPrimary)
         .layoutWeight(1)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
-      Text(this.isPickerExpanded ? '▴' : '▾')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().primary);
+      Row() {
+        Text(this.isPickerExpanded ? '▴' : '▾')
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().textSecondary);
+      }
+      .width(24)
+      .height(24)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(this.palette().surfaceSubtle)
+      .borderRadius(12);
     }
     .width('100%')
-    .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-    .backgroundColor(this.palette().surfaceSubtle)
+    .padding({ left: 14, right: 12, top: 10, bottom: 10 })
+    .backgroundColor(this.palette().surface)
     .borderRadius(14)
-    .border({ width: 1, color: this.palette().outline })
+    .border({ width: 1, color: this.isPickerExpanded ? this.palette().primary : this.palette().outline })
     .onClick(() => {
       this.togglePickerExpanded();
     });
+  }
+
+  @Builder
+  private inlinePickerCheckmark(selected: boolean) {
+    Row() {
+      Text(selected ? '✓' : '')
+        .fontSize(12)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(selected ? this.palette().primary : this.palette().textSecondary);
+    }
+    .width(22)
+    .height(22)
+    .justifyContent(FlexAlign.Center)
+    .backgroundColor(selected ? this.palette().primaryContainer : this.palette().surface)
+    .borderRadius(11)
+    .border({ width: 1.5, color: selected ? this.palette().primary : this.palette().outline });
   }
 
   @Builder
@@ -746,39 +769,26 @@ export struct ChatPage {
     // Android 端这里是 DropdownMenuItem，Harmony 端保持整行可点，避免额外按钮打断浏览节奏。
     // 次级信息里的分类与日期分隔符也保持成“·”，避免出现当前鸿蒙端的错误字符。
     Row({ space: 12 }) {
-      Row() {
-        Text(this.isPaperSelected(favorite.paper.id) ? '✓' : '')
-          .fontSize(13)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.palette().onPrimary);
-      }
-      .width(24)
-      .height(24)
-      .justifyContent(FlexAlign.Center)
-      .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().surface)
-      .borderRadius(12)
-      .border({
-        width: 1.5,
-        color: this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline
-      });
+      this.inlinePickerCheckmark(this.isPaperSelected(favorite.paper.id));
 
       Column({ space: 2 }) {
         Text(favorite.paper.title)
-          .fontSize(15)
+          .fontSize(14)
           .fontWeight(this.isPaperSelected(favorite.paper.id) ? FontWeight.Medium : FontWeight.Regular)
           .fontColor(this.palette().textPrimary)
           .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis });
         Text(`${favorite.paper.primaryCategory} · ${favorite.savedAt.slice(0, 10)}`)
-          .fontSize(12)
+          .fontSize(11)
           .fontColor(this.palette().textSecondary);
       }
       .layoutWeight(1);
     }
     .width('100%')
-    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .alignItems(VerticalAlign.Center)
+    .padding({ left: 14, right: 14, top: 12, bottom: 12 })
     .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().surfaceSubtle : this.palette().surface)
-    .borderRadius(14)
+    .borderRadius(16)
     .border({
       width: this.isPaperSelected(favorite.paper.id) ? 2 : 1,
       color: this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline
@@ -814,9 +824,9 @@ export struct ChatPage {
           }
           .width('100%')
           .height(Math.min(this.vm.chatState.favorites.length * 78, 260))
-          .padding(10)
+          .padding(8)
           .backgroundColor(this.palette().surface)
-          .borderRadius(18)
+          .borderRadius(16)
           .border({ width: 1, color: this.palette().outline })
           .scrollBar(BarState.Auto)
           .scrollable(ScrollDirection.Vertical);
