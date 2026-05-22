@@ -105,7 +105,8 @@ export struct ChatPage {
       if (paragraphLines.length === 0) {
         return;
       }
-      const paragraphMarkdown = paragraphLines.join(' ').trim();
+      // Android 端的 Markdown 会保留段内换行，这里不要再把多行段落压成一行。
+      const paragraphMarkdown = paragraphLines.join('\n').trim();
       const standaloneLink = this.extractStandaloneLink(paragraphMarkdown);
       const parsedParagraph = this.parseInlineMarkdown(paragraphMarkdown, `paragraph-${blockIndex}`);
       blocks.push({
@@ -257,7 +258,7 @@ export struct ChatPage {
         continue;
       }
 
-      paragraphLines.push(trimmedLine);
+      paragraphLines.push(line.trimEnd());
     }
 
     pushParagraph();
@@ -364,7 +365,7 @@ export struct ChatPage {
     }
 
     return {
-      plainText: segments.map((segment: MarkdownInlineSegment) => segment.text).join('').replace(/\s+/g, ' ').trim(),
+      plainText: segments.map((segment: MarkdownInlineSegment) => segment.text).join('').trim(),
       segments: segments,
       links: links
     };
