@@ -364,41 +364,73 @@ export struct LibraryPage {
     .onClick(() => this.vm.toggleLibrarySelection(favorite.paper.id));
   }
 
+  private batchBarBackgroundColor(): string {
+    return this.palette().textPrimary;
+  }
+
+  private batchBarForegroundColor(): string {
+    return this.palette().surface;
+  }
+
   @Builder
-  private batchActionButton(label: string, backgroundColor: string, foregroundColor: string, action: () => void) {
-    Text(label)
-      .fontSize(13)
-      .fontWeight(FontWeight.Medium)
-      .fontColor(foregroundColor)
-      .padding({ left: 12, right: 12, top: 9, bottom: 9 })
-      .backgroundColor(backgroundColor)
-      .borderRadius(12)
-      .onClick(() => action());
+  private batchPrimaryActionButton(label: string, action: () => void, iconText?: string) {
+    Row({ space: 6 }) {
+      if (iconText !== undefined && iconText.length > 0) {
+        Text(iconText)
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().onPrimary);
+      }
+      Text(label)
+        .fontSize(13)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().onPrimary);
+    }
+    .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+    .backgroundColor(this.palette().primary)
+    .borderRadius(12)
+    .alignItems(VerticalAlign.Center)
+    .onClick(() => action());
+  }
+
+  @Builder
+  private batchDangerActionButton(action: () => void) {
+    Row() {
+      SymbolGlyph($r('sys.symbol.trash'))
+        .fontSize(14)
+        .fontColor([this.palette().danger]);
+    }
+    .width(36)
+    .height(36)
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
+    .backgroundColor(this.palette().dangerContainer)
+    .borderRadius(12)
+    .onClick(() => action());
   }
 
   @Builder
   private batchBottomBar() {
-    Row({ space: 10 }) {
+    Row({ space: 8 }) {
       Text(`已选 ${this.vm.libraryState.selectedPaperIds.length}`)
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().textPrimary)
+        .fontColor(this.batchBarForegroundColor())
         .layoutWeight(1);
-      this.batchActionButton('全选', this.palette().surface, this.palette().textPrimary, () => {
+      this.batchPrimaryActionButton('全选', () => {
         this.vm.selectAllLibraryPapers(this.filteredFavorites().map((favorite: FavoritePaperItem) => favorite.paper.id));
       });
-      this.batchActionButton('导出', this.palette().surface, this.palette().textPrimary, () => {
+      this.batchPrimaryActionButton('导出', () => {
         this.vm.exportSelectedBibtex();
-      });
-      this.batchActionButton('删除', this.palette().dangerContainer, this.palette().danger, () => {
+      }, '↓');
+      this.batchDangerActionButton(() => {
         this.vm.deleteSelectedFavorites();
       });
     }
     .width('100%')
     .padding(12)
-    .backgroundColor(this.palette().surfaceVariant)
-    .borderRadius(20)
-    .border({ width: 1, color: this.palette().outline });
+    .backgroundColor(this.batchBarBackgroundColor())
+    .borderRadius(18);
   }
 
   @Builder
