@@ -428,6 +428,12 @@ export struct ChatPage {
     this.isPickerExpanded = !this.isPickerExpanded;
   }
 
+  private collapsePickerExpanded(): void {
+    if (this.isPickerExpanded) {
+      this.isPickerExpanded = false;
+    }
+  }
+
   private togglePickerSelection(paperId: string): void {
     this.vm.toggleChatPaper(paperId);
   }
@@ -456,6 +462,7 @@ export struct ChatPage {
     if (this.vm.chatState.isSending) {
       return;
     }
+    this.collapsePickerExpanded();
     this.vm.updateChatDraft(this.composerDraft);
     const sendTask = this.vm.sendChatMessage();
     // 只有真正进入发送态时才清空输入框；如果是未选论文或问题为空，就保留用户输入，
@@ -490,7 +497,8 @@ export struct ChatPage {
       .width('100%')
       .padding({ left: 16, right: 16, top: 10, bottom: 10 })
       .backgroundColor(backgroundColor)
-      .borderRadius(14);
+      .borderRadius(14)
+      .onClick(() => this.collapsePickerExpanded());
   }
 
   @Builder
@@ -534,7 +542,8 @@ export struct ChatPage {
     .margin({ right: 8, bottom: 8 })
     .backgroundColor(this.palette().surfaceVariant)
     .borderRadius(10)
-    .alignItems(VerticalAlign.Center);
+    .alignItems(VerticalAlign.Center)
+    .onClick(() => this.collapsePickerExpanded());
   }
 
   private headingFontSize(level: number): number {
@@ -861,7 +870,8 @@ export struct ChatPage {
     .width('100%')
     .padding({ left: 16, right: 16, top: 18, bottom: 18 })
     .backgroundColor(this.palette().surface)
-    .borderRadius(16);
+    .borderRadius(16)
+    .onClick(() => this.collapsePickerExpanded());
   }
 
   @Builder
@@ -891,7 +901,8 @@ export struct ChatPage {
         Blank();
       }
     }
-    .width('100%');
+    .width('100%')
+    .onClick(() => this.collapsePickerExpanded());
   }
 
   @Builder
@@ -914,7 +925,8 @@ export struct ChatPage {
       .alignItems(VerticalAlign.Center);
       Blank();
     }
-    .width('100%');
+    .width('100%')
+    .onClick(() => this.collapsePickerExpanded());
   }
 
   @Builder
@@ -989,7 +1001,8 @@ export struct ChatPage {
       .alignItems(VerticalAlign.Center);
     }
     .width('100%')
-    .alignItems(VerticalAlign.Center);
+    .alignItems(VerticalAlign.Center)
+    .onClick(() => this.collapsePickerExpanded());
   }
 
   build() {
@@ -1019,7 +1032,10 @@ export struct ChatPage {
           .padding({ left: 8, right: 8, top: 8, bottom: 8 })
           .alignItems(VerticalAlign.Center)
           .borderRadius(999)
-          .onClick(() => this.vm.clearConversation());
+          .onClick(() => {
+            this.collapsePickerExpanded();
+            this.vm.clearConversation();
+          });
           this.leadingPill();
         }
         .width('100%');
