@@ -304,9 +304,16 @@ export struct LibraryPage {
 
         if (favorite.paper.zoteroSyncState !== 'synced') {
           Row({ space: 6 }) {
-            SymbolGlyph($r('sys.symbol.arrow_2_circlepath'))
-              .fontSize(14)
-              .fontColor([this.palette().onPrimaryContainer]);
+            if (this.isPaperSyncing(favorite.paper.id)) {
+              LoadingProgress()
+                .width(14)
+                .height(14)
+                .color(this.palette().onPrimaryContainer);
+            } else {
+              SymbolGlyph($r('sys.symbol.arrow_2_circlepath'))
+                .fontSize(14)
+                .fontColor([this.palette().onPrimaryContainer]);
+            }
             Text(this.isPaperSyncing(favorite.paper.id) ? '同步中...' : '同步 Zotero')
               .fontSize(14)
               .fontWeight(FontWeight.Medium)
@@ -382,8 +389,9 @@ export struct LibraryPage {
     }
     .width('100%')
     .padding(14)
-    .backgroundColor(this.palette().surfaceVariant)
-    .borderRadius(18);
+    .backgroundColor(this.palette().surface)
+    .borderRadius(18)
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
