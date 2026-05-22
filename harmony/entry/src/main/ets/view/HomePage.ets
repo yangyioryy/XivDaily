@@ -664,6 +664,8 @@ export struct HomePage {
             });
         }
       }
+
+      this.swipeHintStrip();
     }
     .width('100%')
     .padding(18)
@@ -689,6 +691,38 @@ export struct HomePage {
     .padding({ left: 20, right: 20, top: 28, bottom: 28 })
     .backgroundColor(this.palette().surface)
     .borderRadius(20)
+    .border({ width: 1, color: this.palette().outline });
+  }
+
+  @Builder
+  private swipeHintStrip() {
+    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+      Row({ space: 6 }) {
+        Text('←')
+          .fontSize(12)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().warning);
+        Text('左滑移出当前流')
+          .fontSize(12)
+          .fontColor(this.palette().textSecondary);
+      }
+      .margin({ right: 12, bottom: 4 });
+
+      Row({ space: 6 }) {
+        Text('→')
+          .fontSize(12)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().success);
+        Text('右滑同步 Zotero')
+          .fontSize(12)
+          .fontColor(this.palette().textSecondary);
+      }
+      .margin({ bottom: 4 });
+    }
+    .width('100%')
+    .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+    .backgroundColor(this.palette().surfaceSubtle)
+    .borderRadius(14)
     .border({ width: 1, color: this.palette().outline });
   }
 
