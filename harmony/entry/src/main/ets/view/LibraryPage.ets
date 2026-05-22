@@ -59,10 +59,6 @@ export struct LibraryPage {
     return this.vm.libraryState.selectedPaperIds.indexOf(paperId) >= 0;
   }
 
-  private isChatPaperSelected(paperId: string): boolean {
-    return this.vm.chatState.selectedPaperIds.indexOf(paperId) >= 0;
-  }
-
   private isSyncFilterSelected(filter: string): boolean {
     return this.vm.libraryState.syncFilter === filter;
   }
@@ -303,12 +299,7 @@ export struct LibraryPage {
           .backgroundColor(this.palette().primaryContainer)
           .borderRadius(12)
           .onClick(() => {
-            this.vm.selectTab(2);
-            // “对话”动作要对齐 Android 的聊天预选语义，只看 Chat 当前是否已选中，
-            // 不能误用收藏页自己的批量选择状态，否则会出现误删或漏选聊天论文。
-            if (!this.isChatPaperSelected(favorite.paper.id)) {
-              this.vm.toggleChatPaper(favorite.paper.id);
-            }
+            this.vm.openChatFromLibrary(favorite.paper.id);
           });
 
         if (favorite.paper.zoteroSyncState !== 'synced') {

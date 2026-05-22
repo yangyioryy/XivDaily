@@ -29,6 +29,8 @@ export class AppViewModel {
   settingsState: SettingsStatus = createDefaultSettingsStatus();
 
   private nextActionMessageId: number = 1;
+  // 用会话版本隔离收藏库快速进入对话与旧请求返回，避免旧回复污染新上下文。
+  private activeChatSessionVersion: number = 0;
 
   constructor() {
     preferenceService.initialize(this.settingsState);
@@ -440,6 +442,25 @@ export class AppViewModel {
     this.libraryState.errorMessage = undefined;
   }
 
+  openChatFromLibrary(paperId: string): void {
+    const favorite = this.libraryState.favorites.find((item: FavoritePaperItem) => item.paper.id === paperId);
+    if (!favorite) {
+      return;
+    }
+    this.activeChatSessionVersion += 1;
+    this.selectedTab = 2;
+    this.chatState = {
+      favorites: this.chatState.favorites,
+      selectedPaperIds: [paperId],
+      messages: [],
+      inputDraft: '',
+      isSending: false,
+      errorMessage: undefined,
+      warningMessage: undefined,
+      usedPapers: []
+    };
+  }
+
   toggleChatPaper(paperId: string): void {
     const existed = this.chatState.selectedPaperIds.indexOf(paperId) >= 0;
     if (existed) {
@@ -546,8 +567,12 @@ export class AppViewModel {
       usedPapers: this.chatState.usedPapers
     };
 
+    const sessionVersion = this.activeChatSessionVersion;
     try {
       const result = await paperService.chatWithPapers(selectedPapers, nextMessages);
+      if (sessionVersion !== this.activeChatSessionVersion) {
+        return;
+      }
       const assistantMessage: PaperChatMessage = {
         role: 'assistant',
         content: result.answer
@@ -563,6 +588,9 @@ export class AppViewModel {
         usedPapers: result.usedPapers
       };
     } catch (error) {
+      if (sessionVersion !== this.activeChatSessionVersion) {
+        return;
+      }
       this.chatState = {
         favorites: this.chatState.favorites,
         selectedPaperIds: this.chatState.selectedPaperIds,
