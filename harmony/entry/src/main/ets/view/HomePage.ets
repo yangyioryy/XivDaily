@@ -658,44 +658,47 @@ export struct HomePage {
         if (this.isPaperExpanded(paper.id)) {
           Column({ space: 10 }) {
             if (paper.translatedSummary) {
-              Column({ space: 8 }) {
+              Column({ space: 6 }) {
                 Text('中文翻译')
-                  .fontSize(14)
+                  .fontSize(13)
                   .fontWeight(FontWeight.Medium)
                   .fontColor(this.palette().primary);
                 Text(paper.translatedSummary)
                   .fontSize(14)
                   .lineHeight(22)
                   .fontColor(this.palette().textPrimary);
+                Text('Original Abstract')
+                  .fontSize(13)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.palette().textSecondary);
+                Text(paper.summary)
+                  .fontSize(13)
+                  .lineHeight(20)
+                  .fontColor(this.palette().textSecondary);
               }
-              .width('100%')
-              .padding(14)
-              .backgroundColor(this.palette().surfaceVariant)
-              .borderRadius(16);
-            }
-
-            Column({ space: 8 }) {
+              .width('100%');
+            } else {
+              Column({ space: 6 }) {
               Text('Original Abstract')
-                .fontSize(14)
+                .fontSize(13)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(this.palette().textSecondary);
+                .fontColor(this.palette().primary);
               Text(paper.summary)
-                .fontSize(14)
-                .lineHeight(22)
-                .fontColor(this.palette().textTertiary);
-            }
-            .width('100%')
-            .padding(14)
-            .backgroundColor(this.palette().surfaceSubtle)
-            .borderRadius(16);
-
-            if (this.vm.homeState.translationErrors[paper.id]) {
-              Text(this.vm.homeState.translationErrors[paper.id])
                 .fontSize(13)
                 .lineHeight(20)
-                .fontColor(this.palette().danger)
-                .padding(12)
-                .backgroundColor(this.palette().dangerContainer)
+                .fontColor(this.palette().textSecondary);
+              }
+              .width('100%');
+            }
+
+            if (this.isPaperTranslating(paper.id) || this.vm.homeState.translationErrors[paper.id]) {
+              Text(this.isPaperTranslating(paper.id) ? '摘要翻译中...' : this.vm.homeState.translationErrors[paper.id])
+                .fontSize(13)
+                .lineHeight(20)
+                .fontColor(this.palette().onSecondaryContainer)
+                .width('100%')
+                .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+                .backgroundColor(this.palette().secondaryContainer)
                 .borderRadius(14);
             }
           }
