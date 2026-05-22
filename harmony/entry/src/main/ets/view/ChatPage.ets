@@ -1,5 +1,6 @@
 import AppConstants from '../common/constants/AppConstants';
 import Context from '@ohos.app.ability.application';
+import common from '@ohos.app.ability.common';
 import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { FavoritePaperItem, PaperChatMessage, PaperChatUsedPaper } from '../model/AppModels';
 import { AppViewModel } from '../viewmodel/AppViewModel';
@@ -10,6 +11,7 @@ interface MarkdownBlock {
   text: string;
   marker: string;
   level: number;
+  linkUrl?: string;
 }
 
 @Component
@@ -42,6 +44,29 @@ export struct ChatPage {
     });
   }
 
+  private showToast(message: string): void {
+    try {
+      this.getUIContext().getPromptAction().showToast({
+        message: message
+      });
+    } catch (error) {
+    }
+  }
+
+  private async openExternalLink(url: string): Promise<void> {
+    const hostContext = this.getUIContext().getHostContext();
+    if (!hostContext || url.trim().length === 0) {
+      this.showToast('链接暂不可用');
+      return;
+    }
+
+    try {
+      await (hostContext as common.UIAbilityContext).openLink(url.trim());
+    } catch (error) {
+      this.showToast('打开链接失败');
+    }
+  }
+
   private usedPaperStatusLabel(status: string): string {
     if (status === 'full_text') {
       return '全文';
@@ -66,12 +91,15 @@ export struct ChatPage {
       if (paragraphLines.length === 0) {
         return;
       }
+      const paragraphText = this.normalizeMarkdownInline(paragraphLines.join(' '));
+      const standaloneLink = this.extractStandaloneLink(paragraphText);
       blocks.push({
         id: `paragraph-${blockIndex}`,
-        kind: 'paragraph',
-        text: this.normalizeMarkdownInline(paragraphLines.join(' ')),
+        kind: standaloneLink ? 'link' : 'paragraph',
+        text: standaloneLink?.label ?? paragraphText,
         marker: '',
-        level: 0
+        level: 0,
+        linkUrl: standaloneLink?.url
       });
       blockIndex += 1;
       paragraphLines = [];
@@ -154,6 +182,19 @@ export struct ChatPage {
         continue;
       }
 
+      if (trimmedLine.startsWith('> ')) {
+        pushParagraph();
+        blocks.push({
+          id: `quote-${blockIndex}`,
+          kind: 'quote',
+          text: this.normalizeMarkdownInline(trimmedLine.slice(2)),
+          marker: '',
+          level: 0
+        });
+        blockIndex += 1;
+        continue;
+      }
+
       if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
         pushParagraph();
         blocks.push({
@@ -204,12 +245,32 @@ export struct ChatPage {
   // 行内样式先统一降级成纯文本，优先保证阅读稳定，后续再逐步补齐更完整的 Markdown 能力。
   private normalizeMarkdownInline(text: string): string {
     return text
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '$1')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '图像: $1 ($2)')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
       .replace(/`([^`]+)`/g, '$1')
       .replace(/(\*\*|__|~~)/g, '')
       .replace(/^\>\s?/g, '')
       .trim();
+  }
+
+  private extractStandaloneLink(text: string): { label: string; url: string } | undefined {
+    const markdownLinkMatch = text.match(/^\[?([^\]]+?)\]?\s*\((https?:\/\/[^)]+)\)$/);
+    if (markdownLinkMatch) {
+      return {
+        label: markdownLinkMatch[1].trim(),
+        url: markdownLinkMatch[2].trim()
+      };
+    }
+
+    const urlMatch = text.match(/^(https?:\/\/\S+)$/);
+    if (urlMatch) {
+      return {
+        label: urlMatch[1],
+        url: urlMatch[1]
+      };
+    }
+
+    return undefined;
   }
 
   private pickerSummaryText(): string {
@@ -374,6 +435,47 @@ export struct ChatPage {
         .padding(12)
         .backgroundColor(this.palette().surfaceVariant)
         .borderRadius(12);
+    } else if (block.kind === 'quote') {
+      Row({ space: 10 }) {
+        Row()
+          .width(4)
+          .height('100%')
+          .backgroundColor(this.palette().primary)
+          .borderRadius(999);
+        Text(block.text)
+          .fontSize(14)
+          .lineHeight(22)
+          .fontColor(this.palette().textTertiary)
+          .layoutWeight(1);
+      }
+      .width('100%')
+      .padding(12)
+      .backgroundColor(this.palette().surfaceSubtle)
+      .borderRadius(14)
+      .alignItems(VerticalAlign.Top);
+    } else if (block.kind === 'link' && block.linkUrl) {
+      Column({ space: 4 }) {
+        Text(block.text)
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().primary)
+          .width('100%');
+        Text(block.linkUrl)
+          .fontSize(12)
+          .lineHeight(18)
+          .fontColor(this.palette().textSecondary)
+          .width('100%');
+      }
+      .width('100%')
+      .padding(12)
+      .backgroundColor(this.palette().surfaceSubtle)
+      .borderRadius(14)
+      .border({ width: 1, color: this.palette().outline })
+      .onClick(() => {
+        if (block.linkUrl) {
+          void this.openExternalLink(block.linkUrl);
+        }
+      });
     } else {
       Text(block.text)
         .fontSize(14)
