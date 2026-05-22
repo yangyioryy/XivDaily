@@ -471,19 +471,28 @@ export struct ChatPage {
 
   @Builder
   private feedbackStrip(message: string, backgroundColor: string, foregroundColor: string) {
-    Text(message)
-      .fontSize(13)
-      .lineHeight(20)
-      .fontColor(foregroundColor)
-      .width('100%')
-      .padding(12)
-      .backgroundColor(backgroundColor)
-      .borderRadius(14);
+    Row({ space: 8 }) {
+      Row()
+        .width(8)
+        .height(8)
+        .borderRadius(4)
+        .backgroundColor(foregroundColor);
+      Text(message)
+        .fontSize(13)
+        .lineHeight(20)
+        .fontColor(foregroundColor)
+        .layoutWeight(1);
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Center)
+    .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+    .backgroundColor(backgroundColor)
+    .borderRadius(16);
   }
 
   @Builder
   private selectionChip(favorite: FavoritePaperItem) {
-    Row({ space: 8 }) {
+    Row({ space: 6 }) {
       Row() {
         Text('✓')
           .fontSize(11)
@@ -496,17 +505,16 @@ export struct ChatPage {
       .backgroundColor(this.palette().primaryContainer)
       .borderRadius(9);
       Text(favorite.paper.title.slice(0, 18))
-        .fontSize(13)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().textPrimary);
-      Text('移除')
         .fontSize(12)
-        .fontColor(this.palette().textSecondary);
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().textPrimary)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis });
     }
-    .padding({ left: 12, right: 12, top: 7, bottom: 7 })
+    .padding({ left: 10, right: 10, top: 7, bottom: 7 })
     .margin({ right: 8, bottom: 8 })
-    .backgroundColor(this.palette().surface)
-    .borderRadius(14)
+    .backgroundColor(this.palette().secondaryContainer)
+    .borderRadius(12)
     .border({ width: 1, color: this.palette().outline })
     .onClick(() => this.togglePickerSelection(favorite.paper.id));
   }
@@ -521,13 +529,14 @@ export struct ChatPage {
         .backgroundColor(usedPaper.status === 'full_text' ? this.palette().success :
           usedPaper.status === 'summary_fallback' ? this.palette().warning : this.palette().info);
       Text(this.usedPaperStatusLabel(usedPaper.status))
-        .fontSize(13)
+        .fontSize(12)
+        .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().textSecondary);
     }
-    .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+    .padding({ left: 10, right: 10, top: 7, bottom: 7 })
     .margin({ right: 8, bottom: 8 })
     .backgroundColor(this.palette().surfaceVariant)
-    .borderRadius(12);
+    .borderRadius(10);
   }
 
   private headingFontSize(level: number): number {
