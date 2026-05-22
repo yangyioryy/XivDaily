@@ -71,6 +71,9 @@ export struct LibraryPage {
     if (this.vm.libraryState.syncFilter === 'synced') {
       return '已同步';
     }
+    if (this.vm.libraryState.syncFilter === 'failed') {
+      return '同步失败';
+    }
     if (this.vm.libraryState.syncFilter === 'not_synced') {
       return '待同步';
     }
@@ -122,8 +125,7 @@ export struct LibraryPage {
     .height(32)
     .justifyContent(FlexAlign.Center)
     .backgroundColor(this.palette().primaryContainer)
-    .borderRadius(10)
-    .border({ width: 1, color: this.palette().outline });
+    .borderRadius(10);
   }
 
   @Builder
@@ -132,8 +134,8 @@ export struct LibraryPage {
       Row() {
         Column({ space: 2 }) {
           Text('收藏库')
-            .fontSize(24)
-            .fontWeight(FontWeight.Bold)
+            .fontSize(22)
+            .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().textPrimary);
           Text(`${this.filterLabel()} · ${this.filteredFavorites().length} 条`)
             .fontSize(13)
@@ -231,10 +233,9 @@ export struct LibraryPage {
         .textAlign(TextAlign.Center);
     }
     .width('100%')
-    .padding({ left: 18, right: 18, top: 18, bottom: 18 })
+    .padding({ left: 16, right: 16, top: 18, bottom: 18 })
     .backgroundColor(this.palette().surface)
-    .borderRadius(18)
-    .border({ width: 1, color: this.palette().outline });
+    .borderRadius(16);
   }
 
   @Builder
