@@ -456,38 +456,39 @@ export struct HomePage {
 
       if (this.vm.homeState.isSummaryLoading) {
         Text('趋势摘要加载中...')
-        .fontSize(14)
-        .fontColor(this.palette().textSecondary)
+          .fontSize(15)
+          .lineHeight(22)
+          .fontColor(this.palette().textSecondary)
           .width('100%');
       } else if (this.vm.homeState.trendErrorMessage) {
         Text(this.vm.homeState.trendErrorMessage!)
-          .fontSize(14)
-          .lineHeight(21)
+          .fontSize(13)
+          .lineHeight(20)
           .fontColor(this.palette().danger)
           .width('100%')
-          .padding(14)
+          .padding({ left: 16, right: 16, top: 10, bottom: 10 })
           .backgroundColor(this.palette().dangerContainer)
-          .borderRadius(16);
+          .borderRadius(14);
       } else if (this.vm.homeState.trendSummary) {
         Text(this.vm.homeState.trendSummary!.intro)
           .fontSize(15)
           .lineHeight(22)
           .fontColor(this.palette().onSecondaryContainer)
           .width('100%')
-          .padding(14)
-          .backgroundColor(this.palette().surface)
-          .borderRadius(18);
+          .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+          .backgroundColor(this.palette().surfaceSubtle)
+          .borderRadius(16);
 
         if (this.vm.homeState.summaryExpanded) {
-          Column({ space: 12 }) {
+          Column({ space: 10 }) {
             ForEach(this.vm.homeState.trendSummary!.items, (item: TrendItem) => {
-              Column({ space: 6 }) {
-                Row({ space: 8 }) {
+              Column({ space: 4 }) {
+                Row({ space: 6 }) {
                   Text('●')
-                    .fontSize(12)
+                    .fontSize(10)
                     .fontColor(this.palette().primary);
                   Text(`${item.rank}. ${item.trendTitle}`)
-                    .fontSize(15)
+                    .fontSize(14)
                     .fontWeight(FontWeight.Medium)
                     .fontColor(this.palette().textPrimary)
                     .layoutWeight(1);
@@ -495,13 +496,13 @@ export struct HomePage {
                 .width('100%');
 
                 Text(item.summary)
-                  .fontSize(14)
-                  .lineHeight(22)
+                  .fontSize(13)
+                  .lineHeight(20)
                   .fontColor(this.palette().textSecondary);
                 if (this.representativeTitles(item).length > 0) {
                   Text(`代表论文：${this.representativeTitles(item)}`)
-                    .fontSize(13)
-                    .lineHeight(20)
+                    .fontSize(12)
+                    .lineHeight(18)
                     .fontColor(this.palette().textSecondary);
                 }
               };
@@ -518,15 +519,16 @@ export struct HomePage {
           .onClick(() => this.vm.toggleSummaryExpanded());
       } else {
         Text('暂无趋势摘要')
-          .fontSize(14)
+          .fontSize(15)
+          .lineHeight(22)
           .fontColor(this.palette().textSecondary)
           .width('100%');
       }
     }
     .width('100%')
-    .padding(18)
+    .padding(16)
     .backgroundColor(this.palette().primaryContainer)
-    .borderRadius(24);
+    .borderRadius(20);
   }
 
   @Builder
