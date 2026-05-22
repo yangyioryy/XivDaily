@@ -497,9 +497,9 @@ export struct ChatPage {
       .lineHeight(20)
       .fontColor(foregroundColor)
       .width('100%')
-      .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
       .backgroundColor(backgroundColor)
-      .borderRadius(14)
+      .borderRadius(10)
       .onClick(() => this.collapsePickerExpanded());
   }
 
@@ -878,9 +878,9 @@ export struct ChatPage {
     }
     .alignItems(HorizontalAlign.Center)
     .width('100%')
-    .padding({ left: 16, right: 16, top: 18, bottom: 18 })
+    .padding({ left: 16, right: 16, top: 20, bottom: 20 })
     .backgroundColor(this.palette().surface)
-    .borderRadius(16)
+    .borderRadius(10)
     .onClick(() => this.collapsePickerExpanded());
   }
 
@@ -903,9 +903,9 @@ export struct ChatPage {
         }
       }
       .width(message.role === 'user' ? '82%' : '86%')
-      .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
       .backgroundColor(message.role === 'user' ? this.palette().primary : this.palette().surface)
-      .borderRadius(16);
+      .borderRadius(10);
 
       if (message.role !== 'user') {
         Blank();
@@ -929,9 +929,9 @@ export struct ChatPage {
           .lineHeight(22);
       }
       .width('86%')
-      .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
       .backgroundColor(this.palette().surface)
-      .borderRadius(16)
+      .borderRadius(10)
       .alignItems(VerticalAlign.Center);
       Blank();
     }
