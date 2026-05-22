@@ -5,16 +5,12 @@ import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { PaperItem, TrendItem } from '../model/AppModels';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
-type SwipeHintMode = 'neutral' | 'sync' | 'dismiss';
-
 @Component
 export struct HomePage {
   @ObjectLink vm: AppViewModel;
   @State private customTagDraft: string = '';
   @State private isAddTagDialogVisible: boolean = false;
   @State private pendingDeletionTag: string = '';
-  @State private swipeHintMode: SwipeHintMode = 'neutral';
-  private swipeHintTimerId?: number = undefined;
 
   private readSystemColorMode(): string | number | undefined {
     try {
@@ -174,72 +170,14 @@ export struct HomePage {
     return normalizedAngle < 0 ? normalizedAngle + 360 : normalizedAngle;
   }
 
-  private clearSwipeHintTimer(): void {
-    if (this.swipeHintTimerId !== undefined) {
-      clearTimeout(this.swipeHintTimerId);
-      this.swipeHintTimerId = undefined;
-    }
-  }
-
-  private pushSwipeHint(mode: SwipeHintMode): void {
-    this.swipeHintMode = mode;
-    this.clearSwipeHintTimer();
-    this.swipeHintTimerId = setTimeout(() => {
-      this.swipeHintMode = 'neutral';
-      this.swipeHintTimerId = undefined;
-    }, 1400) as number;
-  }
-
   private handlePaperSwipe(paper: PaperItem, event: GestureEvent): void {
     const swipeEvent = event as SwipeGestureEvent;
     const angle = this.normalizeSwipeAngle(swipeEvent.angle);
     if (angle <= 90 || angle >= 270) {
-      this.pushSwipeHint('sync');
       void this.vm.syncToZotero(paper.id);
       return;
     }
-    this.pushSwipeHint('dismiss');
     this.vm.dismissHomePaper(paper.id);
-  }
-
-  private swipeHintText(): string {
-    if (this.swipeHintMode === 'sync') {
-      return '右滑执行 Zotero 同步';
-    }
-    if (this.swipeHintMode === 'dismiss') {
-      return '左滑移出当前流';
-    }
-    return '左右滑动可触发快捷操作';
-  }
-
-  private swipeHintIcon(): string {
-    if (this.swipeHintMode === 'sync') {
-      return '↻';
-    }
-    if (this.swipeHintMode === 'dismiss') {
-      return '←';
-    }
-    return '↔';
-  }
-
-  private swipeHintForegroundColor(): string {
-    if (this.swipeHintMode === 'sync') {
-      return this.palette().success;
-    }
-    if (this.swipeHintMode === 'dismiss') {
-      return this.palette().warning;
-    }
-    return this.palette().textSecondary;
-  }
-
-  private swipeHintBackgroundColor(): string {
-    if (this.swipeHintMode === 'sync') {
-      return this.palette().successContainer;
-    }
-    if (this.swipeHintMode === 'dismiss') {
-      return this.palette().warningContainer;
-    }
-    return this.palette().surfaceVariant;
   }
 
   private handleCustomTagTap(tag: string): void {
@@ -632,28 +570,28 @@ export struct HomePage {
       Column({ space: 12 }) {
         Row() {
           Text(paper.title)
-            .fontSize(16)
+            .fontSize(15)
             .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().textPrimary)
-          .layoutWeight(1);
+            .fontColor(this.palette().textPrimary)
+            .layoutWeight(1);
           Text(paper.favoriteState ? '★' : '☆')
-            .fontSize(16)
+            .fontSize(18)
             .fontColor(this.palette().warning);
         }
         .width('100%');
 
         Text(paper.authors.join(', '))
-          .fontSize(13)
-          .lineHeight(20)
+          .fontSize(12)
+          .lineHeight(18)
           .fontColor(this.palette().textSecondary);
 
         Text(`${paper.primaryCategory} · ${paper.publishedAt.slice(0, 10)} · Zotero ${paper.zoteroSyncState}`)
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().onPrimaryContainer)
-          .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+          .padding({ left: 16, right: 16, top: 8, bottom: 8 })
           .backgroundColor(this.palette().primaryContainer)
-          .borderRadius(12);
+          .borderRadius(10);
 
         if (this.isPaperExpanded(paper.id)) {
           Column({ space: 10 }) {
@@ -740,13 +678,11 @@ export struct HomePage {
           }, this.isPaperSyncing(paper.id), this.isPaperSyncing(paper.id));
         }
       }
-
-      this.swipeHintStrip();
     }
     .width('100%')
-    .padding(18)
+    .padding(16)
     .backgroundColor(this.palette().surface)
-    .borderRadius(20);
+    .borderRadius(10);
   }
 
   @Builder
@@ -781,26 +717,6 @@ export struct HomePage {
     .padding({ left: 18, right: 18, top: 24, bottom: 24 })
     .backgroundColor(this.palette().surface)
     .borderRadius(16);
-  }
-
-  @Builder
-  private swipeHintStrip() {
-    Row({ space: 6 }) {
-      Text(this.swipeHintIcon())
-        .fontSize(12)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.swipeHintForegroundColor());
-      Text(this.swipeHintText())
-        .fontSize(12)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.swipeHintForegroundColor());
-    }
-    .width('100%')
-    .justifyContent(FlexAlign.Center)
-    .alignItems(VerticalAlign.Center)
-    .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-    .backgroundColor(this.swipeHintBackgroundColor())
-    .borderRadius(12);
   }
 
   @Builder
