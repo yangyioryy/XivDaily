@@ -574,9 +574,9 @@ export struct HomePage {
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().textPrimary)
             .layoutWeight(1);
-          Text(paper.favoriteState ? '★' : '☆')
-            .fontSize(18)
-            .fontColor(this.palette().warning);
+          SymbolGlyph($r(paper.favoriteState ? 'sys.symbol.star_fill' : 'sys.symbol.star'))
+            .fontSize(20)
+            .fontColor([this.palette().warning]);
         }
         .width('100%');
 
