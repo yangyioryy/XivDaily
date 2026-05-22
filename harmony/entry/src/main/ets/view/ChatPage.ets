@@ -779,7 +779,7 @@ export struct ChatPage {
   private paperPickerCard() {
     Column({ space: 10 }) {
       Text('收藏论文')
-        .fontSize(18)
+        .fontSize(16)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().textSecondary)
         .width('100%');
@@ -827,20 +827,16 @@ export struct ChatPage {
 
   @Builder
   private emptyStateCard() {
-    Column({ space: 8 }) {
+    Column() {
       Text('选择收藏论文后开始提问')
         .fontSize(15)
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().textPrimary);
-      Text('对话会基于当前选中的收藏论文生成回答。')
-        .fontSize(13)
-        .lineHeight(19)
         .fontColor(this.palette().textSecondary)
         .textAlign(TextAlign.Center);
     }
     .alignItems(HorizontalAlign.Center)
     .width('100%')
-    .padding({ left: 18, right: 18, top: 22, bottom: 22 })
+    .padding({ left: 18, right: 18, top: 18, bottom: 18 })
     .backgroundColor(this.palette().surface)
     .borderRadius(18)
     .border({ width: 1, color: this.palette().outline });
@@ -864,8 +860,8 @@ export struct ChatPage {
           this.assistantMessageBody(message.content);
         }
       }
-      .width(message.role === 'user' ? '74%' : '82%')
-      .padding(16)
+      .width(message.role === 'user' ? '72%' : '78%')
+      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
       .backgroundColor(message.role === 'user' ? this.palette().primary : this.palette().surface)
       .borderRadius(18)
       .border({
@@ -885,16 +881,16 @@ export struct ChatPage {
     Row() {
       Row({ space: 10 }) {
         LoadingProgress()
-          .width(18)
-          .height(18)
+          .width(16)
+          .height(16)
           .color(this.palette().textSecondary);
         Text('正在思考中...')
           .fontSize(14)
           .fontColor(this.palette().textSecondary)
           .lineHeight(22);
       }
-      .width('82%')
-      .padding(16)
+      .width('78%')
+      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
       .backgroundColor(this.palette().surface)
       .borderRadius(18)
       .border({ width: 1, color: this.palette().outline })
@@ -986,11 +982,11 @@ export struct ChatPage {
         Row() {
           Column({ space: 4 }) {
             Text('论文对话')
-              .fontSize(28)
+              .fontSize(24)
               .fontWeight(FontWeight.Bold)
               .fontColor(this.palette().textPrimary);
             Text(`已选 ${this.vm.chatState.selectedPaperIds.length} 篇 · 最多 ${AppConstants.MAX_CHAT_PAPERS} 篇`)
-              .fontSize(14)
+              .fontSize(13)
               .fontColor(this.palette().textSecondary);
           }
           Blank();
