@@ -530,6 +530,39 @@ export struct HomePage {
   }
 
   @Builder
+  private paperActionButton(iconText: string, label: string, action: () => void, disabled: boolean = false,
+    isLoading: boolean = false) {
+    Row({ space: 6 }) {
+      if (isLoading) {
+        LoadingProgress()
+          .width(14)
+          .height(14)
+          .color(this.palette().onPrimaryContainer);
+      } else {
+        Text(iconText)
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().onPrimaryContainer);
+      }
+      Text(label)
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().onPrimaryContainer);
+    }
+    .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+    .margin({ right: 8, bottom: 8 })
+    .backgroundColor(this.palette().primaryContainer)
+    .borderRadius(12)
+    .alignItems(VerticalAlign.Center)
+    .opacity(disabled ? 0.6 : 1)
+    .onClick(() => {
+      if (!disabled) {
+        action();
+      }
+    });
+  }
+
+  @Builder
   private paperCard(paper: PaperItem) {
     Column({ space: 12 }) {
       Column({ space: 12 }) {
@@ -623,50 +656,21 @@ export struct HomePage {
       );
 
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-        Text(`${this.isPaperExpanded(paper.id) ? '›' : '›'} ${this.isPaperExpanded(paper.id) ? '收起摘要' : '展开摘要'}`)
-          .fontSize(14)
-          .fontColor(this.palette().onPrimaryContainer)
-          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-          .margin({ right: 8, bottom: 8 })
-          .backgroundColor(this.palette().primaryContainer)
-          .borderRadius(12)
-          .onClick(() => this.vm.toggleAbstract(paper.id));
+        this.paperActionButton('›', this.isPaperExpanded(paper.id) ? '收起摘要' : '展开摘要',
+          () => this.vm.toggleAbstract(paper.id));
 
         if (this.isPaperExpanded(paper.id)) {
-          Text(`✦ ${this.isPaperTranslating(paper.id) ? '翻译中...' : '翻译'}`)
-            .fontSize(14)
-            .fontColor(this.palette().onPrimaryContainer)
-            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-            .margin({ right: 8, bottom: 8 })
-            .backgroundColor(this.palette().primaryContainer)
-            .borderRadius(12)
-            .opacity(this.isPaperTranslating(paper.id) ? 0.6 : 1)
-            .onClick(() => {
-              void this.vm.translatePaper(paper.id);
-            });
+          this.paperActionButton('✦', this.isPaperTranslating(paper.id) ? '翻译中...' : '翻译', () => {
+            void this.vm.translatePaper(paper.id);
+          }, this.isPaperTranslating(paper.id), this.isPaperTranslating(paper.id));
         }
 
-        Text(`☆ ${paper.favoriteState ? '取消收藏' : '收藏'}`)
-          .fontSize(14)
-          .fontColor(this.palette().onPrimaryContainer)
-          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-          .margin({ right: 8, bottom: 8 })
-          .backgroundColor(this.palette().primaryContainer)
-          .borderRadius(12)
-          .onClick(() => this.vm.toggleFavorite(paper.id));
+        this.paperActionButton('☆', paper.favoriteState ? '取消收藏' : '收藏', () => this.vm.toggleFavorite(paper.id));
 
         if (paper.zoteroSyncState !== 'synced') {
-          Text(`↻ ${this.isPaperSyncing(paper.id) ? '同步中...' : '同步'}`)
-            .fontSize(14)
-            .fontColor(this.palette().onPrimaryContainer)
-            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-            .margin({ right: 8, bottom: 8 })
-            .backgroundColor(this.palette().primaryContainer)
-            .borderRadius(12)
-            .opacity(this.isPaperSyncing(paper.id) ? 0.6 : 1)
-            .onClick(() => {
-              void this.vm.syncToZotero(paper.id);
-            });
+          this.paperActionButton('↻', this.isPaperSyncing(paper.id) ? '同步中...' : '同步', () => {
+            void this.vm.syncToZotero(paper.id);
+          }, this.isPaperSyncing(paper.id), this.isPaperSyncing(paper.id));
         }
       }
 
