@@ -272,7 +272,7 @@ export struct LibraryPage {
         }
         .layoutWeight(1);
         SymbolGlyph($r('sys.symbol.star_fill'))
-          .fontSize(18)
+          .fontSize(20)
           .fontColor([this.palette().warning]);
       }
       .width('100%');
@@ -360,7 +360,7 @@ export struct LibraryPage {
     .width('100%')
     .padding(16)
     .backgroundColor(this.palette().surface)
-    .borderRadius(20)
+    .borderRadius(10)
     .border({ width: 1, color: this.palette().outline })
     .onClick(() => this.vm.toggleLibrarySelection(favorite.paper.id));
   }
