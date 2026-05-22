@@ -457,7 +457,7 @@ export struct ChatPage {
   private leadingPill() {
     Row() {
       Text('✦')
-        .fontSize(16)
+        .fontSize(15)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().primary);
     }
@@ -465,7 +465,8 @@ export struct ChatPage {
     .height(32)
     .justifyContent(FlexAlign.Center)
     .backgroundColor(this.palette().primaryContainer)
-    .borderRadius(10);
+    .borderRadius(10)
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
@@ -482,21 +483,31 @@ export struct ChatPage {
 
   @Builder
   private selectionChip(favorite: FavoritePaperItem) {
-    Row({ space: 6 }) {
-      Text('✓')
-        .fontSize(12)
-        .fontColor(this.palette().primary);
+    Row({ space: 8 }) {
+      Row() {
+        Text('✓')
+          .fontSize(11)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().primary);
+      }
+      .width(18)
+      .height(18)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(this.palette().primaryContainer)
+      .borderRadius(9);
       Text(favorite.paper.title.slice(0, 18))
         .fontSize(13)
+        .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().textPrimary);
-      Text('×')
-        .fontSize(13)
+      Text('移除')
+        .fontSize(12)
         .fontColor(this.palette().textSecondary);
     }
-    .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+    .padding({ left: 12, right: 12, top: 7, bottom: 7 })
     .margin({ right: 8, bottom: 8 })
-    .backgroundColor(this.palette().secondaryContainer)
-    .borderRadius(12)
+    .backgroundColor(this.palette().surface)
+    .borderRadius(14)
+    .border({ width: 1, color: this.palette().outline })
     .onClick(() => this.togglePickerSelection(favorite.paper.id));
   }
 
@@ -1000,10 +1011,8 @@ export struct ChatPage {
               .fontWeight(FontWeight.Medium)
               .fontColor(this.palette().primary);
           }
-          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .backgroundColor(this.palette().surfaceSubtle)
+          .padding({ left: 8, right: 8, top: 6, bottom: 6 })
           .borderRadius(999)
-          .border({ width: 1, color: this.palette().outline })
           .onClick(() => this.vm.clearConversation());
           this.leadingPill();
         }
