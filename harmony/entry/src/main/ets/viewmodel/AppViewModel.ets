@@ -29,6 +29,7 @@ export class AppViewModel {
   settingsState: SettingsStatus = createDefaultSettingsStatus();
 
   private nextActionMessageId: number = 1;
+  private homeActionTimerId?: number;
   // 用会话版本隔离收藏库快速进入对话与旧请求返回，避免旧回复污染新上下文。
   private activeChatSessionVersion: number = 0;
 
@@ -1073,14 +1074,28 @@ export class AppViewModel {
     return value.trim().replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase();
   }
 
+  private clearHomeActionTimer(): void {
+    if (this.homeActionTimerId !== undefined) {
+      clearTimeout(this.homeActionTimerId);
+      this.homeActionTimerId = undefined;
+    }
+  }
+
   private pushHomeAction(text: string): void {
     const message: HomeActionMessage = {
       id: this.nextActionMessageId,
       text: text
     };
     this.nextActionMessageId += 1;
+    this.clearHomeActionTimer();
     this.homeState.actionMessage = message;
     this.homeState.errorMessage = undefined;
+    this.homeActionTimerId = setTimeout(() => {
+      if (this.homeState.actionMessage?.id === message.id) {
+        this.homeState.actionMessage = undefined;
+      }
+      this.homeActionTimerId = undefined;
+    }, 2500) as number;
   }
 }
 
