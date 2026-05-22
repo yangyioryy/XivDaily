@@ -294,10 +294,12 @@ export struct LibraryPage {
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().onPrimaryContainer);
         }
-          .padding({ left: 14, right: 14, top: 9, bottom: 9 })
+          .padding({ left: 16, right: 16, top: 10, bottom: 10 })
           .margin({ right: 8, bottom: 8 })
           .backgroundColor(this.palette().primaryContainer)
-          .borderRadius(12)
+          .borderRadius(14)
+          .border({ width: 1, color: this.palette().primary })
+          .alignItems(VerticalAlign.Center)
           .onClick(() => {
             this.vm.openChatFromLibrary(favorite.paper.id);
           });
@@ -319,13 +321,17 @@ export struct LibraryPage {
               .fontWeight(FontWeight.Medium)
               .fontColor(this.palette().onPrimaryContainer);
           }
-            .padding({ left: 14, right: 14, top: 9, bottom: 9 })
+            .padding({ left: 16, right: 16, top: 10, bottom: 10 })
             .margin({ right: 8, bottom: 8 })
             .backgroundColor(this.palette().primaryContainer)
-            .borderRadius(12)
+            .borderRadius(14)
+            .border({ width: 1, color: this.palette().primary })
+            .alignItems(VerticalAlign.Center)
             .opacity(this.isPaperSyncing(favorite.paper.id) ? 0.6 : 1)
             .onClick(() => {
-              void this.vm.syncFavoriteToZotero(favorite.paper.id);
+              if (!this.isPaperSyncing(favorite.paper.id)) {
+                void this.vm.syncFavoriteToZotero(favorite.paper.id);
+              }
             });
         }
 
@@ -338,18 +344,20 @@ export struct LibraryPage {
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().danger);
         }
-          .padding({ left: 14, right: 14, top: 9, bottom: 9 })
+          .padding({ left: 16, right: 16, top: 10, bottom: 10 })
           .margin({ right: 8, bottom: 8 })
           .backgroundColor(this.palette().dangerContainer)
-          .borderRadius(12)
+          .borderRadius(14)
+          .border({ width: 1, color: this.palette().danger })
+          .alignItems(VerticalAlign.Center)
           .onClick(() => this.vm.deleteFavorite(favorite.paper.id));
       }
       .width('100%');
     }
     .width('100%')
-    .padding(14)
+    .padding(16)
     .backgroundColor(this.palette().surface)
-    .borderRadius(18)
+    .borderRadius(20)
     .border({ width: 1, color: this.palette().outline })
     .onClick(() => this.vm.toggleLibrarySelection(favorite.paper.id));
   }
