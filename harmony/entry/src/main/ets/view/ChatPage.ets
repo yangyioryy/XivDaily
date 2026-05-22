@@ -483,17 +483,10 @@ export struct ChatPage {
   @Builder
   private selectionChip(favorite: FavoritePaperItem) {
     Row({ space: 6 }) {
-      Row() {
-        Text('✓')
-          .fontSize(11)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().primary);
-      }
-      .width(18)
-      .height(18)
-      .justifyContent(FlexAlign.Center)
-      .backgroundColor(this.palette().primaryContainer)
-      .borderRadius(9);
+      Text('✓')
+        .fontSize(12)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().primary);
       Text(favorite.paper.title.slice(0, 18))
         .fontSize(12)
         .fontWeight(FontWeight.Medium)
@@ -501,11 +494,11 @@ export struct ChatPage {
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
     }
-    .padding({ left: 10, right: 10, top: 7, bottom: 7 })
+    .padding({ left: 12, right: 12, top: 6, bottom: 6 })
     .margin({ right: 8, bottom: 8 })
-    .backgroundColor(this.palette().secondaryContainer)
+    .backgroundColor(this.palette().primaryContainer)
     .borderRadius(12)
-    .border({ width: 1, color: this.palette().outline })
+    .alignItems(VerticalAlign.Center)
     .onClick(() => this.togglePickerSelection(favorite.paper.id));
   }
 
@@ -523,10 +516,11 @@ export struct ChatPage {
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().textSecondary);
     }
-    .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+    .padding({ left: 10, right: 10, top: 5, bottom: 5 })
     .margin({ right: 8, bottom: 8 })
     .backgroundColor(this.palette().surfaceVariant)
-    .borderRadius(12);
+    .borderRadius(10)
+    .alignItems(VerticalAlign.Center);
   }
 
   private headingFontSize(level: number): number {
@@ -996,7 +990,7 @@ export struct ChatPage {
               .fontColor(this.palette().textSecondary);
           }
           Blank();
-          Row({ space: 6 }) {
+          Row({ space: 4 }) {
             Text('×')
               .fontSize(16)
               .fontWeight(FontWeight.Medium)
