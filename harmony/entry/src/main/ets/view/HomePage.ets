@@ -398,8 +398,8 @@ export struct HomePage {
     Row() {
       Column({ space: 4 }) {
         Text(this.paperSectionTitle())
-          .fontSize(22)
-          .fontWeight(FontWeight.Bold)
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().textPrimary);
         Text(this.paperSectionSubtitle())
           .fontSize(13)
@@ -409,13 +409,17 @@ export struct HomePage {
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start);
 
-      Text(this.isFeedRefreshing() ? '刷新中' : '刷新')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().primary)
-        .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .backgroundColor(this.palette().primaryContainer)
-        .borderRadius(999)
+      Row({ space: 6 }) {
+        Text('↻')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().primary);
+        Text(this.isFeedRefreshing() ? '刷新中' : '刷新')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().primary);
+      }
+        .padding({ left: 8, right: 8, top: 8, bottom: 8 })
         .opacity(this.isFeedRefreshing() ? 0.7 : 1)
         .onClick(() => {
           // Android 刷新入口会同时刷新论文列表和趋势摘要，鸿蒙端这里保持同一条链路。
@@ -432,7 +436,7 @@ export struct HomePage {
       Row() {
         Column({ space: 6 }) {
           Text('AI 趋势简报')
-            .fontSize(20)
+            .fontSize(18)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().textPrimary);
 
@@ -445,9 +449,7 @@ export struct HomePage {
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().primary)
-          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .backgroundColor(this.palette().surface)
-          .borderRadius(999)
+          .padding({ left: 8, right: 8, top: 8, bottom: 8 })
           .onClick(() => this.vm.dismissSummary());
       }
       .width('100%');
@@ -512,9 +514,7 @@ export struct HomePage {
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().primary)
-          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .backgroundColor(this.palette().surface)
-          .borderRadius(999)
+          .padding({ left: 8, right: 8, top: 8, bottom: 8 })
           .onClick(() => this.vm.toggleSummaryExpanded());
       } else {
         Text('暂无趋势摘要')
