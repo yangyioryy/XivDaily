@@ -296,11 +296,11 @@ export struct LibraryPage {
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().onPrimaryContainer);
         }
-          .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+          .padding({ left: 14, right: 14, top: 10, bottom: 10 })
           .margin({ right: 8, bottom: 8 })
           .backgroundColor(this.palette().primaryContainer)
-          .borderRadius(14)
-          .border({ width: 1, color: this.palette().primary })
+          .borderRadius(12)
+          .justifyContent(FlexAlign.Center)
           .alignItems(VerticalAlign.Center)
           .onClick(() => {
             this.vm.openChatFromLibrary(favorite.paper.id);
@@ -323,13 +323,13 @@ export struct LibraryPage {
               .fontWeight(FontWeight.Medium)
               .fontColor(this.palette().onPrimaryContainer);
           }
-            .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+            .padding({ left: 14, right: 14, top: 10, bottom: 10 })
             .margin({ right: 8, bottom: 8 })
             .backgroundColor(this.palette().primaryContainer)
-            .borderRadius(14)
-            .border({ width: 1, color: this.palette().primary })
+            .borderRadius(12)
+            .justifyContent(FlexAlign.Center)
             .alignItems(VerticalAlign.Center)
-            .opacity(this.isPaperSyncing(favorite.paper.id) ? 0.6 : 1)
+            .opacity(this.isPaperSyncing(favorite.paper.id) ? 0.65 : 1)
             .onClick(() => {
               if (!this.isPaperSyncing(favorite.paper.id)) {
                 void this.vm.syncFavoriteToZotero(favorite.paper.id);
@@ -346,11 +346,11 @@ export struct LibraryPage {
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().danger);
         }
-          .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+          .padding({ left: 14, right: 14, top: 10, bottom: 10 })
           .margin({ right: 8, bottom: 8 })
           .backgroundColor(this.palette().dangerContainer)
-          .borderRadius(14)
-          .border({ width: 1, color: this.palette().danger })
+          .borderRadius(12)
+          .justifyContent(FlexAlign.Center)
           .alignItems(VerticalAlign.Center)
           .onClick(() => this.vm.deleteFavorite(favorite.paper.id));
       }
