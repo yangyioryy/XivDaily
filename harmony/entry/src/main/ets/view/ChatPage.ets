@@ -475,9 +475,9 @@ export struct ChatPage {
       .lineHeight(20)
       .fontColor(foregroundColor)
       .width('100%')
-      .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+      .padding({ left: 16, right: 16, top: 10, bottom: 10 })
       .backgroundColor(backgroundColor)
-      .borderRadius(16);
+      .borderRadius(14);
   }
 
   @Builder
@@ -523,10 +523,10 @@ export struct ChatPage {
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().textSecondary);
     }
-    .padding({ left: 10, right: 10, top: 7, bottom: 7 })
+    .padding({ left: 12, right: 12, top: 6, bottom: 6 })
     .margin({ right: 8, bottom: 8 })
     .backgroundColor(this.palette().surfaceVariant)
-    .borderRadius(10);
+    .borderRadius(12);
   }
 
   private headingFontSize(level: number): number {
@@ -997,8 +997,8 @@ export struct ChatPage {
           }
           Blank();
           Row({ space: 6 }) {
-            Text('✕')
-              .fontSize(14)
+            Text('×')
+              .fontSize(16)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.palette().primary);
             Text('清空')
@@ -1007,6 +1007,7 @@ export struct ChatPage {
               .fontColor(this.palette().primary);
           }
           .padding({ left: 8, right: 8, top: 8, bottom: 8 })
+          .alignItems(VerticalAlign.Center)
           .borderRadius(999)
           .onClick(() => this.vm.clearConversation());
           this.leadingPill();
