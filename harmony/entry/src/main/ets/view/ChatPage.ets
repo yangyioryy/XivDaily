@@ -407,6 +407,10 @@ export struct ChatPage {
     return `已选 ${selected.length} 篇：${selected.map((favorite: FavoritePaperItem) => favorite.paper.title.slice(0, 12)).join(' / ')}`;
   }
 
+  private pickerMenuHeight(): number {
+    return Math.min(this.vm.chatState.favorites.length * 70, 240);
+  }
+
   private syncComposerDraft(): void {
     this.composerDraft = this.vm.chatState.inputDraft;
   }
@@ -494,10 +498,11 @@ export struct ChatPage {
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
     }
-    .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+    .padding({ left: 10, right: 10, top: 6, bottom: 6 })
     .margin({ right: 8, bottom: 8 })
-    .backgroundColor(this.palette().primaryContainer)
-    .borderRadius(12)
+    .backgroundColor(this.palette().surfaceSubtle)
+    .borderRadius(999)
+    .border({ width: 1, color: this.palette().outline })
     .alignItems(VerticalAlign.Center)
     .onClick(() => this.togglePickerSelection(favorite.paper.id));
   }
@@ -725,9 +730,9 @@ export struct ChatPage {
         .fontColor(this.palette().textSecondary);
     }
     .width('100%')
-    .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-    .backgroundColor(this.palette().surface)
-    .borderRadius(12)
+    .padding({ left: 12, right: 12, top: 11, bottom: 11 })
+    .backgroundColor(this.isPickerExpanded ? this.palette().surfaceSubtle : this.palette().surface)
+    .borderRadius(14)
     .border({ width: 1, color: this.isPickerExpanded ? this.palette().primary : this.palette().outline })
     .onClick(() => {
       this.togglePickerExpanded();
@@ -738,15 +743,16 @@ export struct ChatPage {
   private inlinePickerCheckmark(selected: boolean) {
     Row() {
       Text(selected ? '✓' : '')
-        .fontSize(12)
+        .fontSize(11)
         .fontWeight(FontWeight.Medium)
         .fontColor(selected ? this.palette().primary : this.palette().textSecondary);
     }
-    .width(20)
-    .height(20)
+    .width(18)
+    .height(18)
     .justifyContent(FlexAlign.Center)
-    .backgroundColor(selected ? this.palette().primaryContainer : this.palette().surface)
-    .borderRadius(10)
+    .alignItems(VerticalAlign.Center)
+    .backgroundColor(selected ? this.palette().primaryContainer : this.palette().surfaceVariant)
+    .borderRadius(5)
     .border({ width: 1, color: selected ? this.palette().primary : this.palette().outline });
   }
 
@@ -772,13 +778,9 @@ export struct ChatPage {
     }
     .width('100%')
     .alignItems(VerticalAlign.Center)
-    .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+    .padding({ left: 10, right: 10, top: 9, bottom: 9 })
     .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().surfaceSubtle : this.palette().surface)
-    .borderRadius(12)
-    .border({
-      width: this.isPaperSelected(favorite.paper.id) ? 1 : 0,
-      color: this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline
-    })
+    .borderRadius(10)
     .onClick(() => this.togglePickerSelection(favorite.paper.id));
   }
 
@@ -801,7 +803,7 @@ export struct ChatPage {
         if (this.isPickerExpanded) {
           // Android 端这里是 DropdownMenu，Harmony 先收敛成按钮下方轻量展开面板，避免遮罩打断输入流。
           Scroll() {
-            Column({ space: 8 }) {
+            Column({ space: 2 }) {
               ForEach(this.vm.chatState.favorites, (favorite: FavoritePaperItem) => {
                 this.inlinePickerOption(favorite);
               }, (favorite: FavoritePaperItem) => favorite.paper.id);
@@ -809,10 +811,10 @@ export struct ChatPage {
             .width('100%');
           }
           .width('100%')
-          .height(Math.min(this.vm.chatState.favorites.length * 78, 260))
-          .padding(8)
+          .height(this.pickerMenuHeight())
+          .padding({ left: 6, right: 6, top: 6, bottom: 6 })
           .backgroundColor(this.palette().surface)
-          .borderRadius(16)
+          .borderRadius(14)
           .border({ width: 1, color: this.palette().outline })
           .scrollBar(BarState.Auto)
           .scrollable(ScrollDirection.Vertical);
