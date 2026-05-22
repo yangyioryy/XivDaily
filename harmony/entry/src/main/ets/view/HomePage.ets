@@ -682,21 +682,35 @@ export struct HomePage {
   @Builder
   private emptyStateCard() {
     Column({ space: 10 }) {
+      Row() {
+        Text('✦')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().primary);
+      }
+      .width(32)
+      .height(32)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(this.palette().primaryContainer)
+      .borderRadius(10);
       Text(this.emptyStateTitle())
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().textPrimary);
+        .fontColor(this.palette().textPrimary)
+        .width('100%')
+        .textAlign(TextAlign.Center);
       Text(this.emptyStateSubtitle())
         .fontSize(14)
         .lineHeight(22)
-        .fontColor(this.palette().textSecondary);
+        .fontColor(this.palette().textSecondary)
+        .width('100%')
+        .textAlign(TextAlign.Center);
     }
     .alignItems(HorizontalAlign.Center)
     .width('100%')
-    .padding({ left: 20, right: 20, top: 28, bottom: 28 })
+    .padding({ left: 18, right: 18, top: 24, bottom: 24 })
     .backgroundColor(this.palette().surface)
-    .borderRadius(20)
-    .border({ width: 1, color: this.palette().outline });
+    .borderRadius(16);
   }
 
   @Builder
@@ -824,14 +838,13 @@ export struct HomePage {
     if (this.vm.homeState.actionMessage) {
       Row() {
         Text(this.vm.homeState.actionMessage!.text)
-          .fontSize(13)
+          .fontSize(14)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().textPrimary);
+          .fontColor(this.palette().surface);
       }
-      .padding({ left: 18, right: 18, top: 10, bottom: 10 })
-      .backgroundColor(this.palette().surface)
-      .borderRadius(999)
-      .border({ width: 1, color: this.palette().outline });
+      .padding({ left: 20, right: 20, top: 10, bottom: 10 })
+      .backgroundColor(this.palette().textPrimary)
+      .borderRadius(16);
     }
   }
 
