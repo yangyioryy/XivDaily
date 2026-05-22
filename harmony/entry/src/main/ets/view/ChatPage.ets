@@ -411,6 +411,14 @@ export struct ChatPage {
     return Math.min(this.vm.chatState.favorites.length * 70, 240);
   }
 
+  private pickerButtonHeight(): number {
+    return 46;
+  }
+
+  private pickerMenuTopOffset(): number {
+    return this.pickerButtonHeight() + 6;
+  }
+
   private syncComposerDraft(): void {
     this.composerDraft = this.vm.chatState.inputDraft;
   }
@@ -798,27 +806,32 @@ export struct ChatPage {
           .fontColor(this.palette().textSecondary)
           .width('100%');
       } else {
-        this.paperPickerButton();
+        Stack({ alignContent: Alignment.TopStart }) {
+          this.paperPickerButton();
 
-        if (this.isPickerExpanded) {
-          // Android 端这里是 DropdownMenu，Harmony 先收敛成按钮下方轻量展开面板，避免遮罩打断输入流。
-          Scroll() {
-            Column({ space: 2 }) {
-              ForEach(this.vm.chatState.favorites, (favorite: FavoritePaperItem) => {
-                this.inlinePickerOption(favorite);
-              }, (favorite: FavoritePaperItem) => favorite.paper.id);
+          if (this.isPickerExpanded) {
+            // Android 端这里是锚定按钮的 DropdownMenu；Harmony 端改成局部覆盖展开，避免继续挤压下方内容。
+            Scroll() {
+              Column({ space: 2 }) {
+                ForEach(this.vm.chatState.favorites, (favorite: FavoritePaperItem) => {
+                  this.inlinePickerOption(favorite);
+                }, (favorite: FavoritePaperItem) => favorite.paper.id);
+              }
+              .width('100%');
             }
-            .width('100%');
-          }
           .width('100%')
           .height(this.pickerMenuHeight())
+          .margin({ top: this.pickerMenuTopOffset() })
           .padding({ left: 6, right: 6, top: 6, bottom: 6 })
           .backgroundColor(this.palette().surface)
           .borderRadius(14)
           .border({ width: 1, color: this.palette().outline })
           .scrollBar(BarState.Auto)
           .scrollable(ScrollDirection.Vertical);
+          }
         }
+        .width('100%')
+        .height(this.pickerButtonHeight());
 
         if (this.selectedFavorites().length > 0) {
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
