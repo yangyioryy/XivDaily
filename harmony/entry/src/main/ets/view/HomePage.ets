@@ -537,24 +537,24 @@ export struct HomePage {
     Row({ space: 6 }) {
       if (isLoading) {
         LoadingProgress()
-          .width(14)
-          .height(14)
+          .width(16)
+          .height(16)
           .color(this.palette().onPrimaryContainer);
       } else {
         Text(iconText)
-          .fontSize(13)
+          .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().onPrimaryContainer);
       }
       Text(label)
-        .fontSize(14)
+        .fontSize(13)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().onPrimaryContainer);
     }
-    .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+    .padding({ left: 12, right: 12, top: 8, bottom: 8 })
     .margin({ right: 8, bottom: 8 })
     .backgroundColor(this.palette().primaryContainer)
-    .borderRadius(12)
+    .borderRadius(10)
     .alignItems(VerticalAlign.Center)
     .opacity(disabled ? 0.6 : 1)
     .onClick(() => {
