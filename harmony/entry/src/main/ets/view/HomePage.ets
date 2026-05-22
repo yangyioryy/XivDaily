@@ -236,6 +236,17 @@ export struct HomePage {
           .backgroundColor(this.palette().surface)
           .onChange((value: string) => this.vm.updateSearchKeywordDraft(value))
           .onSubmit(() => this.vm.submitSearch());
+        if (this.isSearchActive()) {
+          Text('×')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.palette().textTertiary)
+            .padding({ left: 10, right: 10, top: 8, bottom: 8 })
+            .margin({ right: 8 })
+            .backgroundColor(this.palette().surfaceSubtle)
+            .borderRadius(999)
+            .onClick(() => this.vm.clearSearch());
+        }
         Text('搜索')
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
@@ -247,21 +258,6 @@ export struct HomePage {
       .backgroundColor(this.palette().surface)
       .borderRadius(24)
       .border({ width: 1, color: this.palette().outline });
-
-      if (this.isSearchActive()) {
-        Row() {
-          Blank();
-          Text('退出搜索')
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textTertiary)
-            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-            .backgroundColor(this.palette().secondaryContainer)
-            .borderRadius(999)
-            .onClick(() => this.vm.clearSearch());
-        }
-        .width('100%');
-      }
 
       Column({ space: 8 }) {
         Text('领域')
@@ -696,115 +692,139 @@ export struct HomePage {
     .border({ width: 1, color: this.palette().outline });
   }
 
-  build() {
-    Column({ space: AppConstants.SECTION_SPACING }) {
-      this.heroSection();
-      this.exploreControlCard();
-
-      if (this.vm.homeState.errorMessage) {
-        Text(this.vm.homeState.errorMessage!)
-          .fontSize(13)
-          .lineHeight(20)
-          .fontColor(this.palette().danger)
-          .width('100%')
-          .padding(12)
-          .backgroundColor(this.palette().dangerContainer)
-          .borderRadius(14);
-      }
-
-      if (this.vm.homeState.listWarning) {
-        Text(this.vm.homeState.listWarning!)
-          .fontSize(13)
-          .lineHeight(20)
-          .fontColor(this.palette().onSecondaryContainer)
-          .width('100%')
-          .padding(12)
-          .backgroundColor(this.palette().secondaryContainer)
-          .borderRadius(14);
-      }
-
-      if (!this.vm.homeState.dismissedSummary) {
-        this.trendSummaryCard();
-      }
-
-      if (this.vm.homeState.actionMessage) {
-        Text(this.vm.homeState.actionMessage!.text)
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().textPrimary)
-          .padding({ left: 14, right: 14, top: 10, bottom: 10 })
-          .backgroundColor(this.palette().surfaceVariant)
-          .borderRadius(999);
-      }
+  @Builder
+  private addTagDialogOverlay() {
+    Stack({ alignContent: Alignment.Center }) {
+      Row()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('#66000000')
+        .onClick(() => this.hideAddTagDialog());
 
       Column({ space: 12 }) {
-        this.paperSectionHeader();
-
-        if (this.vm.homeState.papers.length === 0) {
-          this.emptyStateCard();
-        } else {
-          ForEach(this.vm.homeState.papers, (paper: PaperItem) => {
-            this.paperCard(paper);
-          }, (paper: PaperItem) => paper.id);
-        }
-      }
-      .width('100%');
-
-      if (this.isAddTagDialogVisible) {
-        Column({ space: 12 }) {
-          Text('添加自定义标签')
-            .fontSize(18)
+        Text('添加自定义标签')
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().textPrimary);
+        Text('输入研究方向，例如 embodied-ai。标签会作为关键词检索论文。')
+          .fontSize(13)
+          .fontColor(this.palette().textSecondary);
+        TextInput({
+          placeholder: '标签名称',
+          text: this.customTagDraft
+        })
+          .fontSize(15)
+          .fontColor(this.palette().textPrimary)
+          .placeholderColor(this.palette().textSecondary)
+          .backgroundColor(this.palette().surface)
+          .borderRadius(14)
+          .border({ width: 1, color: this.palette().outline })
+          .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+          .onChange((value: string) => this.customTagDraft = value)
+          .onClick(() => {});
+        Row({ space: 8 }) {
+          Blank();
+          Text('取消')
+            .fontSize(14)
             .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary);
-          Text('输入研究方向，例如 embodied-ai。标签会作为关键词检索论文。')
-            .fontSize(13)
-            .fontColor(this.palette().textSecondary);
-          TextInput({
-            placeholder: '标签名称',
-            text: this.customTagDraft
-          })
-            .fontSize(15)
-            .fontColor(this.palette().textPrimary)
-            .placeholderColor(this.palette().textSecondary)
-            .backgroundColor(this.palette().surface)
+            .fontColor(this.palette().primary)
+            .padding({ left: 18, right: 18, top: 10, bottom: 10 })
+            .backgroundColor(this.palette().primaryContainer)
             .borderRadius(14)
-            .border({ width: 1, color: this.palette().outline })
-            .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-            .onChange((value: string) => this.customTagDraft = value);
-          Row({ space: 8 }) {
-            Text('添加')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.palette().onPrimary)
-              .padding({ left: 18, right: 18, top: 10, bottom: 10 })
-              .backgroundColor(this.palette().primary)
-              .borderRadius(14)
-              .onClick(() => this.confirmAddCustomTag());
-            Text('取消')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.palette().primary)
-              .padding({ left: 18, right: 18, top: 10, bottom: 10 })
-              .backgroundColor(this.palette().primaryContainer)
-              .borderRadius(14)
-              .onClick(() => this.hideAddTagDialog());
-          }
+            .onClick(() => this.hideAddTagDialog());
+          Text('添加')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.palette().onPrimary)
+            .padding({ left: 18, right: 18, top: 10, bottom: 10 })
+            .backgroundColor(this.palette().primary)
+            .borderRadius(14)
+            .onClick(() => this.confirmAddCustomTag());
         }
         .width('100%')
-        .padding(16)
-        .backgroundColor(this.palette().surface)
-        .borderRadius(20)
-        .border({ width: 1, color: this.palette().outline });
+        .justifyContent(FlexAlign.End);
       }
+      .width('100%')
+      .margin({ left: 24, right: 24 })
+      .padding(16)
+      .backgroundColor(this.palette().surface)
+      .borderRadius(20)
+      .border({ width: 1, color: this.palette().outline })
+      .onClick(() => {});
     }
     .width('100%')
-    .onClick(() => {
-      if (this.pendingDeletionTag.length > 0) {
-        this.clearPendingDeletion();
+    .height('100%');
+  }
+
+  build() {
+    Stack({ alignContent: Alignment.TopStart }) {
+      Column({ space: AppConstants.SECTION_SPACING }) {
+        this.heroSection();
+        this.exploreControlCard();
+
+        if (this.vm.homeState.errorMessage) {
+          Text(this.vm.homeState.errorMessage!)
+            .fontSize(13)
+            .lineHeight(20)
+            .fontColor(this.palette().danger)
+            .width('100%')
+            .padding(12)
+            .backgroundColor(this.palette().dangerContainer)
+            .borderRadius(14);
+        }
+
+        if (this.vm.homeState.listWarning) {
+          Text(this.vm.homeState.listWarning!)
+            .fontSize(13)
+            .lineHeight(20)
+            .fontColor(this.palette().onSecondaryContainer)
+            .width('100%')
+            .padding(12)
+            .backgroundColor(this.palette().secondaryContainer)
+            .borderRadius(14);
+        }
+
+        if (!this.vm.homeState.dismissedSummary) {
+          this.trendSummaryCard();
+        }
+
+        if (this.vm.homeState.actionMessage) {
+          Text(this.vm.homeState.actionMessage!.text)
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.palette().textPrimary)
+            .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+            .backgroundColor(this.palette().surfaceVariant)
+            .borderRadius(999);
+        }
+
+        Column({ space: 12 }) {
+          this.paperSectionHeader();
+
+          if (this.vm.homeState.papers.length === 0) {
+            this.emptyStateCard();
+          } else {
+            ForEach(this.vm.homeState.papers, (paper: PaperItem) => {
+              this.paperCard(paper);
+            }, (paper: PaperItem) => paper.id);
+          }
+        }
+        .width('100%');
       }
-    })
-    .alignItems(HorizontalAlign.Start)
-    .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
+      .width('100%')
+      .onClick(() => {
+        if (this.pendingDeletionTag.length > 0) {
+          this.clearPendingDeletion();
+        }
+      })
+      .alignItems(HorizontalAlign.Start)
+      .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
+
+      if (this.isAddTagDialogVisible) {
+        this.addTagDialogOverlay();
+      }
+    }
+    .width('100%');
   }
 }
 
