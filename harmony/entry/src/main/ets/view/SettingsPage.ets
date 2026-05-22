@@ -248,13 +248,13 @@ export struct SettingsPage {
   @Builder
   private leadingIcon(iconText: string, highlighted: boolean = false) {
     Text(iconText)
-      .fontSize(16)
+      .fontSize(15)
       .fontWeight(FontWeight.Medium)
       .fontColor(highlighted ? this.palette().primary : this.palette().textSecondary)
       .width(32)
       .height(32)
       .textAlign(TextAlign.Center)
-      .backgroundColor(highlighted ? this.palette().primaryContainer : this.palette().secondaryContainer)
+      .backgroundColor(highlighted ? this.palette().primaryContainer : this.palette().surfaceVariant)
       .borderRadius(10);
   }
 
@@ -400,14 +400,14 @@ export struct SettingsPage {
     Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
       ForEach(values, (value: string) => {
         Text(labelMapper(value))
-          .fontSize(14)
+          .fontSize(13)
           .fontWeight(selectedValue === value ? FontWeight.Medium : FontWeight.Regular)
-          .fontColor(selectedValue === value ? this.palette().textPrimary : this.palette().textSecondary)
-          .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+          .fontColor(selectedValue === value ? this.palette().onPrimaryContainer : this.palette().textSecondary)
+          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
           .margin({ right: 8, bottom: 8 })
-          .backgroundColor(selectedValue === value ? this.palette().secondaryContainer : this.palette().surface)
-          .borderRadius(12)
-          .border({ width: 1, color: this.palette().outline })
+          .backgroundColor(selectedValue === value ? this.palette().primaryContainer : this.palette().surface)
+          .borderRadius(14)
+          .border({ width: 1, color: selectedValue === value ? this.palette().primary : this.palette().outline })
           .onClick(() => onSelect(value));
       }, (value: string) => value);
     }
@@ -419,14 +419,14 @@ export struct SettingsPage {
     Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
       ForEach(values, (value: number) => {
         Text(value === 1 ? '24h' : `${value} 天`)
-          .fontSize(14)
+          .fontSize(13)
           .fontWeight(selectedValue === value ? FontWeight.Medium : FontWeight.Regular)
-          .fontColor(selectedValue === value ? this.palette().textPrimary : this.palette().textSecondary)
-          .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+          .fontColor(selectedValue === value ? this.palette().onPrimaryContainer : this.palette().textSecondary)
+          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
           .margin({ right: 8, bottom: 8 })
-          .backgroundColor(selectedValue === value ? this.palette().secondaryContainer : this.palette().surface)
-          .borderRadius(12)
-          .border({ width: 1, color: this.palette().outline })
+          .backgroundColor(selectedValue === value ? this.palette().primaryContainer : this.palette().surface)
+          .borderRadius(14)
+          .border({ width: 1, color: selectedValue === value ? this.palette().primary : this.palette().outline })
           .onClick(() => onSelect(value));
       }, (value: number) => `${value}`);
     }
@@ -450,19 +450,19 @@ export struct SettingsPage {
       .layoutWeight(1);
       if (value !== undefined) {
         Text(value)
-          .fontSize(14)
+          .fontSize(13)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().textSecondary);
       }
       if (!disabled) {
         Text('›')
           .fontSize(18)
-          .fontColor(action ? this.palette().primary : this.palette().textSecondary);
+          .fontColor(this.palette().textSecondary);
       }
     }
     .width('100%')
     .opacity(disabled ? 0.55 : 1)
-    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
     .onClick(() => {
       if (!disabled && action) {
         action();
@@ -486,7 +486,7 @@ export struct SettingsPage {
       .layoutWeight(1);
 
       Text(value)
-        .fontSize(13)
+        .fontSize(12)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().textSecondary);
 
@@ -497,7 +497,7 @@ export struct SettingsPage {
         .fontColor(this.palette().textSecondary);
     }
     .width('100%')
-    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
     .onClick(() => action());
   }
 
