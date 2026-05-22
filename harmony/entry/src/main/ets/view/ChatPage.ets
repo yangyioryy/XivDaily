@@ -705,8 +705,8 @@ export struct ChatPage {
           .width('100%');
       }
       .width('100%')
-      .padding(12)
-      .backgroundColor(this.palette().surfaceSubtle)
+      .padding({ left: 10, right: 10, top: 10, bottom: 10 })
+      .backgroundColor(this.palette().surface)
       .borderRadius(14)
       .border({ width: 1, color: this.palette().outline })
       .onClick(() => {
