@@ -872,14 +872,10 @@ export struct ChatPage {
           this.assistantMessageBody(message.content);
         }
       }
-      .width(message.role === 'user' ? '72%' : '78%')
-      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+      .width(message.role === 'user' ? '82%' : '86%')
+      .padding({ left: 14, right: 14, top: 12, bottom: 12 })
       .backgroundColor(message.role === 'user' ? this.palette().primary : this.palette().surface)
-      .borderRadius(18)
-      .border({
-        width: message.role === 'user' ? 0 : 1,
-        color: this.palette().outline
-      });
+      .borderRadius(16);
 
       if (message.role !== 'user') {
         Blank();
@@ -901,11 +897,10 @@ export struct ChatPage {
           .fontColor(this.palette().textSecondary)
           .lineHeight(22);
       }
-      .width('78%')
-      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+      .width('86%')
+      .padding({ left: 14, right: 14, top: 12, bottom: 12 })
       .backgroundColor(this.palette().surface)
-      .borderRadius(18)
-      .border({ width: 1, color: this.palette().outline })
+      .borderRadius(16)
       .alignItems(VerticalAlign.Center);
       Blank();
     }
