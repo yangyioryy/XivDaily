@@ -967,20 +967,19 @@ export struct ChatPage {
             .fontSize(16)
             .fontColor([this.canSendMessage() ? this.palette().primary : this.palette().textSecondary]);
         }
-        .width(40)
-        .height(40)
+        .width(32)
+        .height(32)
         .justifyContent(FlexAlign.Center)
-        .backgroundColor(this.canSendMessage() ? this.palette().primaryContainer : this.palette().surfaceVariant)
-        .borderRadius(12)
+        .borderRadius(16)
         .opacity(this.sendActionOpacity())
         .onClick(() => {
           this.submitComposer();
         });
       }
       .layoutWeight(1)
-      .padding({ left: 14, right: 12, top: 0, bottom: 0 })
-      .backgroundColor(this.palette().surfaceSubtle)
-      .borderRadius(16)
+      .padding({ left: 12, right: 8, top: 0, bottom: 0 })
+      .backgroundColor(this.palette().surface)
+      .borderRadius(12)
       .border({ width: 1, color: this.palette().outline })
       .alignItems(VerticalAlign.Center);
     }
