@@ -290,17 +290,17 @@ export struct LibraryPage {
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
         Row({ space: 6 }) {
           SymbolGlyph($r('sys.symbol.paperplane_fill'))
-            .fontSize(14)
+            .fontSize(16)
             .fontColor([this.palette().onPrimaryContainer]);
           Text('对话')
-            .fontSize(14)
+            .fontSize(13)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().onPrimaryContainer);
         }
-          .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
           .margin({ right: 8, bottom: 8 })
           .backgroundColor(this.palette().primaryContainer)
-          .borderRadius(12)
+          .borderRadius(10)
           .justifyContent(FlexAlign.Center)
           .alignItems(VerticalAlign.Center)
           .onClick(() => {
@@ -311,23 +311,23 @@ export struct LibraryPage {
           Row({ space: 6 }) {
             if (this.isPaperSyncing(favorite.paper.id)) {
               LoadingProgress()
-                .width(14)
-                .height(14)
+                .width(16)
+                .height(16)
                 .color(this.palette().onPrimaryContainer);
             } else {
               SymbolGlyph($r('sys.symbol.arrow_2_circlepath'))
-                .fontSize(14)
+                .fontSize(16)
                 .fontColor([this.palette().onPrimaryContainer]);
             }
             Text(this.isPaperSyncing(favorite.paper.id) ? '同步中...' : '同步 Zotero')
-              .fontSize(14)
+              .fontSize(13)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.palette().onPrimaryContainer);
           }
-            .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+            .padding({ left: 12, right: 12, top: 8, bottom: 8 })
             .margin({ right: 8, bottom: 8 })
             .backgroundColor(this.palette().primaryContainer)
-            .borderRadius(12)
+            .borderRadius(10)
             .justifyContent(FlexAlign.Center)
             .alignItems(VerticalAlign.Center)
             .opacity(this.isPaperSyncing(favorite.paper.id) ? 0.65 : 1)
@@ -340,17 +340,17 @@ export struct LibraryPage {
 
         Row({ space: 6 }) {
           SymbolGlyph($r('sys.symbol.trash'))
-            .fontSize(14)
+            .fontSize(16)
             .fontColor([this.palette().danger]);
           Text('删除')
-            .fontSize(14)
+            .fontSize(13)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().danger);
         }
-          .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
           .margin({ right: 8, bottom: 8 })
           .backgroundColor(this.palette().dangerContainer)
-          .borderRadius(12)
+          .borderRadius(10)
           .justifyContent(FlexAlign.Center)
           .alignItems(VerticalAlign.Center)
           .onClick(() => this.vm.deleteFavorite(favorite.paper.id));
