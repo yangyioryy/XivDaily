@@ -114,7 +114,7 @@ export struct LibraryPage {
   private leadingPill(iconText: string) {
     Row() {
       Text(iconText)
-        .fontSize(16)
+        .fontSize(15)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().primary);
     }
@@ -122,20 +122,21 @@ export struct LibraryPage {
     .height(32)
     .justifyContent(FlexAlign.Center)
     .backgroundColor(this.palette().primaryContainer)
-    .borderRadius(10);
+    .borderRadius(10)
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
   private heroSection() {
-    Column({ space: 12 }) {
+    Column({ space: 10 }) {
       Row() {
-        Column({ space: 4 }) {
+        Column({ space: 2 }) {
           Text('收藏库')
-            .fontSize(28)
+            .fontSize(24)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.palette().textPrimary);
           Text(`${this.filterLabel()} · ${this.filteredFavorites().length} 条`)
-            .fontSize(14)
+            .fontSize(13)
             .fontColor(this.palette().textSecondary);
         }
         Blank();
@@ -152,14 +153,14 @@ export struct LibraryPage {
   @Builder
   private filterChip(value: string, label: string) {
     Text(label)
-      .fontSize(14)
+      .fontSize(13)
       .fontWeight(this.isSyncFilterSelected(value) ? FontWeight.Medium : FontWeight.Regular)
-      .fontColor(this.isSyncFilterSelected(value) ? this.palette().textPrimary : this.palette().textSecondary)
-      .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+      .fontColor(this.isSyncFilterSelected(value) ? this.palette().onPrimaryContainer : this.palette().textSecondary)
+      .padding({ left: 14, right: 14, top: 8, bottom: 8 })
       .margin({ right: 8, bottom: 8 })
-      .backgroundColor(this.isSyncFilterSelected(value) ? this.palette().secondaryContainer : this.palette().surface)
-      .borderRadius(12)
-      .border({ width: 1, color: this.palette().outline })
+      .backgroundColor(this.isSyncFilterSelected(value) ? this.palette().primaryContainer : this.palette().surface)
+      .borderRadius(14)
+      .border({ width: 1, color: this.isSyncFilterSelected(value) ? this.palette().primary : this.palette().outline })
       .onClick(() => this.vm.selectLibraryFilter(value));
   }
 
@@ -187,9 +188,10 @@ export struct LibraryPage {
         .width('100%');
     }
     .width('100%')
-    .padding(12)
+    .padding(14)
     .backgroundColor(backgroundColor)
-    .borderRadius(14);
+    .borderRadius(16)
+    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
@@ -403,7 +405,7 @@ export struct LibraryPage {
   private listSection() {
     Column({ space: 12 }) {
       Text('收藏论文')
-        .fontSize(24)
+        .fontSize(22)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().textPrimary)
         .width('100%');
