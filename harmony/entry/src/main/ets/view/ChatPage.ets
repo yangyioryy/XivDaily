@@ -610,20 +610,21 @@ export struct ChatPage {
   private markdownInlineLinkChip(link: MarkdownLinkRef) {
     Row({ space: 4 }) {
       Text('↗')
-        .fontSize(12)
+        .fontSize(11)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().primary);
       Text(link.label)
-        .fontSize(12)
+        .fontSize(11)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().primary)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
     }
-    .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-    .margin({ right: 8, bottom: 6 })
-    .backgroundColor(this.palette().primaryContainer)
-    .borderRadius(10)
+    .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+    .margin({ right: 8, bottom: 4 })
+    .backgroundColor(this.palette().surfaceSubtle)
+    .borderRadius(8)
+    .border({ width: 1, color: this.palette().outline })
     .onClick(() => {
       void this.openExternalLink(link.url);
     });
