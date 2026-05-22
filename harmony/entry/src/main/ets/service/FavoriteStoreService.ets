@@ -11,17 +11,14 @@ export class FavoriteStoreService {
   read(seedFavorites: FavoritePaperItem[] = []): FavoritePaperItem[] {
     const value = AppStorage.get<FavoritePaperItem[]>(FAVORITE_STORAGE_KEY);
     if (value === undefined) {
-      return seedFavorites;
+      return this.sortFavorites(seedFavorites);
     }
-    return value;
+    return this.sortFavorites(value);
   }
 
   saveFavorite(paper: PaperItem): FavoritePaperItem[] {
     const current = this.read();
     const existed = current.find((item: FavoritePaperItem) => item.paper.id === paper.id);
-    if (existed) {
-      return current;
-    }
 
     const favoritePaper: PaperItem = {
       id: paper.id,
@@ -37,19 +34,41 @@ export class FavoriteStoreService {
       favoriteState: true,
       zoteroSyncState: paper.zoteroSyncState
     };
+    const savedAt = new Date().toISOString();
     const nextFavorite: FavoritePaperItem = {
       paper: favoritePaper,
-      savedAt: new Date().toISOString().slice(0, 10)
+      savedAt
     };
-    const nextFavorites: FavoritePaperItem[] = current.concat([nextFavorite]);
+    const nextFavorites: FavoritePaperItem[] = existed
+      ? current.map((item: FavoritePaperItem) => item.paper.id === paper.id ? nextFavorite : item)
+      : current.concat([nextFavorite]);
+    const sortedFavorites = this.sortFavorites(nextFavorites);
+    AppStorage.setOrCreate<FavoritePaperItem[]>(FAVORITE_STORAGE_KEY, sortedFavorites);
+    return sortedFavorites;
+  }
+
+  deleteFavorite(paperId: string): FavoritePaperItem[] {
+    const nextFavorites = this.sortFavorites(this.read().filter((item: FavoritePaperItem) => item.paper.id !== paperId));
     AppStorage.setOrCreate<FavoritePaperItem[]>(FAVORITE_STORAGE_KEY, nextFavorites);
     return nextFavorites;
   }
 
-  deleteFavorite(paperId: string): FavoritePaperItem[] {
-    const nextFavorites = this.read().filter((item: FavoritePaperItem) => item.paper.id !== paperId);
-    AppStorage.setOrCreate<FavoritePaperItem[]>(FAVORITE_STORAGE_KEY, nextFavorites);
-    return nextFavorites;
+  private sortFavorites(favorites: FavoritePaperItem[]): FavoritePaperItem[] {
+    return favorites.slice().sort((left: FavoritePaperItem, right: FavoritePaperItem) => {
+      return this.savedAtToMillis(right.savedAt) - this.savedAtToMillis(left.savedAt);
+    });
+  }
+
+  private savedAtToMillis(savedAt: string): number {
+    const parsedValue = Date.parse(savedAt);
+    if (!Number.isNaN(parsedValue)) {
+      return parsedValue;
+    }
+    const legacyParsedValue = Date.parse(`${savedAt}T00:00:00.000Z`);
+    if (!Number.isNaN(legacyParsedValue)) {
+      return legacyParsedValue;
+    }
+    return 0;
   }
 }
 
