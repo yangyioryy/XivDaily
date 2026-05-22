@@ -268,6 +268,51 @@ export struct SettingsPage {
   }
 
   @Builder
+  private dialogHeader(icon: string, title: string, subtitle?: string, destructive: boolean = false) {
+    Row({ space: 12 }) {
+      Text(icon)
+        .fontSize(17)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(destructive ? this.palette().danger : this.palette().onPrimaryContainer)
+        .width(40)
+        .height(40)
+        .textAlign(TextAlign.Center)
+        .backgroundColor(destructive ? this.palette().dangerContainer : this.palette().primaryContainer)
+        .borderRadius(14);
+      Column({ space: 4 }) {
+        Text(title)
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().textPrimary)
+          .width('100%');
+        if (subtitle !== undefined && subtitle.length > 0) {
+          Text(subtitle)
+            .fontSize(13)
+            .lineHeight(20)
+            .fontColor(this.palette().textSecondary)
+            .width('100%');
+        }
+      }
+      .layoutWeight(1);
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Center);
+  }
+
+  @Builder
+  private dialogInfoPanel(message: string, destructive: boolean = false) {
+    Text(message)
+      .fontSize(13)
+      .lineHeight(20)
+      .fontColor(destructive ? this.palette().danger : this.palette().textSecondary)
+      .width('100%')
+      .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+      .backgroundColor(destructive ? this.palette().dangerContainer : this.palette().surfaceSubtle)
+      .borderRadius(16)
+      .border({ width: 1, color: destructive ? this.palette().danger : this.palette().outline });
+  }
+
+  @Builder
   private sectionTitle(title: string) {
     Text(title)
       .fontSize(16)
@@ -489,11 +534,12 @@ export struct SettingsPage {
     Text(label)
       .fontSize(14)
       .fontWeight(FontWeight.Medium)
-      .fontColor(primary ? this.palette().onPrimary : this.palette().primary)
-      .padding({ left: 18, right: 18, top: 10, bottom: 10 })
-      .backgroundColor(primary ? this.palette().primary : this.palette().primaryContainer)
-      .borderRadius(14)
-      .opacity(disabled ? 0.6 : 1)
+      .fontColor(primary ? this.palette().primary : this.palette().textSecondary)
+      .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+      .backgroundColor(primary ? this.palette().primaryContainer : this.palette().surfaceSubtle)
+      .borderRadius(12)
+      .border({ width: 1, color: primary ? this.palette().primary : this.palette().outline })
+      .opacity(disabled ? 0.5 : 1)
       .onClick(() => {
         if (!disabled) {
           action();
@@ -639,38 +685,41 @@ export struct SettingsPage {
     if (this.vm.settingsState.isThemePickerVisible) {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.vm.hideThemePicker());
-        Column({ space: 10 }) {
-          Text('选择主题模式')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary);
-          this.settingRow(this.vm.settingsState.themeMode === 'system' ? '✦' : '›', '跟随系统',
-            this.vm.settingsState.themeMode === 'system' ? '当前已选中' : '点击切换到该选项', undefined, () => {
-            this.vm.selectThemeMode('system');
-            this.applyThemeMode('system');
-          }, false, this.vm.settingsState.themeMode === 'system');
-          Divider().color(this.palette().divider);
-          this.settingRow(this.vm.settingsState.themeMode === 'light' ? '✦' : '›', '浅色',
-            this.vm.settingsState.themeMode === 'light' ? '当前已选中' : '点击切换到该选项', undefined, () => {
-            this.vm.selectThemeMode('light');
-            this.applyThemeMode('light');
-          }, false, this.vm.settingsState.themeMode === 'light');
-          Divider().color(this.palette().divider);
-          this.settingRow(this.vm.settingsState.themeMode === 'dark' ? '✦' : '›', '深色',
-            this.vm.settingsState.themeMode === 'dark' ? '当前已选中' : '点击切换到该选项', undefined, () => {
-            this.vm.selectThemeMode('dark');
-            this.applyThemeMode('dark');
-          }, false, this.vm.settingsState.themeMode === 'dark');
+        Column({ space: 14 }) {
+          this.dialogHeader('☾', '选择主题模式', '支持浅色、深色与跟随系统三种展示方式');
+          Column({ space: 0 }) {
+            this.settingRow(this.vm.settingsState.themeMode === 'system' ? '✦' : '›', '跟随系统',
+              this.vm.settingsState.themeMode === 'system' ? '当前已选中' : '点击切换到该选项', undefined, () => {
+              this.vm.selectThemeMode('system');
+              this.applyThemeMode('system');
+            }, false, this.vm.settingsState.themeMode === 'system');
+            Divider().color(this.palette().divider);
+            this.settingRow(this.vm.settingsState.themeMode === 'light' ? '✦' : '›', '浅色',
+              this.vm.settingsState.themeMode === 'light' ? '当前已选中' : '点击切换到该选项', undefined, () => {
+              this.vm.selectThemeMode('light');
+              this.applyThemeMode('light');
+            }, false, this.vm.settingsState.themeMode === 'light');
+            Divider().color(this.palette().divider);
+            this.settingRow(this.vm.settingsState.themeMode === 'dark' ? '✦' : '›', '深色',
+              this.vm.settingsState.themeMode === 'dark' ? '当前已选中' : '点击切换到该选项', undefined, () => {
+              this.vm.selectThemeMode('dark');
+              this.applyThemeMode('dark');
+            }, false, this.vm.settingsState.themeMode === 'dark');
+          }
+          .width('100%')
+          .backgroundColor(this.palette().surfaceSubtle)
+          .borderRadius(18)
+          .border({ width: 1, color: this.palette().outline });
           Row() {
             Blank();
             this.formActionButton('关闭', false, false, () => this.vm.hideThemePicker());
           }
           .width('100%');
         }
-        .width('88%')
-        .padding(16)
+        .width('90%')
+        .padding(20)
         .backgroundColor(this.palette().surface)
-        .borderRadius(20)
+        .borderRadius(24)
         .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
@@ -683,22 +732,25 @@ export struct SettingsPage {
     if (this.vm.settingsState.isLanguagePickerVisible) {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.vm.hideLanguagePicker());
-        Column({ space: 10 }) {
-          Text('选择语言')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary);
-          this.settingRow('✦', '简体中文', '当前已选中', undefined, () => this.vm.selectLanguage('zh-CN'), false, true);
+        Column({ space: 14 }) {
+          this.dialogHeader('🌐', '选择语言', '当前版本提供与 Android 端一致的语言选项');
+          Column({ space: 0 }) {
+            this.settingRow('✦', '简体中文', '当前已选中', undefined, () => this.vm.selectLanguage('zh-CN'), false, true);
+          }
+          .width('100%')
+          .backgroundColor(this.palette().surfaceSubtle)
+          .borderRadius(18)
+          .border({ width: 1, color: this.palette().outline });
           Row() {
             Blank();
             this.formActionButton('关闭', false, false, () => this.vm.hideLanguagePicker());
           }
           .width('100%');
         }
-        .width('88%')
-        .padding(16)
+        .width('90%')
+        .padding(20)
         .backgroundColor(this.palette().surface)
-        .borderRadius(20)
+        .borderRadius(24)
         .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
@@ -711,19 +763,9 @@ export struct SettingsPage {
     if (this.vm.settingsState.isZoteroDetailDialogVisible) {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.vm.hideZoteroDetailDialog());
-        Column({ space: 12 }) {
-          Text('Zotero 配置')
-            .fontSize(18)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary);
-          Text(this.zoteroDetailMessage())
-            .fontSize(13)
-            .lineHeight(20)
-            .fontColor(this.palette().onSecondaryContainer)
-            .width('100%')
-            .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-            .backgroundColor(this.palette().secondaryContainer)
-            .borderRadius(16);
+        Column({ space: 14 }) {
+          this.dialogHeader('⚗', 'Zotero 配置', '连接 Zotero Web API，同步当前论文到指定集合');
+          this.dialogInfoPanel(this.zoteroDetailMessage());
           Text(`当前集合：${this.vm.settingsState.zoteroTargetCollectionName}`)
             .fontSize(13)
             .fontColor(this.palette().textSecondary);
@@ -750,18 +792,18 @@ export struct SettingsPage {
             this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
               void this.vm.testZoteroConfig();
             });
+            Blank();
+            this.formActionButton('取消', false, false, () => this.vm.hideZoteroDetailDialog());
             this.formActionButton(this.vm.settingsState.isConfigBusy ? '保存中...' : '保存', true, this.vm.settingsState.isConfigBusy, () => {
               void this.vm.saveZoteroConfig();
             });
-            Blank();
-            this.formActionButton('取消', false, false, () => this.vm.hideZoteroDetailDialog());
           }
           .width('100%');
         }
-        .width('88%')
-        .padding(16)
+        .width('90%')
+        .padding(20)
         .backgroundColor(this.palette().surface)
-        .borderRadius(20)
+        .borderRadius(24)
         .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
@@ -774,11 +816,8 @@ export struct SettingsPage {
     if (this.vm.settingsState.isLlmDetailDialogVisible) {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.vm.hideLlmDetailDialog());
-        Column({ space: 12 }) {
-          Text('大模型 API 配置')
-            .fontSize(18)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary);
+        Column({ space: 14 }) {
+          this.dialogHeader('✦', '大模型 API 配置', '用于摘要翻译、趋势总结与对话回复生成');
           this.formInput('Base URL', this.vm.settingsState.llmBaseUrlDraft, 'https://...', (value: string) => {
             this.vm.updateLlmBaseUrlDraft(value);
           });
@@ -792,18 +831,18 @@ export struct SettingsPage {
             this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
               void this.vm.testLlmConfig();
             });
+            Blank();
+            this.formActionButton('取消', false, false, () => this.vm.hideLlmDetailDialog());
             this.formActionButton(this.vm.settingsState.isConfigBusy ? '保存中...' : '保存', true, this.vm.settingsState.isConfigBusy, () => {
               void this.vm.saveLlmConfig();
             });
-            Blank();
-            this.formActionButton('取消', false, false, () => this.vm.hideLlmDetailDialog());
           }
           .width('100%');
         }
-        .width('88%')
-        .padding(16)
+        .width('90%')
+        .padding(20)
         .backgroundColor(this.palette().surface)
-        .borderRadius(20)
+        .borderRadius(24)
         .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
@@ -816,11 +855,8 @@ export struct SettingsPage {
     if (this.isProfileEditorVisible) {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.hideProfileEditor());
-        Column({ space: 12 }) {
-          Text('编辑个人资料')
-            .fontSize(18)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary);
+        Column({ space: 14 }) {
+          this.dialogHeader('✎', '编辑个人资料', '同步昵称和头像，更新本地研究档案展示');
           this.formInput('用户名', this.profileNameDraft, 'XivDaily Reader', (value: string) => {
             this.profileNameDraft = value;
           });
@@ -851,15 +887,16 @@ export struct SettingsPage {
             .fontSize(13)
             .fontColor(this.palette().textSecondary);
           Row({ space: 8 }) {
-            this.formActionButton('保存', true, false, () => this.saveProfileEditor());
+            Blank();
             this.formActionButton('取消', false, false, () => this.hideProfileEditor());
+            this.formActionButton('保存', true, false, () => this.saveProfileEditor());
           }
           .width('100%');
         }
-        .width('88%')
-        .padding(16)
+        .width('90%')
+        .padding(20)
         .backgroundColor(this.palette().surface)
-        .borderRadius(20)
+        .borderRadius(24)
         .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
@@ -869,25 +906,19 @@ export struct SettingsPage {
     if (this.vm.settingsState.isAboutDialogVisible) {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.vm.hideAboutDialog());
-        Column({ space: 10 }) {
-          Text('关于 XivDaily')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary);
-          Text(this.aboutDialogMessage())
-            .fontSize(14)
-            .lineHeight(22)
-            .fontColor(this.palette().textTertiary);
+        Column({ space: 14 }) {
+          this.dialogHeader('i', '关于 XivDaily', '了解产品定位、当前版本阶段和核心能力');
+          this.dialogInfoPanel(this.aboutDialogMessage());
           Row() {
             Blank();
             this.formActionButton('知道了', false, false, () => this.vm.hideAboutDialog());
           }
           .width('100%');
         }
-        .width('88%')
-        .padding(16)
+        .width('90%')
+        .padding(20)
         .backgroundColor(this.palette().surface)
-        .borderRadius(20)
+        .borderRadius(24)
         .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
@@ -897,25 +928,19 @@ export struct SettingsPage {
     if (this.vm.settingsState.isUpdateDialogVisible) {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.vm.hideUpdateDialog());
-        Column({ space: 10 }) {
-          Text('检查更新')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary);
-          Text(this.updateDialogMessage())
-            .fontSize(14)
-            .lineHeight(22)
-            .fontColor(this.palette().textTertiary);
+        Column({ space: 14 }) {
+          this.dialogHeader('↻', '检查更新', '查看当前版本、最近更新时间和版本状态');
+          this.dialogInfoPanel(this.updateDialogMessage());
           Row() {
             Blank();
             this.formActionButton('知道了', false, false, () => this.vm.hideUpdateDialog());
           }
           .width('100%');
         }
-        .width('88%')
-        .padding(16)
+        .width('90%')
+        .padding(20)
         .backgroundColor(this.palette().surface)
-        .borderRadius(20)
+        .borderRadius(24)
         .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
@@ -925,27 +950,22 @@ export struct SettingsPage {
     if (this.vm.settingsState.isClearCacheDialogVisible) {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.vm.hideClearCacheDialog());
-        Column({ space: 10 }) {
-          Text('确认清理缓存')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary);
-          Text('将清理首页列表与趋势提示缓存反馈，不影响收藏库与偏好设置。')
-            .fontSize(14)
-            .lineHeight(22)
-            .fontColor(this.palette().textTertiary);
+        Column({ space: 14 }) {
+          this.dialogHeader('▣', '确认清理缓存', '会移除首页缓存，不会影响收藏库与偏好设置', true);
+          this.dialogInfoPanel('将清理首页列表与趋势提示缓存反馈，不影响收藏库与偏好设置。', true);
           Row({ space: 8 }) {
+            Blank();
+            this.formActionButton('取消', false, false, () => this.vm.hideClearCacheDialog());
             this.formActionButton('开始清理', true, false, () => {
               void this.vm.clearCache();
             });
-            this.formActionButton('取消', false, false, () => this.vm.hideClearCacheDialog());
           }
           .width('100%');
         }
-        .width('88%')
-        .padding(16)
+        .width('90%')
+        .padding(20)
         .backgroundColor(this.palette().surface)
-        .borderRadius(20)
+        .borderRadius(24)
         .border({ width: 1, color: this.palette().outline });
       }
       .width('100%')
