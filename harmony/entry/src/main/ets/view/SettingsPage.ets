@@ -329,6 +329,25 @@ export struct SettingsPage {
   }
 
   @Builder
+  private optionDialogTitle(title: string) {
+    Text(title)
+      .fontSize(18)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(this.palette().textPrimary)
+      .width('100%');
+  }
+
+  @Builder
+  private optionDialogDismissButton(action: () => void) {
+    Text('关闭')
+      .fontSize(14)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(this.palette().primary)
+      .padding({ left: 8, right: 8, top: 8, bottom: 8 })
+      .onClick(() => action());
+  }
+
+  @Builder
   private statusTag(label: string, color: string) {
     Row({ space: 6 }) {
       Row()
@@ -696,39 +715,34 @@ export struct SettingsPage {
     if (this.vm.settingsState.isThemePickerVisible) {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.vm.hideThemePicker());
-        Column({ space: 14 }) {
-          this.dialogHeader('☾', '选择主题模式', '支持浅色、深色与跟随系统三种展示方式');
-          Column({ space: 0 }) {
+        Column({ space: 12 }) {
+          this.optionDialogTitle('选择主题模式');
+          Column({ space: 4 }) {
             this.settingRow(this.vm.settingsState.themeMode === 'system' ? '✦' : '›', '跟随系统',
               this.vm.settingsState.themeMode === 'system' ? '当前已选中' : '点击切换到该选项', undefined, () => {
               this.vm.selectThemeMode('system');
               this.applyThemeMode('system');
-            }, false, this.vm.settingsState.themeMode === 'system');
-            this.sectionDivider();
+            });
             this.settingRow(this.vm.settingsState.themeMode === 'light' ? '✦' : '›', '浅色',
               this.vm.settingsState.themeMode === 'light' ? '当前已选中' : '点击切换到该选项', undefined, () => {
               this.vm.selectThemeMode('light');
               this.applyThemeMode('light');
-            }, false, this.vm.settingsState.themeMode === 'light');
-            this.sectionDivider();
+            });
             this.settingRow(this.vm.settingsState.themeMode === 'dark' ? '✦' : '›', '深色',
               this.vm.settingsState.themeMode === 'dark' ? '当前已选中' : '点击切换到该选项', undefined, () => {
               this.vm.selectThemeMode('dark');
               this.applyThemeMode('dark');
-            }, false, this.vm.settingsState.themeMode === 'dark');
+            });
           }
-          .width('100%')
-          .backgroundColor(this.palette().surfaceSubtle)
-          .borderRadius(18)
-          .border({ width: 1, color: this.palette().outline });
+          .width('100%');
           Row() {
             Blank();
-            this.formActionButton('关闭', false, false, () => this.vm.hideThemePicker());
+            this.optionDialogDismissButton(() => this.vm.hideThemePicker());
           }
           .width('100%');
         }
-        .width('90%')
-        .padding(20)
+        .width('88%')
+        .padding({ left: 20, right: 20, top: 18, bottom: 14 })
         .backgroundColor(this.palette().surface)
         .borderRadius(24)
         .border({ width: 1, color: this.palette().outline });
@@ -743,23 +757,20 @@ export struct SettingsPage {
     if (this.vm.settingsState.isLanguagePickerVisible) {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.vm.hideLanguagePicker());
-        Column({ space: 14 }) {
-          this.dialogHeader('🌐', '选择语言', '当前版本提供与 Android 端一致的语言选项');
-          Column({ space: 0 }) {
-            this.settingRow('✦', '简体中文', '当前已选中', undefined, () => this.vm.selectLanguage('zh-CN'), false, true);
+        Column({ space: 12 }) {
+          this.optionDialogTitle('选择语言');
+          Column({ space: 4 }) {
+            this.settingRow('✦', '简体中文', '当前已选中', undefined, () => this.vm.selectLanguage('zh-CN'));
           }
-          .width('100%')
-          .backgroundColor(this.palette().surfaceSubtle)
-          .borderRadius(18)
-          .border({ width: 1, color: this.palette().outline });
+          .width('100%');
           Row() {
             Blank();
-            this.formActionButton('关闭', false, false, () => this.vm.hideLanguagePicker());
+            this.optionDialogDismissButton(() => this.vm.hideLanguagePicker());
           }
           .width('100%');
         }
-        .width('90%')
-        .padding(20)
+        .width('88%')
+        .padding({ left: 20, right: 20, top: 18, bottom: 14 })
         .backgroundColor(this.palette().surface)
         .borderRadius(24)
         .border({ width: 1, color: this.palette().outline });
