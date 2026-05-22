@@ -533,13 +533,17 @@ export struct HomePage {
 
   @Builder
   private paperActionButton(iconText: string, label: string, action: () => void, disabled: boolean = false,
-    isLoading: boolean = false) {
+    isLoading: boolean = false, iconSymbol?: string) {
     Row({ space: 6 }) {
       if (isLoading) {
         LoadingProgress()
           .width(16)
           .height(16)
           .color(this.palette().onPrimaryContainer);
+      } else if (iconSymbol) {
+        SymbolGlyph($r(iconSymbol))
+          .fontSize(16)
+          .fontColor([this.palette().onPrimaryContainer]);
       } else {
         Text(iconText)
           .fontSize(12)
@@ -670,12 +674,13 @@ export struct HomePage {
           }, this.isPaperTranslating(paper.id), this.isPaperTranslating(paper.id));
         }
 
-        this.paperActionButton('☆', paper.favoriteState ? '取消收藏' : '收藏', () => this.vm.toggleFavorite(paper.id));
+        this.paperActionButton('☆', paper.favoriteState ? '取消收藏' : '收藏', () => this.vm.toggleFavorite(paper.id),
+          false, false, paper.favoriteState ? 'sys.symbol.bookmark_book_fill' : 'sys.symbol.bookmark_book_closed');
 
         if (paper.zoteroSyncState !== 'synced') {
           this.paperActionButton('↻', this.isPaperSyncing(paper.id) ? '同步中...' : '同步', () => {
             void this.vm.syncToZotero(paper.id);
-          }, this.isPaperSyncing(paper.id), this.isPaperSyncing(paper.id));
+          }, this.isPaperSyncing(paper.id), this.isPaperSyncing(paper.id), 'sys.symbol.arrow_2_circlepath');
         }
       }
     }
