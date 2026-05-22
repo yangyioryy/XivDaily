@@ -687,8 +687,8 @@ export struct ChatPage {
           .layoutWeight(1);
       }
       .width('100%')
-      .padding(12)
-      .backgroundColor(this.palette().surfaceSubtle)
+      .padding({ left: 10, right: 10, top: 10, bottom: 10 })
+      .backgroundColor(this.palette().surface)
       .borderRadius(14)
       .alignItems(VerticalAlign.Top);
     } else if (block.kind === 'link' && block.linkUrl) {
