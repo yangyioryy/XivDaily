@@ -695,29 +695,53 @@ export struct HomePage {
   }
 
   @Builder
-  private swipeHintStrip() {
-    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-      Row({ space: 6 }) {
-        Text('←')
-          .fontSize(12)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().warning);
-        Text('左滑移出当前流')
-          .fontSize(12)
-          .fontColor(this.palette().textSecondary);
-      }
-      .margin({ right: 12, bottom: 4 });
+  private swipeHintActionCard(icon: string, text: string, backgroundColor: string, foregroundColor: string,
+    alignEnd: boolean = false) {
+    Row({ space: 6 }) {
+      Text(icon)
+        .fontSize(12)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(foregroundColor);
+      Text(text)
+        .fontSize(12)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(foregroundColor)
+        .layoutWeight(1)
+        .textAlign(alignEnd ? TextAlign.End : TextAlign.Start);
+    }
+    .width('100%')
+    .layoutWeight(1)
+    .justifyContent(alignEnd ? FlexAlign.End : FlexAlign.Start)
+    .alignItems(VerticalAlign.Center)
+    .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+    .backgroundColor(backgroundColor)
+    .borderRadius(12);
+  }
 
+  @Builder
+  private swipeHintStrip() {
+    Column({ space: 8 }) {
       Row({ space: 6 }) {
-        Text('→')
+        Text('↔')
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().success);
-        Text('右滑同步 Zotero')
+          .fontColor(this.palette().textSecondary);
+        Text('左右滑动可触发快捷操作')
           .fontSize(12)
+          .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().textSecondary);
       }
-      .margin({ bottom: 4 });
+      .width('100%')
+      .justifyContent(FlexAlign.Center)
+      .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+      .backgroundColor(this.palette().surfaceVariant)
+      .borderRadius(12);
+
+      Row({ space: 8 }) {
+        this.swipeHintActionCard('↻', '右滑执行 Zotero 同步', this.palette().successContainer, this.palette().success);
+        this.swipeHintActionCard('←', '左滑移出当前流', this.palette().warningContainer, this.palette().warning, true);
+      }
+      .width('100%');
     }
     .width('100%')
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
