@@ -18,6 +18,7 @@ import {
 import favoriteStoreService from '../service/FavoriteStoreService';
 import paperService from '../service/PaperService';
 import preferenceService from '../service/PreferenceService';
+import hilog from '@ohos.hilog';
 
 @Observed
 export class AppViewModel {
@@ -167,10 +168,27 @@ export class AppViewModel {
       this.homeState.listStatus = result.status;
       this.homeState.listWarning = result.warning;
       this.homeState.emptyReason = result.emptyReason;
+      hilog.info(
+        0x0000,
+        'XivDaily',
+        'refreshHome success. papers=%{public}s status=%{public}s warning=%{public}s emptyReason=%{public}s',
+        `${this.homeState.papers.length}`,
+        `${this.homeState.listStatus}`,
+        `${this.homeState.listWarning ?? ''}`,
+        `${this.homeState.emptyReason ?? ''}`
+      );
     } catch (error) {
       this.homeState.errorMessage = mapUserFriendlyError('论文列表暂时无法刷新', error);
     } finally {
       this.homeState.isLoading = false;
+      hilog.info(
+        0x0000,
+        'XivDaily',
+        'refreshHome finally. isLoading=%{public}s papers=%{public}s error=%{public}s',
+        `${this.homeState.isLoading}`,
+        `${this.homeState.papers.length}`,
+        `${this.homeState.errorMessage ?? ''}`
+      );
     }
   }
 
@@ -181,10 +199,24 @@ export class AppViewModel {
     try {
       this.homeState.trendSummary = await paperService.getTrendSummary(category);
       this.homeState.trendErrorMessage = undefined;
+      hilog.info(
+        0x0000,
+        'XivDaily',
+        'refreshTrendSummary success. items=%{public}s status=%{public}s',
+        `${this.homeState.trendSummary?.items.length ?? 0}`,
+        `${this.homeState.trendSummary?.status ?? ''}`
+      );
     } catch (error) {
       this.homeState.trendErrorMessage = mapUserFriendlyError('趋势摘要暂时不可用', error);
     } finally {
       this.homeState.isSummaryLoading = false;
+      hilog.info(
+        0x0000,
+        'XivDaily',
+        'refreshTrendSummary finally. isSummaryLoading=%{public}s error=%{public}s',
+        `${this.homeState.isSummaryLoading}`,
+        `${this.homeState.trendErrorMessage ?? ''}`
+      );
     }
   }
 
@@ -294,11 +326,20 @@ export class AppViewModel {
   refreshFavorites(): void {
     const favorites = favoriteStoreService.read([]);
     const favoriteIds = favorites.map((item: FavoritePaperItem) => item.paper.id);
+    const nextChatSelectedPaperIds = this.chatState.selectedPaperIds.filter((id: string) => favoriteIds.indexOf(id) >= 0);
 
     this.libraryState.favorites = favorites;
     this.libraryState.selectedPaperIds = this.libraryState.selectedPaperIds.filter((id: string) => favoriteIds.indexOf(id) >= 0);
-    this.chatState.favorites = favorites;
-    this.chatState.selectedPaperIds = this.chatState.selectedPaperIds.filter((id: string) => favoriteIds.indexOf(id) >= 0);
+    this.chatState = {
+      favorites: favorites,
+      selectedPaperIds: nextChatSelectedPaperIds,
+      messages: this.chatState.messages,
+      inputDraft: this.chatState.inputDraft,
+      isSending: this.chatState.isSending,
+      errorMessage: this.chatState.errorMessage,
+      warningMessage: this.chatState.warningMessage,
+      usedPapers: this.chatState.usedPapers
+    };
     this.homeState.papers = this.mergeHomePapersWithLocalFavorites(this.homeState.papers);
   }
 
@@ -402,24 +443,57 @@ export class AppViewModel {
   toggleChatPaper(paperId: string): void {
     const existed = this.chatState.selectedPaperIds.indexOf(paperId) >= 0;
     if (existed) {
-      this.chatState.selectedPaperIds = this.chatState.selectedPaperIds.filter((id: string) => id !== paperId);
-      this.chatState.errorMessage = undefined;
+      this.chatState = {
+        favorites: this.chatState.favorites,
+        selectedPaperIds: this.chatState.selectedPaperIds.filter((id: string) => id !== paperId),
+        messages: this.chatState.messages,
+        inputDraft: this.chatState.inputDraft,
+        isSending: this.chatState.isSending,
+        errorMessage: undefined,
+        warningMessage: this.chatState.warningMessage,
+        usedPapers: this.chatState.usedPapers
+      };
       return;
     }
     if (this.chatState.selectedPaperIds.length >= 3) {
-      this.chatState.errorMessage = '一次最多选择 3 篇论文';
+      this.chatState = {
+        favorites: this.chatState.favorites,
+        selectedPaperIds: this.chatState.selectedPaperIds,
+        messages: this.chatState.messages,
+        inputDraft: this.chatState.inputDraft,
+        isSending: this.chatState.isSending,
+        errorMessage: '一次最多选择 3 篇论文',
+        warningMessage: this.chatState.warningMessage,
+        usedPapers: this.chatState.usedPapers
+      };
       return;
     }
-    this.chatState.selectedPaperIds = [...this.chatState.selectedPaperIds, paperId];
-    this.chatState.errorMessage = undefined;
+    this.chatState = {
+      favorites: this.chatState.favorites,
+      selectedPaperIds: [...this.chatState.selectedPaperIds, paperId],
+      messages: this.chatState.messages,
+      inputDraft: this.chatState.inputDraft,
+      isSending: this.chatState.isSending,
+      errorMessage: undefined,
+      warningMessage: this.chatState.warningMessage,
+      usedPapers: this.chatState.usedPapers
+    };
   }
 
   updateChatDraft(value: string): void {
     if (this.chatState.isSending) {
       return;
     }
-    this.chatState.inputDraft = value;
-    this.chatState.errorMessage = undefined;
+    this.chatState = {
+      favorites: this.chatState.favorites,
+      selectedPaperIds: this.chatState.selectedPaperIds,
+      messages: this.chatState.messages,
+      inputDraft: value,
+      isSending: false,
+      errorMessage: undefined,
+      warningMessage: this.chatState.warningMessage,
+      usedPapers: this.chatState.usedPapers
+    };
   }
 
   async sendChatMessage(): Promise<void> {
@@ -429,11 +503,29 @@ export class AppViewModel {
     const question = this.chatState.inputDraft.trim();
 
     if (selectedPapers.length === 0) {
-      this.chatState.errorMessage = '请先选择至少一篇收藏论文';
+      this.chatState = {
+        favorites: this.chatState.favorites,
+        selectedPaperIds: this.chatState.selectedPaperIds,
+        messages: this.chatState.messages,
+        inputDraft: this.chatState.inputDraft,
+        isSending: false,
+        errorMessage: '请先选择至少一篇收藏论文',
+        warningMessage: this.chatState.warningMessage,
+        usedPapers: this.chatState.usedPapers
+      };
       return;
     }
     if (question.length === 0) {
-      this.chatState.errorMessage = '请输入要询问的问题';
+      this.chatState = {
+        favorites: this.chatState.favorites,
+        selectedPaperIds: this.chatState.selectedPaperIds,
+        messages: this.chatState.messages,
+        inputDraft: this.chatState.inputDraft,
+        isSending: false,
+        errorMessage: '请输入要询问的问题',
+        warningMessage: this.chatState.warningMessage,
+        usedPapers: this.chatState.usedPapers
+      };
       return;
     }
 
@@ -443,11 +535,16 @@ export class AppViewModel {
     };
     const nextMessages: PaperChatMessage[] = this.chatState.messages.concat([userMessage]);
 
-    this.chatState.messages = nextMessages;
-    this.chatState.inputDraft = '';
-    this.chatState.isSending = true;
-    this.chatState.errorMessage = undefined;
-    this.chatState.warningMessage = undefined;
+    this.chatState = {
+      favorites: this.chatState.favorites,
+      selectedPaperIds: this.chatState.selectedPaperIds,
+      messages: nextMessages,
+      inputDraft: '',
+      isSending: true,
+      errorMessage: undefined,
+      warningMessage: undefined,
+      usedPapers: this.chatState.usedPapers
+    };
 
     try {
       const result = await paperService.chatWithPapers(selectedPapers, nextMessages);
@@ -455,21 +552,41 @@ export class AppViewModel {
         role: 'assistant',
         content: result.answer
       };
-      this.chatState.messages = nextMessages.concat([assistantMessage]);
-      this.chatState.usedPapers = result.usedPapers;
-      this.chatState.warningMessage = result.warning;
+      this.chatState = {
+        favorites: this.chatState.favorites,
+        selectedPaperIds: this.chatState.selectedPaperIds,
+        messages: nextMessages.concat([assistantMessage]),
+        inputDraft: this.chatState.inputDraft,
+        isSending: false,
+        errorMessage: undefined,
+        warningMessage: result.warning,
+        usedPapers: result.usedPapers
+      };
     } catch (error) {
-      this.chatState.errorMessage = mapUserFriendlyError('论文对话暂时失败', error);
-    } finally {
-      this.chatState.isSending = false;
+      this.chatState = {
+        favorites: this.chatState.favorites,
+        selectedPaperIds: this.chatState.selectedPaperIds,
+        messages: this.chatState.messages,
+        inputDraft: this.chatState.inputDraft,
+        isSending: false,
+        errorMessage: mapUserFriendlyError('论文对话暂时失败', error),
+        warningMessage: this.chatState.warningMessage,
+        usedPapers: this.chatState.usedPapers
+      };
     }
   }
 
   clearConversation(): void {
-    this.chatState.messages = [];
-    this.chatState.usedPapers = [];
-    this.chatState.warningMessage = undefined;
-    this.chatState.errorMessage = undefined;
+    this.chatState = {
+      favorites: this.chatState.favorites,
+      selectedPaperIds: this.chatState.selectedPaperIds,
+      messages: [],
+      inputDraft: this.chatState.inputDraft,
+      isSending: this.chatState.isSending,
+      errorMessage: undefined,
+      warningMessage: undefined,
+      usedPapers: []
+    };
   }
 
   updateDefaultCategory(category: string): void {

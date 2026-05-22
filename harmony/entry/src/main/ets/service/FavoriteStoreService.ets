@@ -19,16 +19,29 @@ export class FavoriteStoreService {
   saveFavorite(paper: PaperItem): FavoritePaperItem[] {
     const current = this.read();
     const existed = current.find((item: FavoritePaperItem) => item.paper.id === paper.id);
-    const nextFavorites = existed ? current : [
-      ...current,
-      {
-        paper: {
-          ...paper,
-          favoriteState: true
-        },
-        savedAt: new Date().toISOString().slice(0, 10)
-      }
-    ];
+    if (existed) {
+      return current;
+    }
+
+    const favoritePaper: PaperItem = {
+      id: paper.id,
+      title: paper.title,
+      authors: paper.authors,
+      summary: paper.summary,
+      translatedSummary: paper.translatedSummary,
+      publishedAt: paper.publishedAt,
+      updatedAt: paper.updatedAt,
+      primaryCategory: paper.primaryCategory,
+      sourceUrl: paper.sourceUrl,
+      pdfUrl: paper.pdfUrl,
+      favoriteState: true,
+      zoteroSyncState: paper.zoteroSyncState
+    };
+    const nextFavorite: FavoritePaperItem = {
+      paper: favoritePaper,
+      savedAt: new Date().toISOString().slice(0, 10)
+    };
+    const nextFavorites: FavoritePaperItem[] = current.concat([nextFavorite]);
     AppStorage.setOrCreate<FavoritePaperItem[]>(FAVORITE_STORAGE_KEY, nextFavorites);
     return nextFavorites;
   }

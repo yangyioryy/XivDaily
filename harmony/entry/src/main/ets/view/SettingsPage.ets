@@ -165,18 +165,9 @@ export struct SettingsPage {
     return '保持每日研究敏感度';
   }
 
-  private zoteroLibraryTypeLabel(value?: string): string {
-    if (value === 'group') {
-      return '群组库';
-    }
-    if (value === 'user') {
-      return '个人库';
-    }
-    return '未知';
-  }
-
   private zoteroDetailMessage(): string {
-    let message = `配置状态：${this.integrationStatusText(this.vm.settingsState.zoteroConfigured)}\n同步位置：Zotero Web API 集合，不是本机 D:\\Zotero 文件夹\n目标集合：${this.vm.settingsState.zoteroTargetCollectionName}\n集合状态：${this.zoteroCollectionBadge()}\n库类型：${this.zoteroLibraryTypeLabel(this.vm.settingsState.zoteroLibraryType)}\n用户 ID：${this.vm.settingsState.zoteroUserId ?? '未提供'}`;
+    // 这里直接复用 Android 的原始库类型文案 user/group，避免鸿蒙端额外翻译后和安卓详情说明不一致。
+    let message = `配置状态：${this.integrationStatusText(this.vm.settingsState.zoteroConfigured)}\n同步位置：Zotero Web API 集合，不是本机 D:\\Zotero 文件夹\n目标集合：${this.vm.settingsState.zoteroTargetCollectionName}\n集合状态：${this.zoteroCollectionBadge()}\n库类型：${this.vm.settingsState.zoteroLibraryType ?? '未知'}\n用户 ID：${this.vm.settingsState.zoteroUserId ?? '未提供'}`;
     if (this.vm.settingsState.zoteroTargetCollectionKey && this.vm.settingsState.zoteroTargetCollectionKey.length > 0) {
       message = `${message}\n集合 Key：${this.vm.settingsState.zoteroTargetCollectionKey}`;
     }
