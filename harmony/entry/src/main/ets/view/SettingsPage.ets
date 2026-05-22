@@ -387,9 +387,9 @@ export struct SettingsPage {
         .fontColor(this.palette().textSecondary);
     }
     .width('100%')
-    .padding(16)
+    .padding(14)
     .backgroundColor(this.palette().surface)
-    .borderRadius(20)
+    .borderRadius(18)
     .border({ width: 1, color: this.palette().outline })
     .onClick(() => this.showProfileEditor());
   }
@@ -554,33 +554,42 @@ export struct SettingsPage {
       .lineHeight(20)
       .fontColor(isError ? this.palette().danger : this.palette().onPrimaryContainer)
       .width('100%')
-      .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+      .padding({ left: 16, right: 16, top: 10, bottom: 10 })
       .backgroundColor(isError ? this.palette().dangerContainer : this.palette().primaryContainer)
-      .borderRadius(16);
+      .borderRadius(14);
   }
 
   @Builder
   private refreshStatusButton() {
     Row({ space: 8 }) {
       Text('↻')
-        .fontSize(16)
+        .fontSize(15)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().primary);
       Text('刷新配置状态')
-        .fontSize(15)
+        .fontSize(14)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().primary);
     }
     .width('100%')
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .padding({ top: 14, bottom: 14 })
+    .padding({ top: 12, bottom: 12 })
     .backgroundColor(this.palette().surface)
-    .borderRadius(16)
+    .borderRadius(14)
     .border({ width: 1, color: this.palette().outline })
     .onClick(() => {
       void this.vm.refreshIntegrationStatusAction();
     });
+  }
+
+  @Builder
+  private settingsHeroSection() {
+    Text('设置')
+      .fontSize(24)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(this.palette().textPrimary)
+      .width('100%');
   }
 
   @Builder
@@ -972,11 +981,7 @@ export struct SettingsPage {
     Stack({ alignContent: Alignment.TopStart }) {
       Scroll(this.pageScroller) {
         Column({ space: AppConstants.SECTION_SPACING }) {
-          Text('设置')
-            .fontSize(28)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.palette().textPrimary)
-            .width('100%');
+          this.settingsHeroSection();
 
           this.profileCard();
 
