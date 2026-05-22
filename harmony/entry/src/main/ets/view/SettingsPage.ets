@@ -502,6 +502,47 @@ export struct SettingsPage {
   }
 
   @Builder
+  private feedbackBanner(message: string, isError: boolean = false) {
+    Row({ space: 10 }) {
+      this.leadingIcon(isError ? '!' : '✓', !isError);
+      Text(message)
+        .fontSize(13)
+        .lineHeight(20)
+        .fontColor(isError ? this.palette().danger : this.palette().onPrimaryContainer)
+        .layoutWeight(1);
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Center)
+    .padding(12)
+    .backgroundColor(isError ? this.palette().dangerContainer : this.palette().primaryContainer)
+    .borderRadius(14);
+  }
+
+  @Builder
+  private refreshStatusButton() {
+    Row({ space: 8 }) {
+      Text('↻')
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().primary);
+      Text('刷新配置状态')
+        .fontSize(15)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().primary);
+    }
+    .width('100%')
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
+    .padding({ top: 14, bottom: 14 })
+    .backgroundColor(this.palette().surface)
+    .borderRadius(18)
+    .border({ width: 1, color: this.palette().outline })
+    .onClick(() => {
+      void this.vm.refreshIntegrationStatusAction();
+    });
+  }
+
+  @Builder
   private preferenceSection() {
     Column({ space: 16 }) {
       Column({ space: 12 }) {
@@ -937,36 +978,14 @@ export struct SettingsPage {
           this.otherSection();
 
           if (this.vm.settingsState.actionMessage) {
-            Text(this.vm.settingsState.actionMessage!)
-              .fontSize(13)
-              .fontColor(this.palette().primary)
-              .padding(12)
-              .backgroundColor(this.palette().primaryContainer)
-              .borderRadius(14);
+            this.feedbackBanner(this.vm.settingsState.actionMessage!);
           }
 
           if (this.vm.settingsState.errorMessage) {
-            Text(this.vm.settingsState.errorMessage!)
-              .fontSize(13)
-              .fontColor(this.palette().danger)
-              .padding(12)
-              .backgroundColor(this.palette().dangerContainer)
-              .borderRadius(14);
+            this.feedbackBanner(this.vm.settingsState.errorMessage!, true);
           }
 
-          Text('刷新配置状态')
-            .fontSize(15)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().primary)
-            .width('100%')
-            .textAlign(TextAlign.Center)
-            .padding({ top: 14, bottom: 14 })
-            .backgroundColor(this.palette().surface)
-            .borderRadius(18)
-            .border({ width: 1, color: this.palette().outline })
-            .onClick(() => {
-              void this.vm.refreshIntegrationStatusAction();
-            });
+          this.refreshStatusButton();
         }
         .width('100%')
         .alignItems(HorizontalAlign.Start)
