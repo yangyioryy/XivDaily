@@ -827,23 +827,22 @@ export struct ChatPage {
 
   @Builder
   private emptyStateCard() {
-    Column({ space: 10 }) {
-      this.leadingPill();
+    Column({ space: 8 }) {
       Text('选择收藏论文后开始提问')
-        .fontSize(16)
+        .fontSize(15)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().textPrimary);
-      Text('支持最多 3 篇收藏论文作为上下文，发送后会在下方保留完整对话。')
+      Text('对话会基于当前选中的收藏论文生成回答。')
         .fontSize(13)
-        .lineHeight(20)
+        .lineHeight(19)
         .fontColor(this.palette().textSecondary)
         .textAlign(TextAlign.Center);
     }
     .alignItems(HorizontalAlign.Center)
     .width('100%')
-    .padding({ left: 18, right: 18, top: 24, bottom: 24 })
+    .padding({ left: 18, right: 18, top: 22, bottom: 22 })
     .backgroundColor(this.palette().surface)
-    .borderRadius(20)
+    .borderRadius(18)
     .border({ width: 1, color: this.palette().outline });
   }
 
@@ -936,40 +935,46 @@ export struct ChatPage {
 
   @Builder
   private composerCard() {
-    Row({ space: 12 }) {
-      TextArea({
-        placeholder: this.vm.chatState.isSending ? '正在整理论文材料...' : '向选中论文提问',
-        text: this.composerDraft
-      })
-        .fontSize(15)
-        .fontColor(this.palette().textPrimary)
-        .placeholderColor(this.palette().textSecondary)
-        .backgroundColor(this.palette().surfaceSubtle)
-        .borderRadius(16)
-        .border({ width: 1, color: this.palette().outline })
-        .layoutWeight(1)
-        .height(64)
-        .enabled(!this.vm.chatState.isSending)
-        .onChange((value: string) => {
-          this.composerDraft = value;
-          this.vm.updateChatDraft(value);
+    Row({ space: 10 }) {
+      Row({ space: 10 }) {
+        TextArea({
+          placeholder: this.vm.chatState.isSending ? '正在整理论文材料...' : '向选中论文提问',
+          text: this.composerDraft
         })
-        .onSubmit(() => this.submitComposer());
+          .fontSize(15)
+          .fontColor(this.palette().textPrimary)
+          .placeholderColor(this.palette().textSecondary)
+          .backgroundColor('#00000000')
+          .layoutWeight(1)
+          .height(64)
+          .enabled(!this.vm.chatState.isSending)
+          .onChange((value: string) => {
+            this.composerDraft = value;
+            this.vm.updateChatDraft(value);
+          })
+          .onSubmit(() => this.submitComposer());
 
-      Row() {
-        SymbolGlyph($r('sys.symbol.paperplane_fill'))
-          .fontSize(18)
-          .fontColor([this.palette().onPrimary]);
+        Row() {
+          SymbolGlyph($r('sys.symbol.paperplane_fill'))
+            .fontSize(16)
+            .fontColor([this.canSendMessage() ? this.palette().primary : this.palette().textSecondary]);
+        }
+        .width(40)
+        .height(40)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor(this.canSendMessage() ? this.palette().primaryContainer : this.palette().surfaceVariant)
+        .borderRadius(12)
+        .opacity(this.sendActionOpacity())
+        .onClick(() => {
+          this.submitComposer();
+        });
       }
-      .width(52)
-      .height(52)
-      .justifyContent(FlexAlign.Center)
-      .backgroundColor(this.palette().primary)
-      .borderRadius(26)
-      .opacity(this.sendActionOpacity())
-      .onClick(() => {
-        this.submitComposer();
-      });
+      .layoutWeight(1)
+      .padding({ left: 14, right: 12, top: 0, bottom: 0 })
+      .backgroundColor(this.palette().surfaceSubtle)
+      .borderRadius(16)
+      .border({ width: 1, color: this.palette().outline })
+      .alignItems(VerticalAlign.Center);
     }
     .width('100%')
     .alignItems(VerticalAlign.Center);
