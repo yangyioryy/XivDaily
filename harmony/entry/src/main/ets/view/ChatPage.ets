@@ -558,6 +558,13 @@ export struct ChatPage {
     return 15;
   }
 
+  private struckThroughText(value: string): string {
+    // ArkUI 这里暂时没有现成的 inline 删除线落点，先用组合删除线字符补足可见语义。
+    return Array.from(value).map((char: string) => {
+      return char === ' ' ? char : `${char}\u0336`;
+    }).join('');
+  }
+
   @Builder
   private markdownInlineSpan(segment: MarkdownInlineSegment, defaultColor: string) {
     if (segment.kind === 'strong') {
@@ -577,7 +584,7 @@ export struct ChatPage {
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().primary);
     } else if (segment.kind === 'strike') {
-      Span(segment.text)
+      Span(this.struckThroughText(segment.text))
         .fontColor(this.palette().textSecondary);
     } else {
       Span(segment.text)
