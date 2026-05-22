@@ -315,7 +315,7 @@ export struct SettingsPage {
   @Builder
   private sectionTitle(title: string) {
     Text(title)
-      .fontSize(16)
+      .fontSize(15)
       .fontWeight(FontWeight.Medium)
       .fontColor(this.palette().textSecondary)
       .width('100%');
@@ -341,7 +341,7 @@ export struct SettingsPage {
 
   @Builder
   private profileCard() {
-    Row({ space: 14 }) {
+    Row({ space: 12 }) {
       Stack({ alignContent: Alignment.Center }) {
         if (this.vm.settingsState.avatarImageUri && this.vm.settingsState.avatarImageUri.length > 0) {
           Image(this.vm.settingsState.avatarImageUri)
@@ -389,7 +389,7 @@ export struct SettingsPage {
     .width('100%')
     .padding(16)
     .backgroundColor(this.palette().surface)
-    .borderRadius(24)
+    .borderRadius(20)
     .border({ width: 1, color: this.palette().outline })
     .onClick(() => this.showProfileEditor());
   }
@@ -549,19 +549,14 @@ export struct SettingsPage {
 
   @Builder
   private feedbackBanner(message: string, isError: boolean = false) {
-    Row({ space: 10 }) {
-      this.leadingIcon(isError ? '!' : '✓', !isError);
-      Text(message)
-        .fontSize(13)
-        .lineHeight(20)
-        .fontColor(isError ? this.palette().danger : this.palette().onPrimaryContainer)
-        .layoutWeight(1);
-    }
-    .width('100%')
-    .alignItems(VerticalAlign.Center)
-    .padding(12)
-    .backgroundColor(isError ? this.palette().dangerContainer : this.palette().primaryContainer)
-    .borderRadius(14);
+    Text(message)
+      .fontSize(13)
+      .lineHeight(20)
+      .fontColor(isError ? this.palette().danger : this.palette().onPrimaryContainer)
+      .width('100%')
+      .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+      .backgroundColor(isError ? this.palette().dangerContainer : this.palette().primaryContainer)
+      .borderRadius(16);
   }
 
   @Builder
@@ -581,7 +576,7 @@ export struct SettingsPage {
     .alignItems(VerticalAlign.Center)
     .padding({ top: 14, bottom: 14 })
     .backgroundColor(this.palette().surface)
-    .borderRadius(18)
+    .borderRadius(16)
     .border({ width: 1, color: this.palette().outline })
     .onClick(() => {
       void this.vm.refreshIntegrationStatusAction();
@@ -631,9 +626,9 @@ export struct SettingsPage {
       this.settingRow('🌐', '语言', '文章摘要与界面默认语言', this.languageLabel(), () => this.vm.showLanguagePicker());
     }
     .width('100%')
-    .padding(18)
+    .padding(16)
     .backgroundColor(this.palette().surface)
-    .borderRadius(24)
+    .borderRadius(20)
     .border({ width: 1, color: this.palette().outline });
   }
 
@@ -648,7 +643,7 @@ export struct SettingsPage {
     }
     .width('100%')
     .backgroundColor(this.palette().surface)
-    .borderRadius(24)
+    .borderRadius(20)
     .border({ width: 1, color: this.palette().outline });
   }
 
@@ -661,7 +656,7 @@ export struct SettingsPage {
     }
     .width('100%')
     .backgroundColor(this.palette().surface)
-    .borderRadius(24)
+    .borderRadius(20)
     .border({ width: 1, color: this.palette().outline });
   }
 
@@ -676,7 +671,7 @@ export struct SettingsPage {
     }
     .width('100%')
     .backgroundColor(this.palette().surface)
-    .borderRadius(24)
+    .borderRadius(20)
     .border({ width: 1, color: this.palette().outline });
   }
 
