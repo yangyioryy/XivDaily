@@ -425,7 +425,9 @@ export struct ChatPage {
   }
 
   private togglePickerExpanded(): void {
-    this.isPickerExpanded = !this.isPickerExpanded;
+    if (!this.isPickerExpanded) {
+      this.isPickerExpanded = true;
+    }
   }
 
   private collapsePickerExpanded(): void {
