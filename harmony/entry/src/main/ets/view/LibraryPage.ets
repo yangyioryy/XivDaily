@@ -196,7 +196,7 @@ export struct LibraryPage {
   private exportCard(content: string) {
     Column({ space: 8 }) {
       Text('BibTeX 导出结果')
-        .fontSize(18)
+        .fontSize(16)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().onSecondaryContainer);
       Text('生成后可直接复制到你的文献管理工具中。')
@@ -209,29 +209,29 @@ export struct LibraryPage {
         .width('100%');
     }
     .width('100%')
-    .padding(16)
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
     .backgroundColor(this.palette().secondaryContainer)
-    .borderRadius(18);
+    .borderRadius(16);
   }
 
   @Builder
   private emptyStateCard(title: string, subtitle: string) {
-    Column({ space: 10 }) {
+    Column({ space: 8 }) {
       this.leadingPill('▣');
       Text(title)
-        .fontSize(18)
+        .fontSize(16)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().textPrimary);
       Text(subtitle)
-        .fontSize(14)
-        .lineHeight(22)
+        .fontSize(13)
+        .lineHeight(20)
         .fontColor(this.palette().textSecondary)
         .textAlign(TextAlign.Center);
     }
     .width('100%')
-    .padding({ left: 18, right: 18, top: 20, bottom: 20 })
+    .padding({ left: 18, right: 18, top: 18, bottom: 18 })
     .backgroundColor(this.palette().surface)
-    .borderRadius(20)
+    .borderRadius(18)
     .border({ width: 1, color: this.palette().outline });
   }
 
@@ -355,6 +355,18 @@ export struct LibraryPage {
   }
 
   @Builder
+  private batchActionButton(label: string, backgroundColor: string, foregroundColor: string, action: () => void) {
+    Text(label)
+      .fontSize(13)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(foregroundColor)
+      .padding({ left: 12, right: 12, top: 9, bottom: 9 })
+      .backgroundColor(backgroundColor)
+      .borderRadius(12)
+      .onClick(() => action());
+  }
+
+  @Builder
   private batchBottomBar() {
     Row({ space: 10 }) {
       Text(`已选 ${this.vm.libraryState.selectedPaperIds.length}`)
@@ -362,35 +374,20 @@ export struct LibraryPage {
         .fontWeight(FontWeight.Medium)
         .fontColor(this.palette().textPrimary)
         .layoutWeight(1);
-      Text('全选')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().textPrimary)
-        .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .backgroundColor(this.palette().surfaceSubtle)
-        .borderRadius(12)
-        .onClick(() => this.vm.selectAllLibraryPapers(this.filteredFavorites().map((favorite: FavoritePaperItem) => favorite.paper.id)));
-      Text('导出')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().textPrimary)
-        .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .backgroundColor(this.palette().surfaceSubtle)
-        .borderRadius(12)
-        .onClick(() => this.vm.exportSelectedBibtex());
-      Text('删除')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().danger)
-        .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .backgroundColor(this.palette().surfaceSubtle)
-        .borderRadius(12)
-        .onClick(() => this.vm.deleteSelectedFavorites());
+      this.batchActionButton('全选', this.palette().surface, this.palette().textPrimary, () => {
+        this.vm.selectAllLibraryPapers(this.filteredFavorites().map((favorite: FavoritePaperItem) => favorite.paper.id));
+      });
+      this.batchActionButton('导出', this.palette().surface, this.palette().textPrimary, () => {
+        this.vm.exportSelectedBibtex();
+      });
+      this.batchActionButton('删除', this.palette().dangerContainer, this.palette().danger, () => {
+        this.vm.deleteSelectedFavorites();
+      });
     }
     .width('100%')
-    .padding(14)
-    .backgroundColor(this.palette().surface)
-    .borderRadius(18)
+    .padding(12)
+    .backgroundColor(this.palette().surfaceVariant)
+    .borderRadius(20)
     .border({ width: 1, color: this.palette().outline });
   }
 
