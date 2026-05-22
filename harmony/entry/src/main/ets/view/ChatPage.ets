@@ -483,16 +483,22 @@ export struct ChatPage {
 
         if (this.isPickerExpanded) {
           // Android 端这里是 DropdownMenu，Harmony 先收敛成按钮下方轻量展开面板，避免遮罩打断输入流。
-          Column({ space: 8 }) {
-            ForEach(this.vm.chatState.favorites, (favorite: FavoritePaperItem) => {
-              this.inlinePickerOption(favorite);
-            }, (favorite: FavoritePaperItem) => favorite.paper.id);
+          Scroll() {
+            Column({ space: 8 }) {
+              ForEach(this.vm.chatState.favorites, (favorite: FavoritePaperItem) => {
+                this.inlinePickerOption(favorite);
+              }, (favorite: FavoritePaperItem) => favorite.paper.id);
+            }
+            .width('100%');
           }
           .width('100%')
+          .height(Math.min(this.vm.chatState.favorites.length * 78, 260))
           .padding(10)
           .backgroundColor(this.palette().surface)
           .borderRadius(18)
-          .border({ width: 1, color: this.palette().outline });
+          .border({ width: 1, color: this.palette().outline })
+          .scrollBar(BarState.Auto)
+          .scrollable(ScrollDirection.Vertical);
         }
 
         if (this.selectedFavorites().length > 0) {
@@ -511,11 +517,21 @@ export struct ChatPage {
 
   @Builder
   private emptyStateCard() {
-    Text('选择收藏论文后开始提问')
-      .fontSize(16)
-      .fontColor(this.palette().textSecondary)
-      .width('100%')
-      .padding({ left: 18, right: 18, top: 24, bottom: 24 })
+    Column({ space: 10 }) {
+      this.leadingPill();
+      Text('选择收藏论文后开始提问')
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().textPrimary);
+      Text('支持最多 3 篇收藏论文作为上下文，发送后会在下方保留完整对话。')
+        .fontSize(13)
+        .lineHeight(20)
+        .fontColor(this.palette().textSecondary)
+        .textAlign(TextAlign.Center);
+    }
+    .alignItems(HorizontalAlign.Center)
+    .width('100%')
+    .padding({ left: 18, right: 18, top: 24, bottom: 24 })
     .backgroundColor(this.palette().surface)
     .borderRadius(20)
     .border({ width: 1, color: this.palette().outline });
@@ -673,7 +689,10 @@ export struct ChatPage {
               .fontWeight(FontWeight.Medium)
               .fontColor(this.palette().primary);
           }
-          .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+          .backgroundColor(this.palette().surfaceSubtle)
+          .borderRadius(999)
+          .border({ width: 1, color: this.palette().outline })
           .onClick(() => this.vm.clearConversation());
           this.leadingPill();
         }
