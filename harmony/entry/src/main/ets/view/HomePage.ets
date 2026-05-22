@@ -535,7 +535,7 @@ export struct HomePage {
       Column({ space: 12 }) {
         Row() {
           Text(paper.title)
-            .fontSize(18)
+            .fontSize(16)
             .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().textPrimary)
           .layoutWeight(1);
@@ -551,12 +551,12 @@ export struct HomePage {
           .fontColor(this.palette().textSecondary);
 
         Text(`${paper.primaryCategory} · ${paper.publishedAt.slice(0, 10)} · Zotero ${paper.zoteroSyncState}`)
-          .fontSize(13)
+          .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().onPrimaryContainer)
-          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+          .padding({ left: 12, right: 12, top: 6, bottom: 6 })
           .backgroundColor(this.palette().primaryContainer)
-          .borderRadius(14);
+          .borderRadius(12);
 
         if (this.isPaperExpanded(paper.id)) {
           Column({ space: 10 }) {
@@ -675,8 +675,7 @@ export struct HomePage {
     .width('100%')
     .padding(18)
     .backgroundColor(this.palette().surface)
-    .borderRadius(24)
-    .border({ width: 1, color: this.palette().outline });
+    .borderRadius(20);
   }
 
   @Builder
@@ -714,59 +713,23 @@ export struct HomePage {
   }
 
   @Builder
-  private swipeHintActionCard(icon: string, text: string, backgroundColor: string, foregroundColor: string,
-    alignEnd: boolean = false) {
+  private swipeHintStrip() {
     Row({ space: 6 }) {
-      Text(icon)
+      Text('↔')
         .fontSize(12)
         .fontWeight(FontWeight.Medium)
-        .fontColor(foregroundColor);
-      Text(text)
+        .fontColor(this.palette().textSecondary);
+      Text('左右滑动可触发快捷操作')
         .fontSize(12)
         .fontWeight(FontWeight.Medium)
-        .fontColor(foregroundColor)
-        .layoutWeight(1)
-        .textAlign(alignEnd ? TextAlign.End : TextAlign.Start);
+        .fontColor(this.palette().textSecondary);
     }
     .width('100%')
-    .layoutWeight(1)
-    .justifyContent(alignEnd ? FlexAlign.End : FlexAlign.Start)
+    .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-    .backgroundColor(backgroundColor)
+    .backgroundColor(this.palette().surfaceVariant)
     .borderRadius(12);
-  }
-
-  @Builder
-  private swipeHintStrip() {
-    Column({ space: 8 }) {
-      Row({ space: 6 }) {
-        Text('↔')
-          .fontSize(12)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().textSecondary);
-        Text('左右滑动可触发快捷操作')
-          .fontSize(12)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().textSecondary);
-      }
-      .width('100%')
-      .justifyContent(FlexAlign.Center)
-      .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-      .backgroundColor(this.palette().surfaceVariant)
-      .borderRadius(12);
-
-      Row({ space: 8 }) {
-        this.swipeHintActionCard('↻', '右滑执行 Zotero 同步', this.palette().successContainer, this.palette().success);
-        this.swipeHintActionCard('←', '左滑移出当前流', this.palette().warningContainer, this.palette().warning, true);
-      }
-      .width('100%');
-    }
-    .width('100%')
-    .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-    .backgroundColor(this.palette().surfaceSubtle)
-    .borderRadius(14)
-    .border({ width: 1, color: this.palette().outline });
   }
 
   @Builder
