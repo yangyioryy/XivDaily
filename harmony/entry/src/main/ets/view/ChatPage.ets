@@ -471,23 +471,14 @@ export struct ChatPage {
 
   @Builder
   private feedbackStrip(message: string, backgroundColor: string, foregroundColor: string) {
-    Row({ space: 8 }) {
-      Row()
-        .width(8)
-        .height(8)
-        .borderRadius(4)
-        .backgroundColor(foregroundColor);
-      Text(message)
-        .fontSize(13)
-        .lineHeight(20)
-        .fontColor(foregroundColor)
-        .layoutWeight(1);
-    }
-    .width('100%')
-    .alignItems(VerticalAlign.Center)
-    .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-    .backgroundColor(backgroundColor)
-    .borderRadius(16);
+    Text(message)
+      .fontSize(13)
+      .lineHeight(20)
+      .fontColor(foregroundColor)
+      .width('100%')
+      .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+      .backgroundColor(backgroundColor)
+      .borderRadius(16);
   }
 
   @Builder
