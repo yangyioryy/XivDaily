@@ -756,6 +756,22 @@ export struct HomePage {
     .height('100%');
   }
 
+  @Builder
+  private actionMessageOverlay() {
+    if (this.vm.homeState.actionMessage) {
+      Row() {
+        Text(this.vm.homeState.actionMessage!.text)
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().textPrimary);
+      }
+      .padding({ left: 18, right: 18, top: 10, bottom: 10 })
+      .backgroundColor(this.palette().surface)
+      .borderRadius(999)
+      .border({ width: 1, color: this.palette().outline });
+    }
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column({ space: AppConstants.SECTION_SPACING }) {
@@ -788,16 +804,6 @@ export struct HomePage {
           this.trendSummaryCard();
         }
 
-        if (this.vm.homeState.actionMessage) {
-          Text(this.vm.homeState.actionMessage!.text)
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary)
-            .padding({ left: 14, right: 14, top: 10, bottom: 10 })
-            .backgroundColor(this.palette().surfaceVariant)
-            .borderRadius(999);
-        }
-
         Column({ space: 12 }) {
           this.paperSectionHeader();
 
@@ -819,6 +825,17 @@ export struct HomePage {
       })
       .alignItems(HorizontalAlign.Start)
       .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
+
+      if (this.vm.homeState.actionMessage) {
+        Column() {
+          this.actionMessageOverlay();
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.End)
+        .alignItems(HorizontalAlign.Center)
+        .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, bottom: 28 });
+      }
 
       if (this.isAddTagDialogVisible) {
         this.addTagDialogOverlay();
