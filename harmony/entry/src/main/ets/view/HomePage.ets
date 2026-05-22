@@ -266,9 +266,9 @@ export struct HomePage {
 
       Column({ space: 8 }) {
         Text('领域')
-          .fontSize(18)
+          .fontSize(16)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().textTertiary)
+          .fontColor(this.palette().textSecondary)
           .width('100%');
 
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
@@ -279,7 +279,7 @@ export struct HomePage {
               .fontColor(this.isCategorySelected(category) ? this.palette().onPrimary : this.palette().textPrimary)
               .padding({ left: 16, right: 16, top: 8, bottom: 8 })
               .margin({ right: 8, bottom: 8 })
-              .backgroundColor(this.isCategorySelected(category) ? this.palette().primary : this.palette().surfaceSubtle)
+              .backgroundColor(this.isCategorySelected(category) ? this.palette().primary : this.palette().surface)
               .borderRadius(14)
               .border({
                 width: this.isCategorySelected(category) ? 0 : 1,
@@ -322,7 +322,7 @@ export struct HomePage {
             }
             .margin({ right: 8, bottom: 8 })
             .backgroundColor(this.isCategorySelected(tag) ? this.palette().primary :
-              (this.pendingDeletionTag === tag ? this.palette().warningContainer : this.palette().surfaceSubtle))
+              (this.pendingDeletionTag === tag ? this.palette().warningContainer : this.palette().surface))
             .borderRadius(14)
             .border({
               width: this.isCategorySelected(tag) ? 0 : 1,
@@ -336,7 +336,7 @@ export struct HomePage {
             .fontColor(this.palette().primary)
             .padding({ left: 16, right: 16, top: 8, bottom: 8 })
             .margin({ right: 8, bottom: 8 })
-            .backgroundColor(this.palette().surfaceSubtle)
+            .backgroundColor(this.palette().surface)
             .borderRadius(14)
             .border({ width: 1, color: this.palette().outline })
             .onClick(() => this.showAddTagDialog());
@@ -367,9 +367,9 @@ export struct HomePage {
 
         Column({ space: 8 }) {
           Text('时间')
-            .fontSize(18)
+            .fontSize(16)
             .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textTertiary)
+            .fontColor(this.palette().textSecondary)
             .width('100%');
 
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
@@ -380,7 +380,7 @@ export struct HomePage {
                 .fontColor(this.isDaySelected(days) ? this.palette().textPrimary : this.palette().textSecondary)
                 .padding({ left: 16, right: 16, top: 8, bottom: 8 })
                 .margin({ right: 8, bottom: 8 })
-                .backgroundColor(this.isDaySelected(days) ? this.palette().secondaryContainer : this.palette().surfaceSubtle)
+                .backgroundColor(this.isDaySelected(days) ? this.palette().secondaryContainer : this.palette().surface)
                 .borderRadius(12)
                 .border({ width: 1, color: this.palette().outline })
                 .onClick(() => this.vm.selectDays(days));
