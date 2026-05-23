@@ -28,6 +28,12 @@ interface MarkdownBlock {
   links?: MarkdownLinkRef[];
 }
 
+interface MarkdownInlineParseResult {
+  plainText: string;
+  segments: MarkdownInlineSegment[];
+  links: MarkdownLinkRef[];
+}
+
 @Component
 export struct ChatPage {
   @ObjectLink vm: AppViewModel;
@@ -280,11 +286,7 @@ export struct ChatPage {
     return blocks;
   }
 
-  private parseInlineMarkdown(text: string, blockIdPrefix: string): {
-    plainText: string;
-    segments: MarkdownInlineSegment[];
-    links: MarkdownLinkRef[];
-  } {
+  private parseInlineMarkdown(text: string, blockIdPrefix: string): MarkdownInlineParseResult {
     const normalized = text.replace(/^\>\s?/g, '');
     const inlinePattern = /!\[([^\]]*)\]\((https?:\/\/[^)]+)\)|\[([^\]]+)\]\((https?:\/\/[^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|__([^_]+)__|~~([^~]+)~~|\*([^*\n]+)\*|_([^_\n]+)_/g;
     const segments: MarkdownInlineSegment[] = [];
@@ -371,7 +373,7 @@ export struct ChatPage {
     };
   }
 
-  private extractStandaloneLink(text: string): { label: string; url: string } | undefined {
+  private extractStandaloneLink(text: string): MarkdownLinkRef | undefined {
     const trimmed = text.trim();
     const imageMatch = trimmed.match(/^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/);
     if (imageMatch) {
