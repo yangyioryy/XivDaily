@@ -12,10 +12,15 @@ import { SettingsPage } from '../view/SettingsPage';
 @Component
 struct XivDailyPage {
   @State vm: AppViewModel = new AppViewModel();
+  @State private localSelectedTab: number = 0;
   private homeScroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     this.applyThemeMode();
+    // 当 ViewModel 内部触发 tab 切换时（如从收藏库进入对话），同步更新本地状态
+    this.vm.onTabChanged = (index: number) => {
+      this.localSelectedTab = index;
+    };
   }
 
   private applyThemeMode(): void {
@@ -53,21 +58,21 @@ struct XivDailyPage {
   @Builder
   private tabIcon(index: number) {
     if (index === 0) {
-      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.star_fill' : 'sys.symbol.star'))
+      SymbolGlyph($r(this.localSelectedTab === index ? 'sys.symbol.star_fill' : 'sys.symbol.star'))
         .fontSize(19)
-        .fontColor([this.vm.selectedTab === index ? this.palette().primary : this.palette().textSecondary]);
+        .fontColor([this.localSelectedTab === index ? this.palette().primary : this.palette().textSecondary]);
     } else if (index === 1) {
-      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.bookmark_book_fill' : 'sys.symbol.bookmark_book_closed'))
+      SymbolGlyph($r(this.localSelectedTab === index ? 'sys.symbol.bookmark_book_fill' : 'sys.symbol.bookmark_book_closed'))
         .fontSize(19)
-        .fontColor([this.vm.selectedTab === index ? this.palette().primary : this.palette().textSecondary]);
+        .fontColor([this.localSelectedTab === index ? this.palette().primary : this.palette().textSecondary]);
     } else if (index === 2) {
-      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.paperplane_right_fill' : 'sys.symbol.paperplane_fill'))
+      SymbolGlyph($r(this.localSelectedTab === index ? 'sys.symbol.paperplane_right_fill' : 'sys.symbol.paperplane_fill'))
         .fontSize(19)
-        .fontColor([this.vm.selectedTab === index ? this.palette().primary : this.palette().textSecondary]);
+        .fontColor([this.localSelectedTab === index ? this.palette().primary : this.palette().textSecondary]);
     } else {
-      SymbolGlyph($r(this.vm.selectedTab === index ? 'sys.symbol.slider_horizontal_2_square_fill' : 'sys.symbol.slider_horizontal_2'))
+      SymbolGlyph($r(this.localSelectedTab === index ? 'sys.symbol.slider_horizontal_2_square_fill' : 'sys.symbol.slider_horizontal_2'))
         .fontSize(19)
-        .fontColor([this.vm.selectedTab === index ? this.palette().primary : this.palette().textSecondary]);
+        .fontColor([this.localSelectedTab === index ? this.palette().primary : this.palette().textSecondary]);
     }
   }
 
@@ -78,7 +83,7 @@ struct XivDailyPage {
         Row()
           .width(42)
           .height(30)
-          .backgroundColor(this.vm.selectedTab === index ? this.palette().primaryContainer : '#00000000')
+          .backgroundColor(this.localSelectedTab === index ? this.palette().primaryContainer : '#00000000')
           .borderRadius(15);
         this.tabIcon(index);
       }
@@ -86,8 +91,8 @@ struct XivDailyPage {
       .height(30);
       Text(label)
         .fontSize(12)
-        .fontWeight(this.vm.selectedTab === index ? FontWeight.Bold : FontWeight.Medium)
-        .fontColor(this.vm.selectedTab === index ? this.palette().primary : this.palette().textSecondary);
+        .fontWeight(this.localSelectedTab === index ? FontWeight.Bold : FontWeight.Medium)
+        .fontColor(this.localSelectedTab === index ? this.palette().primary : this.palette().textSecondary);
     }
     .width('100%')
     .height(AppConstants.TAB_BAR_HEIGHT)
@@ -95,7 +100,7 @@ struct XivDailyPage {
   }
 
   build() {
-    Tabs({ barPosition: BarPosition.End, index: this.vm.selectedTab }) {
+    Tabs({ barPosition: BarPosition.End, index: this.localSelectedTab }) {
       TabContent() {
         Scroll(this.homeScroller) {
           HomePage({ vm: this.vm });
@@ -128,6 +133,7 @@ struct XivDailyPage {
     .barBackgroundColor(this.palette().surface)
     .scrollable(false)
     .onChange((index: number) => {
+      this.localSelectedTab = index;
       this.vm.selectTab(index);
     })
     .onAppear(() => {

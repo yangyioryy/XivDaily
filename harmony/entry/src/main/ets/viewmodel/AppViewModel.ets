@@ -23,6 +23,7 @@ import hilog from '@ohos.hilog';
 @Observed
 export class AppViewModel {
   selectedTab: number = 0;
+  onTabChanged?: (index: number) => void;
   homeState: HomeUiState = createDefaultHomeState();
   libraryState: LibraryUiState = createDefaultLibraryState();
   chatState: PaperChatUiState = createDefaultChatState();
@@ -52,6 +53,9 @@ export class AppViewModel {
 
   selectTab(index: number): void {
     this.selectedTab = index;
+    if (this.onTabChanged) {
+      this.onTabChanged(index);
+    }
   }
 
   updateSearchKeywordDraft(value: string): void {
