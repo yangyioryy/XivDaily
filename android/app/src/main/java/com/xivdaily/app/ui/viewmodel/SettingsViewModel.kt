@@ -374,7 +374,7 @@ private fun SettingsUiState.applyIntegrationStatus(status: com.xivdaily.app.data
     )
 }
 
-private const val DEFAULT_LLM_BASE_URL = "https://grok.yangyioryy.cc.cd"
+private const val DEFAULT_LLM_BASE_URL = "https://example.com/v1"
 private const val DEFAULT_LLM_MODEL = "grok-4.20-0309-non-reasoning"
 
 private fun themeModeLabel(themeMode: String): String {

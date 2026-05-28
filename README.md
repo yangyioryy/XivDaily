@@ -202,10 +202,10 @@ http://127.0.0.1:8000/
 | --- | --- | --- |
 | `DATABASE_URL` | SQLite 或外部数据库连接 | `sqlite:///./data/xivdaily.db` |
 | `ARXIV_CACHE_TTL_SECONDS` | 论文列表缓存时长 | `900` |
-| `LLM_BASE_URL` | OpenAI 兼容模型服务地址 | `https://grok.yangyioryy.cc.cd` |
+| `LLM_BASE_URL` | OpenAI 兼容模型服务地址 | `https://example.com/v1` |
 | `LLM_MODEL` | 摘要、翻译、对话使用的模型名 | `grok-4.20-0309-non-reasoning` |
 | `PAPER_CHAT_CONTEXT_CHARS_PER_PAPER` | 每篇论文进入聊天上下文的字符上限 | `12000` |
-| `ZOTERO_USER_ID` | Zotero 用户或群组标识 | `15884975` |
+| `ZOTERO_USER_ID` | Zotero 用户或群组标识 | 'your-zotero-user-id' |
 | `ZOTERO_LIBRARY_TYPE` | Zotero 库类型 | `user` / `group` |
 | `ZOTERO_TARGET_COLLECTION_NAME` | 自动归档集合名 | `XivDaily` |
 | `xivdaily.debugBaseUrl` | Android Debug 后端地址 | `http://10.0.2.2:8000/` |

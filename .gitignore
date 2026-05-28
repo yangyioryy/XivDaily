@@ -43,6 +43,7 @@ android/.gradle/
 android/local.properties
 android/**/build/
 android/.idea/
+android/.kotlin/
 
 # Harmony 客户端
 harmony/.hvigor/

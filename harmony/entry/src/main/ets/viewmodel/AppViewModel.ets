@@ -1432,5 +1432,5 @@ function languageLabel(language: string): string {
   return '简体中文';
 }
 
-const DEFAULT_LLM_BASE_URL: string = 'https://grok.yangyioryy.cc.cd';
+const DEFAULT_LLM_BASE_URL: string = 'https://example.com/v1';
 const DEFAULT_LLM_MODEL: string = 'grok-4.20-0309-non-reasoning';
