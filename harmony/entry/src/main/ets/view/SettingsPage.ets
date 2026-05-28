@@ -637,12 +637,21 @@ export struct SettingsPage {
             Text('默认关注领域')
               .fontSize(16)
               .fontWeight(FontWeight.Medium)
-              .fontColor(this.palette().textPrimary);
+              .fontColor(this.palette().textPrimary)
+              .width('100%')
+              .textAlign(TextAlign.Start);
             Text(this.vm.settingsState.defaultCategory)
               .fontSize(13)
-              .fontColor(this.palette().textSecondary);
+              .fontColor(this.palette().textSecondary)
+              .width('100%')
+              .textAlign(TextAlign.Start);
           }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start);
         }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 0, bottom: 0 })
+        .alignItems(VerticalAlign.Center);
         this.chipGroup(this.defaultCategoryOptions(), this.vm.settingsState.defaultCategory, (value: string) => {
           this.vm.updateDefaultCategory(value);
         });
@@ -657,12 +666,21 @@ export struct SettingsPage {
             Text('默认时间窗口')
               .fontSize(16)
               .fontWeight(FontWeight.Medium)
-              .fontColor(this.palette().textPrimary);
+              .fontColor(this.palette().textPrimary)
+              .width('100%')
+              .textAlign(TextAlign.Start);
             Text(this.vm.settingsState.defaultDays === 1 ? '24h' : `${this.vm.settingsState.defaultDays} 天`)
               .fontSize(13)
-              .fontColor(this.palette().textSecondary);
+              .fontColor(this.palette().textSecondary)
+              .width('100%')
+              .textAlign(TextAlign.Start);
           }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start);
         }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 0, bottom: 0 })
+        .alignItems(VerticalAlign.Center);
         this.numberChipGroup([1, 3, 7, 30], this.vm.settingsState.defaultDays, (value: number) => this.vm.updateDefaultDays(value));
       }
 
@@ -799,14 +817,18 @@ export struct SettingsPage {
           this.dialogInfoPanel(this.zoteroDetailMessage());
           Text(`当前集合：${this.vm.settingsState.zoteroTargetCollectionName}`)
             .fontSize(13)
-            .fontColor(this.palette().textSecondary);
+            .fontColor(this.palette().textSecondary)
+            .width('100%')
+            .textAlign(TextAlign.Start);
           this.formInput('User ID / Group ID', this.vm.settingsState.zoteroUserIdDraft, '输入用户或群组 ID', (value: string) => {
             this.vm.updateZoteroUserIdDraft(value);
           });
           Text('Library Type')
             .fontSize(13)
             .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textTertiary);
+            .fontColor(this.palette().textTertiary)
+            .width('100%')
+            .textAlign(TextAlign.Start);
           // 界面使用中文选项，但最终仍保存为 Zotero API 需要的 user / group 常量。
           this.chipGroup(['个人库', '群组库'],
             this.vm.settingsState.zoteroLibraryTypeDraft === 'group' ? '群组库' : '个人库',
