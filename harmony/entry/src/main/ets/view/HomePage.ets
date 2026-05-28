@@ -11,6 +11,7 @@ export struct HomePage {
   @State private customTagDraft: string = '';
   @State private isAddTagDialogVisible: boolean = false;
   @State private pendingDeletionTag: string = '';
+  @State private paperSwipeOffsets: SwipeOffsetState[] = [];
 
   private readSystemColorMode(): string | number | undefined {
     try {
@@ -165,19 +166,99 @@ export struct HomePage {
     }
   }
 
-  private normalizeSwipeAngle(angle: number): number {
-    const normalizedAngle = angle % 360;
-    return normalizedAngle < 0 ? normalizedAngle + 360 : normalizedAngle;
+  private swipeTriggerOffset(): number {
+    return 96;
   }
 
-  private handlePaperSwipe(paper: PaperItem, event: GestureEvent): void {
-    const swipeEvent = event as SwipeGestureEvent;
-    const angle = this.normalizeSwipeAngle(swipeEvent.angle);
-    if (angle <= 90 || angle >= 270) {
-      void this.vm.syncToZotero(paper.id);
+  private swipeRevealOffset(): number {
+    return 132;
+  }
+
+  private paperSwipeOffset(paperId: string): number {
+    const offsetState = this.paperSwipeOffsets.find((item: SwipeOffsetState) => item.paperId === paperId);
+    return offsetState ? offsetState.offsetX : 0;
+  }
+
+  private paperSwipeProgress(paperId: string): number {
+    const progress = Math.abs(this.paperSwipeOffset(paperId)) / this.swipeTriggerOffset();
+    return Math.max(0, Math.min(progress, 1));
+  }
+
+  private paperSwipeHintLabel(paperId: string): string {
+    const offset = this.paperSwipeOffset(paperId);
+    if (offset > 0) {
+      return '右滑同步 Zotero';
+    }
+    if (offset < 0) {
+      return '左滑忽略本条';
+    }
+    return '左右滑动可触发快捷操作';
+  }
+
+  private paperSwipeHintSymbol(paperId: string): string {
+    return this.paperSwipeOffset(paperId) >= 0 ? 'sys.symbol.arrow_2_circlepath' : 'sys.symbol.eye_slash';
+  }
+
+  private paperSwipeHintColor(paperId: string): ResourceColor {
+    const offset = this.paperSwipeOffset(paperId);
+    if (offset > 0) {
+      return this.palette().primaryContainer;
+    }
+    if (offset < 0) {
+      return this.palette().warningContainer;
+    }
+    return this.palette().surfaceSubtle;
+  }
+
+  private updatePaperSwipeOffset(paperId: string, nextOffset: number): void {
+    const clampedOffset = Math.max(-this.swipeRevealOffset(), Math.min(nextOffset, this.swipeRevealOffset()));
+    const nextOffsets: SwipeOffsetState[] = this.paperSwipeOffsets
+      .filter((item: SwipeOffsetState) => item.paperId !== paperId);
+    nextOffsets.push({
+      paperId: paperId,
+      offsetX: clampedOffset
+    });
+    this.paperSwipeOffsets = nextOffsets;
+  }
+
+  private clearPaperSwipeOffset(paperId: string): void {
+    this.paperSwipeOffsets = this.paperSwipeOffsets.filter((item: SwipeOffsetState) => item.paperId !== paperId);
+  }
+
+  private animatePaperSwipeOffset(paperId: string, targetOffset: number, onFinish?: () => void): void {
+    animateTo({
+      duration: 180,
+      curve: Curve.EaseOut,
+      onFinish: () => {
+        if (targetOffset === 0) {
+          this.clearPaperSwipeOffset(paperId);
+        }
+        if (onFinish) {
+          onFinish();
+        }
+      }
+    }, () => {
+      this.updatePaperSwipeOffset(paperId, targetOffset);
+    });
+  }
+
+  private commitPaperSwipe(paper: PaperItem): void {
+    const offset = this.paperSwipeOffset(paper.id);
+    if (offset >= this.swipeTriggerOffset()) {
+      this.animatePaperSwipeOffset(paper.id, this.swipeRevealOffset(), () => {
+        void this.vm.syncToZotero(paper.id);
+        this.animatePaperSwipeOffset(paper.id, 0);
+      });
       return;
     }
-    this.vm.dismissHomePaper(paper.id);
+    if (offset <= -this.swipeTriggerOffset()) {
+      this.animatePaperSwipeOffset(paper.id, -this.swipeRevealOffset(), () => {
+        this.clearPaperSwipeOffset(paper.id);
+        this.vm.dismissHomePaper(paper.id);
+      });
+      return;
+    }
+    this.animatePaperSwipeOffset(paper.id, 0);
   }
 
   private handleCustomTagTap(tag: string): void {
@@ -569,8 +650,38 @@ export struct HomePage {
   }
 
   @Builder
+  private paperSwipeHint(paper: PaperItem) {
+    Row({ space: 8 }) {
+      if (this.paperSwipeOffset(paper.id) >= 0) {
+        SymbolGlyph($r(this.paperSwipeHintSymbol(paper.id)))
+          .fontSize(16)
+          .fontColor([this.palette().textPrimary]);
+        Text(this.paperSwipeHintLabel(paper.id))
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().textPrimary);
+        Blank();
+      } else {
+        Blank();
+        Text(this.paperSwipeHintLabel(paper.id))
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().textPrimary);
+        SymbolGlyph($r(this.paperSwipeHintSymbol(paper.id)))
+          .fontSize(16)
+          .fontColor([this.palette().textPrimary]);
+      }
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 20, bottom: 20 })
+    .opacity(0.35 + this.paperSwipeProgress(paper.id) * 0.65);
+  }
+
+  @Builder
   private paperCard(paper: PaperItem) {
-    Column({ space: 12 }) {
+    Stack({ alignContent: Alignment.Center }) {
+      this.paperSwipeHint(paper);
+      Column({ space: 12 }) {
       Column({ space: 12 }) {
         Row() {
           Text(paper.title)
@@ -580,7 +691,7 @@ export struct HomePage {
             .layoutWeight(1);
           SymbolGlyph($r(paper.favoriteState ? 'sys.symbol.star_fill' : 'sys.symbol.star'))
             .fontSize(20)
-            .fontColor([this.palette().warning]);
+            .fontColor([paper.favoriteState ? this.palette().warning : this.palette().textTertiary]);
         }
         .width('100%');
 
@@ -664,8 +775,18 @@ export struct HomePage {
         )
       )
       .parallelGesture(
-        SwipeGesture({ direction: SwipeDirection.Horizontal })
-          .onAction((event: GestureEvent) => this.handlePaperSwipe(paper, event))
+        PanGesture({
+          fingers: 1,
+          direction: PanDirection.Horizontal,
+          distance: 6
+        })
+          .onActionUpdate((event?: GestureEvent) => {
+            if (event) {
+              this.updatePaperSwipeOffset(paper.id, event.offsetX);
+            }
+          })
+          .onActionEnd(() => this.commitPaperSwipe(paper))
+          .onActionCancel(() => this.animatePaperSwipeOffset(paper.id, 0))
       );
 
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
@@ -687,10 +808,16 @@ export struct HomePage {
           }, this.isPaperSyncing(paper.id), this.isPaperSyncing(paper.id), 'sys.symbol.arrow_2_circlepath');
         }
       }
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor(this.palette().surface)
+      .borderRadius(10)
+      .translate({ x: this.paperSwipeOffset(paper.id), y: 0, z: 0 })
+      .opacity(1 - this.paperSwipeProgress(paper.id) * 0.08);
     }
     .width('100%')
-    .padding(16)
-    .backgroundColor(this.palette().surface)
+    .backgroundColor(this.paperSwipeHintColor(paper.id))
     .borderRadius(10);
   }
 
@@ -886,4 +1013,9 @@ interface ColorModeConfig {
 
 interface ContextWithColorMode extends Context {
   config?: ColorModeConfig;
+}
+
+interface SwipeOffsetState {
+  paperId: string;
+  offsetX: number;
 }
