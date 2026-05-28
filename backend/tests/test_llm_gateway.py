@@ -67,7 +67,7 @@ async def test_complete_returns_success_text(monkeypatch: pytest.MonkeyPatch) ->
 
 @pytest.mark.anyio("asyncio")
 async def test_complete_prefers_v1_path_for_bare_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    gateway = build_gateway(monkeypatch, base_url="https://yangyioryy.cc.cd")
+    gateway = build_gateway(monkeypatch, base_url=" https://example.com")
 
     class FakeResponse:
         def raise_for_status(self) -> None:
@@ -84,7 +84,7 @@ async def test_complete_prefers_v1_path_for_bare_base_url(monkeypatch: pytest.Mo
             return False
 
         async def post(self, url: str, json: dict[str, object], headers: dict[str, str]) -> FakeResponse:
-            assert url == "https://yangyioryy.cc.cd/v1/chat/completions"
+            assert url == " https://example.com/v1/chat/completions"
             return FakeResponse()
 
     monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())

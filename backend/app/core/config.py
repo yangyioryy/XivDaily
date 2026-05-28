@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     arxiv_base_url: str = Field(default="https://export.arxiv.org/api/query", validation_alias="ARXIV_BASE_URL")
     arxiv_request_timeout_seconds: int = Field(default=20, validation_alias="ARXIV_REQUEST_TIMEOUT_SECONDS")
     arxiv_cache_ttl_seconds: int = Field(default=900, validation_alias="ARXIV_CACHE_TTL_SECONDS")
-    llm_base_url: str = Field(default="https://grok.yangyioryy.cc.cd", validation_alias="LLM_BASE_URL")
+    llm_base_url: str = Field(default="https://example.com/v1", validation_alias="LLM_BASE_URL")
     llm_api_key: str | None = Field(default=None, validation_alias="LLM_API_KEY")
     llm_model: str = Field(default="grok-4.20-0309-non-reasoning", validation_alias="LLM_MODEL")
     llm_request_timeout_seconds: int = Field(default=60, validation_alias="LLM_REQUEST_TIMEOUT_SECONDS")

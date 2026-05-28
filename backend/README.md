@@ -117,7 +117,7 @@ GET  http://127.0.0.1:8000/zotero/config/status
 | `DATABASE_URL` | 数据库地址 | `sqlite:///./data/xivdaily.db` |
 | `ARXIV_BASE_URL` | arXiv API 地址 | `https://export.arxiv.org/api/query` |
 | `ARXIV_CACHE_TTL_SECONDS` | 论文列表缓存秒数 | `900` |
-| `LLM_BASE_URL` | OpenAI 兼容 LLM 地址 | `https://grok.yangyioryy.cc.cd` |
+| `LLM_BASE_URL` | OpenAI 兼容 LLM 地址 | `https://example.com/v1` |
 | `LLM_API_KEY` | LLM Key | 无 |
 | `LLM_MODEL` | 模型名 | `grok-4.20-0309-non-reasoning` |
 | `PAPER_PDF_TIMEOUT_SECONDS` | PDF 抽取超时 | `20` |
