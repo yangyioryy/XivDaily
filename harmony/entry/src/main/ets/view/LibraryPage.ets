@@ -268,7 +268,9 @@ export struct LibraryPage {
             .textOverflow({ overflow: TextOverflow.Ellipsis });
           Text(`收藏于 ${favorite.savedAt.slice(0, 10)}`)
             .fontSize(12)
-            .fontColor(this.palette().textSecondary);
+            .fontColor(this.palette().textSecondary)
+            .width('100%')
+            .textAlign(TextAlign.Start);
         }
         .layoutWeight(1);
         SymbolGlyph($r('sys.symbol.star_fill'))

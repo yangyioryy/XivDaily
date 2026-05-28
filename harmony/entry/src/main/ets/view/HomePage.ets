@@ -587,12 +587,16 @@ export struct HomePage {
         Text(paper.authors.join(', '))
           .fontSize(12)
           .lineHeight(18)
-          .fontColor(this.palette().textSecondary);
+          .fontColor(this.palette().textSecondary)
+          .width('100%')
+          .textAlign(TextAlign.Start);
 
         Text(`${paper.primaryCategory} · ${paper.publishedAt.slice(0, 10)} · Zotero ${paper.zoteroSyncState}`)
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().onPrimaryContainer)
+          .width('100%')
+          .textAlign(TextAlign.Start)
           .padding({ left: 16, right: 16, top: 8, bottom: 8 })
           .backgroundColor(this.palette().primaryContainer)
           .borderRadius(10);

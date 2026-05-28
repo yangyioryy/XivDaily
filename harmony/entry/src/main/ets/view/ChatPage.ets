@@ -422,14 +422,20 @@ export struct ChatPage {
     return this.pickerButtonHeight() + 6;
   }
 
+  private pickerHostHeight(): number {
+    if (!this.isPickerExpanded || this.vm.chatState.favorites.length === 0) {
+      return this.pickerButtonHeight();
+    }
+    // 展开时同步拉高宿主容器，否则下拉层虽然可见，但实际点击区域会被裁掉。
+    return this.pickerMenuTopOffset() + this.pickerMenuHeight() + 6;
+  }
+
   private syncComposerDraft(): void {
     this.composerDraft = this.vm.chatState.inputDraft;
   }
 
   private togglePickerExpanded(): void {
-    if (!this.isPickerExpanded) {
-      this.isPickerExpanded = true;
-    }
+    this.isPickerExpanded = !this.isPickerExpanded;
   }
 
   private collapsePickerExpanded(): void {
@@ -811,7 +817,9 @@ export struct ChatPage {
     .padding({ left: 10, right: 10, top: 9, bottom: 9 })
     .backgroundColor(this.isPaperSelected(favorite.paper.id) ? this.palette().surfaceSubtle : this.palette().surface)
     .borderRadius(10)
-    .onClick(() => this.togglePickerSelection(favorite.paper.id));
+    .onClick(() => {
+      this.togglePickerSelection(favorite.paper.id);
+    });
   }
 
   @Builder
@@ -841,19 +849,20 @@ export struct ChatPage {
               }
               .width('100%');
             }
-          .width('100%')
-          .height(this.pickerMenuHeight())
-          .margin({ top: this.pickerMenuTopOffset() })
-          .padding({ left: 6, right: 6, top: 6, bottom: 6 })
-          .backgroundColor(this.palette().surface)
-          .borderRadius(14)
-          .border({ width: 1, color: this.palette().outline })
-          .scrollBar(BarState.Auto)
-          .scrollable(ScrollDirection.Vertical);
+            .width('100%')
+            .height(this.pickerMenuHeight())
+            .margin({ top: this.pickerMenuTopOffset() })
+            .padding({ left: 6, right: 6, top: 6, bottom: 6 })
+            .backgroundColor(this.palette().surface)
+            .borderRadius(14)
+            .border({ width: 1, color: this.palette().outline })
+            .scrollBar(BarState.Auto)
+            .scrollable(ScrollDirection.Vertical)
+            .zIndex(2);
           }
         }
         .width('100%')
-        .height(this.pickerButtonHeight());
+        .height(this.pickerHostHeight());
 
         if (this.selectedFavorites().length > 0) {
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {

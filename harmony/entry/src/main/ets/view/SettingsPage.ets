@@ -468,17 +468,22 @@ export struct SettingsPage {
         Text(title)
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().textPrimary);
+          .fontColor(this.palette().textPrimary)
+          .width('100%')
+          .textAlign(TextAlign.Start);
         Text(subtitle)
           .fontSize(13)
-          .fontColor(this.palette().textSecondary);
+          .fontColor(this.palette().textSecondary)
+          .width('100%')
+          .textAlign(TextAlign.Start);
       }
       .layoutWeight(1);
       if (value !== undefined) {
         Text(value)
           .fontSize(13)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().textSecondary);
+          .fontColor(this.palette().textSecondary)
+          .textAlign(TextAlign.Start);
       }
       if (!disabled) {
         Text('›')
@@ -504,10 +509,14 @@ export struct SettingsPage {
         Text(title)
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().textPrimary);
+          .fontColor(this.palette().textPrimary)
+          .width('100%')
+          .textAlign(TextAlign.Start);
         Text(subtitle)
           .fontSize(13)
-          .fontColor(this.palette().textSecondary);
+          .fontColor(this.palette().textSecondary)
+          .width('100%')
+          .textAlign(TextAlign.Start);
       }
       .layoutWeight(1);
 
