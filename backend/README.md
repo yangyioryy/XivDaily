@@ -1,39 +1,156 @@
-# Backend 占位说明
+# ⚙️ XivDaily Backend
 
-本目录现已升级为最小可运行的 Python 后端骨架。
+<div align="center">
+  <p>
+    <strong>为 Android 与 HarmonyOS 客户端提供 arXiv、AI 和 Zotero 能力的 FastAPI 后端</strong>
+  </p>
+</div>
 
-## 当前已落地能力
+## ✨ 模块概览
 
-- FastAPI 应用入口
-- 环境变量配置读取
-- 统一日志与异常返回
-- `GET /health` 健康检查
-- `GET /papers` 论文检索，支持分类、关键词、时间窗口、分页、本地过滤与缓存
-- `GET /summaries/trends` AI 趋势摘要，未配置模型时自动降级
-- `POST /translations` 单篇摘要翻译，未配置模型时自动返回降级文案
-- `GET /zotero/config/status` Zotero 配置校验
-- `POST /zotero/sync/{paper_id}` 单篇同步，成功后幂等
-- `POST /zotero/exports/bibtex` 批量导出 BibTeX
-- SQLite 会话工厂
-- Alembic 初始化迁移脚本
-- 基础测试 `tests/test_health.py`
+| 项目 | 说明 |
+| --- | --- |
+| 框架 | FastAPI |
+| 语言 | Python 3 |
+| 配置 | Pydantic Settings + `.env` |
+| 存储 | SQLite + SQLAlchemy + Alembic |
+| 外部服务 | arXiv API、OpenAI 兼容 LLM、Zotero Web API |
+| 运行入口 | `app/main.py` |
+| 默认地址 | `http://127.0.0.1:8000/` |
+| 默认数据库 | `sqlite:///./data/xivdaily.db` |
+| 运行时覆盖文件 | `data/runtime_config.json` |
 
-## 运行方式
+## 🚀 当前能力
 
-1. 在 `xivdaily` conda 环境安装依赖：
-   `conda run -n xivdaily pip install -r backend/requirements.txt`
-2. 在 `backend/` 目录执行迁移：
-   `conda run -n xivdaily alembic upgrade head`
-3. 启动服务：
-   `conda run -n xivdaily uvicorn app.main:app --host 127.0.0.1 --port 8000`
-4. 查询论文：
-   `http://127.0.0.1:8000/papers?category=cs.CV&days=3&page=1&pageSize=10`
-5. 请求趋势摘要：
-   `http://127.0.0.1:8000/summaries/trends?category=cs.CV&days=3`
-6. 检查 Zotero 配置：
-   `http://127.0.0.1:8000/zotero/config/status`
+| 能力 | 说明 | 关键位置 |
+| --- | --- | --- |
+| ❤️ 健康检查 | 提供服务存活与基础信息检查 | `app/api/health.py` |
+| 📄 论文检索 | 拉取 arXiv 论文流，支持分类、关键词、天数、分页与缓存 | `app/api/papers.py`、`app/services/paper_service.py` |
+| 🧠 趋势摘要 | 对近期论文流生成趋势摘要，未配置模型时自动降级 | `app/api/ai.py`、`app/services/ai_service.py` |
+| 🌐 摘要翻译 | 单篇论文摘要翻译为中文 | `app/api/ai.py` |
+| 💬 论文对话 | 基于多篇论文元数据与 PDF 文本进行问答 | `app/api/ai.py`、`app/services/paper_text_service.py` |
+| ⚙️ 集成配置 | 读写 LLM / Zotero 运行时配置，并支持测试配置是否可用 | `app/api/config.py`、`app/services/config_service.py` |
+| 🔄 Zotero 同步 | 目标集合校验、单篇同步、集合修复与 BibTeX 导出 | `app/api/zotero.py`、`app/services/zotero_service.py` |
 
-## 开发约束
+## 🗺️ 接口清单
 
-- 运行时敏感信息必须从环境变量注入。
-- 关键配置、异常封装、数据库会话和迁移流程代码必须写中文注释。
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/health` | 健康检查 |
+| `GET` | `/papers` | 获取论文列表 |
+| `GET` | `/summaries/trends` | 获取趋势摘要 |
+| `POST` | `/translations` | 翻译单篇论文摘要 |
+| `POST` | `/paper-chat/messages` | 多论文对话 |
+| `GET` | `/ai/config/status` | LLM 是否已配置 |
+| `GET` | `/config/integrations` | 读取运行时集成配置 |
+| `PUT` | `/config/zotero` | 保存 Zotero 配置 |
+| `POST` | `/config/zotero/test` | 测试 Zotero 配置 |
+| `PUT` | `/config/llm` | 保存 LLM 配置 |
+| `POST` | `/config/llm/test` | 测试 LLM 配置 |
+| `GET` | `/zotero/config/status` | 查询 Zotero 集合状态 |
+| `POST` | `/zotero/sync/{paper_id}` | 同步单篇论文到 Zotero |
+| `POST` | `/zotero/exports/bibtex` | 导出 BibTeX |
+
+## 🧱 目录结构
+
+```text
+backend/
+├── app/
+│   ├── api/               # 路由层
+│   ├── ai/                # 提示词与 LLM 网关
+│   ├── clients/           # arXiv / Zotero 外部客户端
+│   ├── core/              # 配置、日志、异常
+│   ├── db/                # 会话与基础数据库封装
+│   ├── models/            # SQLAlchemy 模型
+│   ├── schemas/           # 请求 / 响应模型
+│   └── services/          # 论文、AI、配置、Zotero 业务逻辑
+├── migrations/            # Alembic 迁移
+├── tests/                 # API / service / client 自动化测试
+├── requirements.txt
+└── README.md
+```
+
+## ⚡ 本地运行
+
+### 1. 安装依赖
+
+```powershell
+cd backend
+python -m pip install -r requirements.txt
+```
+
+如果你在 Conda 环境里运行：
+
+```powershell
+conda run -n xivdaily pip install -r requirements.txt
+```
+
+### 2. 执行数据库迁移
+
+```powershell
+python -m alembic upgrade head
+```
+
+### 3. 启动服务
+
+```powershell
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+### 4. 快速验证
+
+```text
+GET  http://127.0.0.1:8000/health
+GET  http://127.0.0.1:8000/papers?category=cs.CV&days=3&page=1&pageSize=10
+GET  http://127.0.0.1:8000/summaries/trends?category=cs.CV&days=3
+GET  http://127.0.0.1:8000/config/integrations
+GET  http://127.0.0.1:8000/zotero/config/status
+```
+
+## 🔐 配置项
+
+| 配置项 | 说明 | 默认值 |
+| --- | --- | --- |
+| `APP_NAME` | FastAPI 标题 | `XivDaily Backend` |
+| `APP_HOST` | 监听地址 | `127.0.0.1` |
+| `APP_PORT` | 监听端口 | `8000` |
+| `DATABASE_URL` | 数据库地址 | `sqlite:///./data/xivdaily.db` |
+| `ARXIV_BASE_URL` | arXiv API 地址 | `https://export.arxiv.org/api/query` |
+| `ARXIV_CACHE_TTL_SECONDS` | 论文列表缓存秒数 | `900` |
+| `LLM_BASE_URL` | OpenAI 兼容 LLM 地址 | `https://grok.yangyioryy.cc.cd` |
+| `LLM_API_KEY` | LLM Key | 无 |
+| `LLM_MODEL` | 模型名 | `grok-4.20-0309-non-reasoning` |
+| `PAPER_PDF_TIMEOUT_SECONDS` | PDF 抽取超时 | `20` |
+| `PAPER_PDF_MAX_BYTES` | PDF 下载大小上限 | `15728640` |
+| `PAPER_CHAT_CONTEXT_CHARS_PER_PAPER` | 单篇论文进入聊天上下文的字符上限 | `12000` |
+| `ZOTERO_BASE_URL` | Zotero Web API 地址 | `https://api.zotero.org` |
+| `ZOTERO_USER_ID` | Zotero 用户 / 群组 ID | 无 |
+| `ZOTERO_LIBRARY_TYPE` | 库类型 | `user` |
+| `ZOTERO_API_KEY` | Zotero API Key | 无 |
+| `ZOTERO_TARGET_COLLECTION_NAME` | 目标集合名 | `XivDaily` |
+
+> 说明：启动时会先读取 `.env`，随后再读取 `data/runtime_config.json` 中的 `llm` / `zotero` 覆盖项。
+
+## 🧪 测试说明
+
+当前 `backend/tests/` 已覆盖以下方向：
+
+| 测试范围 | 文件示例 |
+| --- | --- |
+| API 接口 | `test_papers_api.py`、`test_ai_api.py`、`test_config_api.py`、`test_zotero_api.py` |
+| 业务服务 | `test_paper_service.py`、`test_ai_service.py`、`test_zotero_service.py` |
+| 外部客户端 / 网关 | `test_arxiv_client.py`、`test_llm_gateway.py`、`test_zotero_client.py` |
+| 文本处理 | `test_paper_text_service.py` |
+
+运行测试：
+
+```powershell
+cd backend
+python -m pytest -q
+```
+
+## 📝 开发说明
+
+- `app/main.py` 统一挂载 `health`、`papers`、`ai`、`config`、`zotero` 五组路由。
+- `ConfigService` 会把设置页写回的 LLM / Zotero 配置持久化到运行时覆盖文件，避免直接改仓库中的 `.env`。
+- `ZoteroService` 除了新建条目，也负责检查目标集合是否存在，并在条目未正确挂入集合时执行 repair。
