@@ -25,6 +25,20 @@ class Settings(BaseSettings):
     arxiv_base_url: str = Field(default="https://export.arxiv.org/api/query", validation_alias="ARXIV_BASE_URL")
     arxiv_request_timeout_seconds: int = Field(default=20, validation_alias="ARXIV_REQUEST_TIMEOUT_SECONDS")
     arxiv_cache_ttl_seconds: int = Field(default=900, validation_alias="ARXIV_CACHE_TTL_SECONDS")
+    arxiv_sync_enabled: bool = Field(default=True, validation_alias="ARXIV_SYNC_ENABLED")
+    arxiv_sync_categories: str = Field(
+        default='["cs.CV","cs.AI","cs.CL"]',
+        validation_alias="ARXIV_SYNC_CATEGORIES",
+    )
+    arxiv_sync_window_days: int = Field(default=7, validation_alias="ARXIV_SYNC_WINDOW_DAYS")
+    arxiv_sync_interval_seconds: int = Field(default=1200, validation_alias="ARXIV_SYNC_INTERVAL_SECONDS")
+    arxiv_sync_max_results: int = Field(default=200, validation_alias="ARXIV_SYNC_MAX_RESULTS")
+    paper_library_stale_after_seconds: int = Field(default=3600, validation_alias="PAPER_LIBRARY_STALE_AFTER_SECONDS")
+    paper_library_retention_days: int = Field(default=14, validation_alias="PAPER_LIBRARY_RETENTION_DAYS")
+    paper_library_max_papers_per_category: int = Field(
+        default=200,
+        validation_alias="PAPER_LIBRARY_MAX_PAPERS_PER_CATEGORY",
+    )
     llm_base_url: str = Field(default="https://example.com/v1", validation_alias="LLM_BASE_URL")
     llm_api_key: str | None = Field(default=None, validation_alias="LLM_API_KEY")
     llm_model: str = Field(default="grok-4.20-0309-non-reasoning", validation_alias="LLM_MODEL")
@@ -50,6 +64,17 @@ class Settings(BaseSettings):
     def runtime_config_path(self) -> Path:
         base_dir = self.sqlite_path.parent if self.sqlite_path is not None else Path("data")
         return base_dir / "runtime_config.json"
+
+    @property
+    def arxiv_sync_category_list(self) -> list[str]:
+        raw_value = self.arxiv_sync_categories.strip()
+        if not raw_value:
+            return []
+        if raw_value.startswith("["):
+            parsed = json.loads(raw_value)
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+        return [item.strip() for item in raw_value.split(",") if item.strip()]
 
     def apply_runtime_overrides(self) -> None:
         path = self.runtime_config_path

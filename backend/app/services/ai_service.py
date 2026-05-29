@@ -29,7 +29,7 @@ class AiService:
         self.db = db
         self.settings = get_settings()
         self.llm_gateway = llm_gateway or LlmGateway()
-        self.paper_service = paper_service or PaperService()
+        self.paper_service = paper_service or PaperService(db=db)
         self.paper_text_service = paper_text_service or PaperTextService()
 
     async def generate_trend_summary(self, category: str | None, days: int) -> TrendSummary:
@@ -40,16 +40,32 @@ class AiService:
             return cached
 
         paper_query = PaperQuery(category=category, keyword=None, days=fixed_days, page=1, page_size=TREND_MAX_PAPERS)
-        papers = (await self.paper_service.list_papers(paper_query)).items
+        paper_result = await self.paper_service.list_papers(paper_query)
+        papers = paper_result.items
+        fallback_items = self._build_fallback_trends(papers)
+        if not papers:
+            summary = TrendSummary(
+                category=category,
+                days=fixed_days,
+                generated_at=datetime.now(UTC),
+                intro="当前趋势摘要基于本地论文库生成；论文库尚未准备好时会返回降级结果。",
+                items=fallback_items,
+                dismissible=True,
+                status="degraded",
+                warning=paper_result.warning,
+            )
+            self._save_cache(summary, cache_key, window_start, window_end)
+            return summary
+
         snippets = [
             f"{paper.id} | {paper.title} | {paper.primary_category} | {paper.summary[:TREND_SUMMARY_CHARS]}"
             for paper in papers[:TREND_MAX_PAPERS]
         ]
         result = await self.llm_gateway.complete(build_trend_prompt(fixed_days, category, snippets), task_name="trend_summary")
-        fallback_items = self._build_fallback_trends(papers)
 
         if result.status == "success":
             parsed = self._parse_trend_response(result.text, fallback_items)
+            summary_status = "degraded" if paper_result.status == "stale" else "success"
             summary = TrendSummary(
                 category=category,
                 days=fixed_days,
@@ -57,7 +73,8 @@ class AiService:
                 intro=parsed["intro"],
                 items=parsed["items"],
                 dismissible=True,
-                status="success",
+                status=summary_status,
+                warning=paper_result.warning,
             )
             self._save_cache(summary, cache_key, window_start, window_end)
             return summary
@@ -70,7 +87,7 @@ class AiService:
             items=fallback_items,
             dismissible=True,
             status="degraded",
-            warning=result.warning,
+            warning=result.warning or paper_result.warning,
         )
         self._save_cache(summary, cache_key, window_start, window_end)
         return summary
@@ -199,10 +216,7 @@ class AiService:
         return pdf_url.replace("/pdf/", "/abs/", 1)
 
     def _should_use_cached_summary(self, cached: TrendSummary) -> bool:
-        if cached.status == "success":
-            return True
-        # 降级摘要只在模型仍未配置时复用；配置恢复后需要重新请求模型，避免一直显示旧降级文案。
-        return not bool(self.settings.llm_api_key and self.settings.llm_model and self.settings.llm_base_url)
+        return cached.status == "success"
 
     def _build_cache_window(self, category: str | None) -> tuple[str, datetime, datetime]:
         window_end = datetime.now(UTC)

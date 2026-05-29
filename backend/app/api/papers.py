@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
+from app.db.session import get_db
 from app.schemas.paper import PaperListResponse, PaperQuery
 from app.services.paper_service import PaperService
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
 
-def get_paper_service() -> PaperService:
-    return PaperService()
+def get_paper_service(db: Session = Depends(get_db)) -> PaperService:
+    return PaperService(db=db)
 
 
 @router.get("", response_model=PaperListResponse)
