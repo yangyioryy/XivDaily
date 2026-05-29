@@ -632,9 +632,9 @@ export struct SettingsPage {
 
   @Builder
   private preferenceSection() {
-    Column({ space: 16 }) {
-      // 偏好设置这三项和下面的配置卡片共用同一条左边界，避免视觉上整体偏右。
-      Column({ space: 12 }) {
+    Column({ space: 0 }) {
+      // 偏好设置沿用和普通 settingRow 接近的纵向节奏，避免前两项比语言行显得更“松”。
+      Column({ space: 8 }) {
         Row({ space: 12 }) {
           this.leadingIcon('◧');
           Column({ space: 2 }) {
@@ -660,11 +660,11 @@ export struct SettingsPage {
         });
       }
       .width('100%')
-      .padding({ left: 16, right: 16 });
+      .padding({ left: 16, right: 16, top: 12, bottom: 10 });
 
       this.sectionDivider();
 
-      Column({ space: 12 }) {
+      Column({ space: 8 }) {
         Row({ space: 12 }) {
           this.leadingIcon('◷');
           Column({ space: 2 }) {
@@ -688,13 +688,12 @@ export struct SettingsPage {
         this.numberChipGroup([1, 3, 7, 30], this.vm.settingsState.defaultDays, (value: number) => this.vm.updateDefaultDays(value));
       }
       .width('100%')
-      .padding({ left: 16, right: 16 });
+      .padding({ left: 16, right: 16, top: 12, bottom: 10 });
 
       this.sectionDivider();
       this.settingRow('🌐', '语言', '文章摘要与界面默认语言', this.languageLabel(), () => this.vm.showLanguagePicker());
     }
     .width('100%')
-    .padding({ top: 16, bottom: 16 })
     .backgroundColor(this.palette().surface)
     .borderRadius(20)
     .border({ width: 1, color: this.palette().outline });
@@ -819,35 +818,45 @@ export struct SettingsPage {
       Stack({ alignContent: Alignment.Center }) {
         this.dialogBackdrop(() => this.vm.hideZoteroDetailDialog());
         Column({ space: 14 }) {
-          this.dialogHeader('⚗', 'Zotero 配置', '连接 Zotero Web API，同步当前论文到指定集合');
-          this.dialogInfoPanel(this.zoteroDetailMessage());
-          Text(`当前集合：${this.vm.settingsState.zoteroTargetCollectionName}`)
-            .fontSize(13)
-            .fontColor(this.palette().textSecondary)
-            .width('100%')
-            .textAlign(TextAlign.Start);
-          this.formInput('User ID / Group ID', this.vm.settingsState.zoteroUserIdDraft, '输入用户或群组 ID', (value: string) => {
-            this.vm.updateZoteroUserIdDraft(value);
-          });
-          Text('Library Type')
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textTertiary)
-            .width('100%')
-            .textAlign(TextAlign.Start);
-          // 界面使用中文选项，但最终仍保存为 Zotero API 需要的 user / group 常量。
-          this.chipGroup(['个人库', '群组库'],
-            this.vm.settingsState.zoteroLibraryTypeDraft === 'group' ? '群组库' : '个人库',
-            (value: string) => {
-              this.vm.updateZoteroLibraryTypeDraft(value === '群组库' ? 'group' : 'user');
-            });
-          this.formInput('API Key', this.vm.settingsState.zoteroApiKeyDraft, this.vm.settingsState.zoteroApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
-            this.vm.updateZoteroApiKeyDraft(value);
-          }, true);
-          this.formInput('目标集合名称', this.vm.settingsState.zoteroTargetCollectionNameDraft, 'XivDaily', (value: string) => {
-            this.vm.updateZoteroCollectionDraft(value);
-          });
-          // 小屏下去掉占位 Blank，避免按钮被推到卡片外面。
+          // Zotero 配置比其他弹窗多了状态说明和多段表单，小屏时内容区单独滚动，底部操作按钮保持固定可见。
+          Scroll() {
+            Column({ space: 14 }) {
+              this.dialogHeader('⚗', 'Zotero 配置', '连接 Zotero Web API，同步当前论文到指定集合');
+              this.dialogInfoPanel(this.zoteroDetailMessage());
+              Text(`当前集合：${this.vm.settingsState.zoteroTargetCollectionName}`)
+                .fontSize(13)
+                .fontColor(this.palette().textSecondary)
+                .width('100%')
+                .textAlign(TextAlign.Start);
+              this.formInput('User ID / Group ID', this.vm.settingsState.zoteroUserIdDraft, '输入用户或群组 ID', (value: string) => {
+                this.vm.updateZoteroUserIdDraft(value);
+              });
+              Text('Library Type')
+                .fontSize(13)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(this.palette().textTertiary)
+                .width('100%')
+                .textAlign(TextAlign.Start);
+              // 界面使用中文选项，但最终仍保存为 Zotero API 需要的 user / group 常量。
+              this.chipGroup(['个人库', '群组库'],
+                this.vm.settingsState.zoteroLibraryTypeDraft === 'group' ? '群组库' : '个人库',
+                (value: string) => {
+                  this.vm.updateZoteroLibraryTypeDraft(value === '群组库' ? 'group' : 'user');
+                });
+              this.formInput('API Key', this.vm.settingsState.zoteroApiKeyDraft, this.vm.settingsState.zoteroApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
+                this.vm.updateZoteroApiKeyDraft(value);
+              }, true);
+              this.formInput('目标集合名称', this.vm.settingsState.zoteroTargetCollectionNameDraft, 'XivDaily', (value: string) => {
+                this.vm.updateZoteroCollectionDraft(value);
+              });
+            }
+            .width('100%');
+          }
+          .width('100%')
+          .layoutWeight(1)
+          .scrollBar(BarState.Auto)
+          .scrollable(ScrollDirection.Vertical);
+
           Row({ space: 8 }) {
             this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
               void this.vm.testZoteroConfig();
@@ -861,6 +870,7 @@ export struct SettingsPage {
           .justifyContent(FlexAlign.End);
         }
         .width('90%')
+        .height('82%')
         .padding(20)
         .backgroundColor(this.palette().surface)
         .borderRadius(24)
