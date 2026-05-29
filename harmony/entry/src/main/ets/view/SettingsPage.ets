@@ -3,7 +3,7 @@ import Context from '@ohos.app.ability.application';
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 import bundleManager from '@ohos.bundle.bundleManager';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
-import { resolveXivPalette, resolveXivThemeMode, XivThemePalette } from '../common/theme/XivTheme';
+import { normalizeXivThemeMode, resolveXivPalette, resolveXivThemeMode, XivThemePalette } from '../common/theme/XivTheme';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
 const FALLBACK_APP_VERSION_NAME: string = '0.1.0';
@@ -46,11 +46,12 @@ export struct SettingsPage {
       return;
     }
     const abilityContext = hostContext as ContextWithColorMode;
-    if (themeMode === 'dark') {
+    const normalizedThemeMode = normalizeXivThemeMode(themeMode);
+    if (normalizedThemeMode === 'dark') {
       abilityContext.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
       return;
     }
-    if (themeMode === 'light') {
+    if (normalizedThemeMode === 'light') {
       abilityContext.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT);
       return;
     }
@@ -58,7 +59,7 @@ export struct SettingsPage {
   }
 
   private themeModeLabel(): string {
-    const themeMode = this.vm.settingsState.themeMode;
+    const themeMode = this.normalizedThemeMode();
     if (themeMode === 'system') {
       return resolveXivThemeMode(themeMode, this.readSystemColorMode()) === 'dark'
         ? '跟随系统 · 深色'
@@ -68,6 +69,10 @@ export struct SettingsPage {
       return '深色';
     }
     return '浅色';
+  }
+
+  private normalizedThemeMode() {
+    return normalizeXivThemeMode(this.vm.settingsState.themeMode);
   }
 
   private languageLabel(): string {
@@ -750,18 +755,18 @@ export struct SettingsPage {
         Column({ space: 12 }) {
           this.optionDialogTitle('选择主题模式');
           Column({ space: 4 }) {
-            this.settingRow(this.vm.settingsState.themeMode === 'system' ? '✦' : '›', '跟随系统',
-              this.vm.settingsState.themeMode === 'system' ? '当前已选中' : '点击切换到该选项', undefined, () => {
+            this.settingRow(this.normalizedThemeMode() === 'system' ? '✦' : '›', '跟随系统',
+              this.normalizedThemeMode() === 'system' ? '当前已选中' : '点击切换到该选项', undefined, () => {
               this.vm.selectThemeMode('system');
               this.applyThemeMode('system');
             });
-            this.settingRow(this.vm.settingsState.themeMode === 'light' ? '✦' : '›', '浅色',
-              this.vm.settingsState.themeMode === 'light' ? '当前已选中' : '点击切换到该选项', undefined, () => {
+            this.settingRow(this.normalizedThemeMode() === 'light' ? '✦' : '›', '浅色',
+              this.normalizedThemeMode() === 'light' ? '当前已选中' : '点击切换到该选项', undefined, () => {
               this.vm.selectThemeMode('light');
               this.applyThemeMode('light');
             });
-            this.settingRow(this.vm.settingsState.themeMode === 'dark' ? '✦' : '›', '深色',
-              this.vm.settingsState.themeMode === 'dark' ? '当前已选中' : '点击切换到该选项', undefined, () => {
+            this.settingRow(this.normalizedThemeMode() === 'dark' ? '✦' : '›', '深色',
+              this.normalizedThemeMode() === 'dark' ? '当前已选中' : '点击切换到该选项', undefined, () => {
               this.vm.selectThemeMode('dark');
               this.applyThemeMode('dark');
             });

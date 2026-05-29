@@ -21,6 +21,7 @@ import favoriteStoreService from '../service/FavoriteStoreService';
 import paperService from '../service/PaperService';
 import preferenceService from '../service/PreferenceService';
 import hilog from '@ohos.hilog';
+import { normalizeXivThemeMode } from '../common/theme/XivTheme';
 
 @Observed
 export class AppViewModel {
@@ -767,14 +768,15 @@ export class AppViewModel {
   }
 
   selectThemeMode(themeMode: string): void {
+    const normalizedThemeMode = normalizeXivThemeMode(themeMode);
     this.updateSettingsState((state: SettingsStatus) => {
-      state.themeMode = themeMode;
+      state.themeMode = normalizedThemeMode;
       state.isThemePickerVisible = false;
     });
     this.persistLocalSettings();
     this.applyLocalSettings(this.settingsState);
     this.updateSettingsState((state: SettingsStatus) => {
-      state.actionMessage = `主题已切换为${themeModeLabel(themeMode)}`;
+      state.actionMessage = `主题已切换为${themeModeLabel(normalizedThemeMode)}`;
       state.errorMessage = undefined;
     });
   }

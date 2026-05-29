@@ -1,4 +1,5 @@
 export type XivResolvedThemeMode = 'light' | 'dark';
+export type XivThemeModePreference = 'light' | 'dark' | 'system';
 
 export interface XivThemePalette {
   background: string;
@@ -89,18 +90,38 @@ function isDarkSystemColorMode(systemColorMode?: string | number): boolean {
   return normalizedValue === '2' || normalizedValue === 'dark' || normalizedValue.includes('dark');
 }
 
-export function resolveXivThemeMode(themeMode: string, systemColorMode?: string | number): XivResolvedThemeMode {
-  if (themeMode === 'dark') {
+export function normalizeXivThemeMode(themeMode?: string): XivThemeModePreference {
+  const normalizedValue = `${themeMode ?? ''}`.trim().toLowerCase();
+  if (normalizedValue === 'dark' || normalizedValue.endsWith('_dark') || normalizedValue.includes('dark')) {
     return 'dark';
   }
-  if (themeMode === 'light') {
+  if (normalizedValue === 'light' || normalizedValue.endsWith('_light') || normalizedValue.includes('light')) {
     return 'light';
   }
-  // 鸿蒙环境里系统主题值既可能是枚举数字，也可能被桥接成字符串，这里先做一层归一化。
+  if (normalizedValue === 'system'
+    || normalizedValue === 'auto'
+    || normalizedValue === 'follow_system'
+    || normalizedValue === 'follow-system'
+    || normalizedValue.includes('system')
+    || normalizedValue.includes('auto')) {
+    return 'system';
+  }
+  return 'system';
+}
+
+export function resolveXivThemeMode(themeMode: string, systemColorMode?: string | number): XivResolvedThemeMode {
+  const normalizedThemeMode = normalizeXivThemeMode(themeMode);
+  if (normalizedThemeMode === 'dark') {
+    return 'dark';
+  }
+  if (normalizedThemeMode === 'light') {
+    return 'light';
+  }
+  // 系统主题值在 ArkUI 里可能是枚举数字，也可能被桥接成字符串，这里统一做一层归一化。
   return isDarkSystemColorMode(systemColorMode) ? 'dark' : 'light';
 }
 
 export function resolveXivPalette(themeMode: string, systemColorMode?: string | number): XivThemePalette {
-  // 先抽出本轮对齐 Android 所需的核心色板，后续 Home/Library/Chat 可继续复用。
+  // 全站页面都通过同一套调色板解析，避免个别页面在主题切换后残留浅色硬编码。
   return resolveXivThemeMode(themeMode, systemColorMode) === 'dark' ? DARK_PALETTE : LIGHT_PALETTE;
 }
