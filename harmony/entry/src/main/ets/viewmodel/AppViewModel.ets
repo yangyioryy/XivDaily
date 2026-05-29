@@ -33,6 +33,7 @@ export class AppViewModel {
 
   private nextActionMessageId: number = 1;
   private homeActionTimerId?: number;
+  private settingsFeedbackTimerId?: number;
   // 用会话版本隔离收藏库快速进入对话与旧请求返回，避免旧回复污染新上下文。
   private activeChatSessionVersion: number = 0;
 
@@ -1307,9 +1308,11 @@ export class AppViewModel {
   }
 
   private updateSettingsState(mutator: (state: SettingsStatus) => void): void {
+    const previousFeedbackSignature = this.settingsFeedbackSignature(this.settingsState);
     const nextState = this.cloneSettingsState(this.settingsState);
     mutator(nextState);
     this.settingsState = nextState;
+    this.syncSettingsFeedbackTimer(previousFeedbackSignature, this.settingsFeedbackSignature(nextState));
   }
 
   private applyRemoteIntegrationStatus(status: SettingsStatus): void {
@@ -1332,6 +1335,45 @@ export class AppViewModel {
       state.llmModelDraft = status.llmModel;
       state.integrationStatusFailed = false;
     });
+  }
+
+  private settingsFeedbackSignature(state: SettingsStatus): string {
+    if (state.errorMessage && state.errorMessage.length > 0) {
+      return `error:${state.errorMessage}`;
+    }
+    if (state.actionMessage && state.actionMessage.length > 0) {
+      return `action:${state.actionMessage}`;
+    }
+    return '';
+  }
+
+  private clearSettingsFeedbackTimer(): void {
+    if (this.settingsFeedbackTimerId !== undefined) {
+      clearTimeout(this.settingsFeedbackTimerId);
+      this.settingsFeedbackTimerId = undefined;
+    }
+  }
+
+  private syncSettingsFeedbackTimer(previousSignature: string, nextSignature: string): void {
+    if (previousSignature === nextSignature) {
+      return;
+    }
+    this.clearSettingsFeedbackTimer();
+    if (nextSignature.length === 0) {
+      return;
+    }
+    // 设置页提示条属于瞬时反馈，统一在短暂停留后自动消失，避免长期占据页面空间。
+    this.settingsFeedbackTimerId = setTimeout(() => {
+      if (this.settingsFeedbackSignature(this.settingsState) === nextSignature) {
+        this.updateSettingsState((state: SettingsStatus) => {
+          if (this.settingsFeedbackSignature(state) === nextSignature) {
+            state.actionMessage = undefined;
+            state.errorMessage = undefined;
+          }
+        });
+      }
+      this.settingsFeedbackTimerId = undefined;
+    }, 2500) as number;
   }
 
   private copyTranslationErrorsWithout(paperId: string): Record<string, string> {

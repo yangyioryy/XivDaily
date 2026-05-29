@@ -3,7 +3,7 @@ import Context from '@ohos.app.ability.application';
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 import bundleManager from '@ohos.bundle.bundleManager';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
-import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
+import { resolveXivPalette, resolveXivThemeMode, XivThemePalette } from '../common/theme/XivTheme';
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
 const FALLBACK_APP_VERSION_NAME: string = '0.1.0';
@@ -58,13 +58,16 @@ export struct SettingsPage {
   }
 
   private themeModeLabel(): string {
-    if (this.vm.settingsState.themeMode === 'dark') {
+    const themeMode = this.vm.settingsState.themeMode;
+    if (themeMode === 'system') {
+      return resolveXivThemeMode(themeMode, this.readSystemColorMode()) === 'dark'
+        ? '跟随系统 · 深色'
+        : '跟随系统 · 浅色';
+    }
+    if (themeMode === 'dark') {
       return '深色';
     }
-    if (this.vm.settingsState.themeMode === 'light') {
-      return '浅色';
-    }
-    return '跟随系统';
+    return '浅色';
   }
 
   private languageLabel(): string {
@@ -630,6 +633,7 @@ export struct SettingsPage {
   @Builder
   private preferenceSection() {
     Column({ space: 16 }) {
+      // 偏好设置这三项和下面的配置卡片共用同一条左边界，避免视觉上整体偏右。
       Column({ space: 12 }) {
         Row({ space: 12 }) {
           this.leadingIcon('◧');
@@ -650,12 +654,13 @@ export struct SettingsPage {
           .alignItems(HorizontalAlign.Start);
         }
         .width('100%')
-        .padding({ left: 16, right: 16, top: 0, bottom: 0 })
         .alignItems(VerticalAlign.Center);
         this.chipGroup(this.defaultCategoryOptions(), this.vm.settingsState.defaultCategory, (value: string) => {
           this.vm.updateDefaultCategory(value);
         });
       }
+      .width('100%')
+      .padding({ left: 16, right: 16 });
 
       this.sectionDivider();
 
@@ -679,16 +684,17 @@ export struct SettingsPage {
           .alignItems(HorizontalAlign.Start);
         }
         .width('100%')
-        .padding({ left: 16, right: 16, top: 0, bottom: 0 })
         .alignItems(VerticalAlign.Center);
         this.numberChipGroup([1, 3, 7, 30], this.vm.settingsState.defaultDays, (value: number) => this.vm.updateDefaultDays(value));
       }
+      .width('100%')
+      .padding({ left: 16, right: 16 });
 
       this.sectionDivider();
       this.settingRow('🌐', '语言', '文章摘要与界面默认语言', this.languageLabel(), () => this.vm.showLanguagePicker());
     }
     .width('100%')
-    .padding(16)
+    .padding({ top: 16, bottom: 16 })
     .backgroundColor(this.palette().surface)
     .borderRadius(20)
     .border({ width: 1, color: this.palette().outline });
@@ -841,17 +847,18 @@ export struct SettingsPage {
           this.formInput('目标集合名称', this.vm.settingsState.zoteroTargetCollectionNameDraft, 'XivDaily', (value: string) => {
             this.vm.updateZoteroCollectionDraft(value);
           });
+          // 小屏下去掉占位 Blank，避免按钮被推到卡片外面。
           Row({ space: 8 }) {
             this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
               void this.vm.testZoteroConfig();
             });
-            Blank();
             this.formActionButton('取消', false, false, () => this.vm.hideZoteroDetailDialog());
             this.formActionButton(this.vm.settingsState.isConfigBusy ? '保存中...' : '保存', true, this.vm.settingsState.isConfigBusy, () => {
               void this.vm.saveZoteroConfig();
             });
           }
-          .width('100%');
+          .width('100%')
+          .justifyContent(FlexAlign.End);
         }
         .width('90%')
         .padding(20)
@@ -884,13 +891,13 @@ export struct SettingsPage {
             this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
               void this.vm.testLlmConfig();
             });
-            Blank();
             this.formActionButton('取消', false, false, () => this.vm.hideLlmDetailDialog());
             this.formActionButton(this.vm.settingsState.isConfigBusy ? '保存中...' : '保存', true, this.vm.settingsState.isConfigBusy, () => {
               void this.vm.saveLlmConfig();
             });
           }
-          .width('100%');
+          .width('100%')
+          .justifyContent(FlexAlign.End);
         }
         .width('90%')
         .padding(20)
