@@ -677,6 +677,14 @@ export struct HomePage {
     .opacity(0.35 + this.paperSwipeProgress(paper.id) * 0.65);
   }
 
+  private homePaperById(paperId: string): PaperItem | undefined {
+    return this.vm.homeState.papers.find((item: PaperItem) => item.id === paperId);
+  }
+
+  private currentPaper(paper: PaperItem): PaperItem {
+    return this.homePaperById(paper.id) ?? paper;
+  }
+
   @Builder
   private paperCard(paper: PaperItem) {
     Stack({ alignContent: Alignment.Center }) {
@@ -684,25 +692,25 @@ export struct HomePage {
       Column({ space: 12 }) {
       Column({ space: 12 }) {
         Row() {
-          Text(paper.title)
+          Text(this.currentPaper(paper).title)
             .fontSize(15)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.palette().textPrimary)
             .layoutWeight(1);
-          SymbolGlyph($r(paper.favoriteState ? 'sys.symbol.star_fill' : 'sys.symbol.star'))
+          SymbolGlyph($r(this.currentPaper(paper).favoriteState ? 'sys.symbol.star_fill' : 'sys.symbol.star'))
             .fontSize(20)
-            .fontColor([paper.favoriteState ? this.palette().warning : this.palette().textTertiary]);
+            .fontColor([this.currentPaper(paper).favoriteState ? this.palette().warning : this.palette().textTertiary]);
         }
         .width('100%');
 
-        Text(paper.authors.join(', '))
+        Text(this.currentPaper(paper).authors.join(', '))
           .fontSize(12)
           .lineHeight(18)
           .fontColor(this.palette().textSecondary)
           .width('100%')
           .textAlign(TextAlign.Start);
 
-        Text(`${paper.primaryCategory} · ${paper.publishedAt.slice(0, 10)} · Zotero ${paper.zoteroSyncState}`)
+        Text(`${this.currentPaper(paper).primaryCategory} · ${this.currentPaper(paper).publishedAt.slice(0, 10)} · Zotero ${this.currentPaper(paper).zoteroSyncState}`)
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().onPrimaryContainer)
@@ -710,17 +718,17 @@ export struct HomePage {
           .textAlign(TextAlign.Start)
           .padding({ left: 16, right: 16, top: 8, bottom: 8 })
           .backgroundColor(this.palette().primaryContainer)
-          .borderRadius(10);
+        .borderRadius(10);
 
         if (this.isPaperExpanded(paper.id)) {
           Column({ space: 10 }) {
-            if (paper.translatedSummary) {
+            if (this.currentPaper(paper).translatedSummary) {
               Column({ space: 6 }) {
                 Text('中文翻译')
                   .fontSize(13)
                   .fontWeight(FontWeight.Medium)
                   .fontColor(this.palette().primary);
-                Text(paper.translatedSummary)
+                Text(this.currentPaper(paper).translatedSummary)
                   .fontSize(14)
                   .lineHeight(22)
                   .fontColor(this.palette().textPrimary);
@@ -728,7 +736,7 @@ export struct HomePage {
                   .fontSize(13)
                   .fontWeight(FontWeight.Medium)
                   .fontColor(this.palette().textSecondary);
-                Text(paper.summary)
+                Text(this.currentPaper(paper).summary)
                   .fontSize(13)
                   .lineHeight(20)
                   .fontColor(this.palette().textSecondary);
@@ -740,7 +748,7 @@ export struct HomePage {
                 .fontSize(13)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(this.palette().primary);
-              Text(paper.summary)
+              Text(this.currentPaper(paper).summary)
                 .fontSize(13)
                 .lineHeight(20)
                 .fontColor(this.palette().textSecondary);
@@ -770,7 +778,7 @@ export struct HomePage {
             .onAction(() => this.vm.toggleFavorite(paper.id)),
           TapGesture()
             .onAction(() => {
-              void this.openPaperSource(paper);
+              void this.openPaperSource(this.currentPaper(paper));
             })
         )
       )
@@ -799,10 +807,10 @@ export struct HomePage {
           }, this.isPaperTranslating(paper.id), this.isPaperTranslating(paper.id));
         }
 
-        this.paperActionButton('☆', paper.favoriteState ? '取消收藏' : '收藏', () => this.vm.toggleFavorite(paper.id),
-          false, false, paper.favoriteState ? 'sys.symbol.bookmark_book_fill' : 'sys.symbol.bookmark_book_closed');
+        this.paperActionButton('☆', this.currentPaper(paper).favoriteState ? '取消收藏' : '收藏', () => this.vm.toggleFavorite(paper.id),
+          false, false, this.currentPaper(paper).favoriteState ? 'sys.symbol.bookmark_book_fill' : 'sys.symbol.bookmark_book_closed');
 
-        if (paper.zoteroSyncState !== 'synced') {
+        if (this.currentPaper(paper).zoteroSyncState !== 'synced') {
           this.paperActionButton('↻', this.isPaperSyncing(paper.id) ? '同步中...' : '同步', () => {
             void this.vm.syncToZotero(paper.id);
           }, this.isPaperSyncing(paper.id), this.isPaperSyncing(paper.id), 'sys.symbol.arrow_2_circlepath');
@@ -919,21 +927,6 @@ export struct HomePage {
     .height('100%');
   }
 
-  @Builder
-  private actionMessageOverlay() {
-    if (this.vm.homeState.actionMessage) {
-      Row() {
-        Text(this.vm.homeState.actionMessage!.text)
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.palette().surface);
-      }
-      .padding({ left: 20, right: 20, top: 10, bottom: 10 })
-      .backgroundColor(this.palette().textPrimary)
-      .borderRadius(16);
-    }
-  }
-
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column({ space: AppConstants.SECTION_SPACING }) {
@@ -974,7 +967,7 @@ export struct HomePage {
           } else {
             ForEach(this.vm.homeState.papers, (paper: PaperItem) => {
               this.paperCard(paper);
-            }, (paper: PaperItem) => paper.id);
+            }, (paper: PaperItem) => `${paper.id}:${paper.favoriteState ? '1' : '0'}:${paper.zoteroSyncState}`);
           }
         }
         .width('100%');
@@ -987,17 +980,6 @@ export struct HomePage {
       })
       .alignItems(HorizontalAlign.Start)
       .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
-
-      if (this.vm.homeState.actionMessage) {
-        Column() {
-          this.actionMessageOverlay();
-        }
-        .width('100%')
-        .height('100%')
-        .justifyContent(FlexAlign.End)
-        .alignItems(HorizontalAlign.Center)
-        .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, bottom: 28 });
-      }
 
       if (this.isAddTagDialogVisible) {
         this.addTagDialogOverlay();

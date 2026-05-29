@@ -56,6 +56,27 @@ struct XivDailyPage {
   }
 
   @Builder
+  private homeActionBanner() {
+    if (this.vm.homeState.actionMessage) {
+      Row() {
+        Text(this.vm.homeState.actionMessage!.text)
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().surface);
+      }
+      .padding({ left: 20, right: 20, top: 10, bottom: 10 })
+      .backgroundColor(this.palette().textPrimary)
+      .borderRadius(16)
+      .shadow({
+        radius: 18,
+        color: '#33000000',
+        offsetX: 0,
+        offsetY: 8
+      });
+    }
+  }
+
+  @Builder
   private tabIcon(index: number) {
     if (index === 0) {
       SymbolGlyph($r(this.localSelectedTab === index ? 'sys.symbol.star_fill' : 'sys.symbol.star'))
@@ -102,11 +123,27 @@ struct XivDailyPage {
   build() {
     Tabs({ barPosition: BarPosition.End, index: this.localSelectedTab }) {
       TabContent() {
-        Scroll(this.homeScroller) {
-          HomePage({ vm: this.vm });
+        Stack({ alignContent: Alignment.TopStart }) {
+          Scroll(this.homeScroller) {
+            HomePage({ vm: this.vm });
+          }
+          .width('100%')
+          .height('100%')
+          .scrollBar(BarState.Off)
+          .scrollable(ScrollDirection.Vertical)
+          .backgroundColor(this.palette().background);
+
+          if (this.vm.homeState.actionMessage) {
+            Column() {
+              this.homeActionBanner();
+            }
+            .width('100%')
+            .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20 })
+            .alignItems(HorizontalAlign.Center);
+          }
         }
-        .scrollBar(BarState.Off)
-        .scrollable(ScrollDirection.Vertical)
+        .width('100%')
+        .height('100%')
         .backgroundColor(this.palette().background);
       }
       .tabBar(this.tabLabel(0, '首页'));
