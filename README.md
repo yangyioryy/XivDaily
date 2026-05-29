@@ -136,7 +136,7 @@ XivDaily/
 ├── backend/                # FastAPI 后端
 ├── harmony/                # HarmonyOS Stage 模型客户端
 ├── asset/                  # README / 汇报使用的双端截图
-├── docs/                   # 架构、接口、部署与 QA 文档
+├── docs/                   # 最小化项目文档索引、后端接口与双端说明
 ├── scripts/                # 构建、发布、联调脚本
 └── README.md
 ```
@@ -230,7 +230,7 @@ cd android
 | [`android/README.md`](./android/README.md) | Android 客户端结构、构建与截图说明 |
 | [`backend/README.md`](./backend/README.md) | FastAPI 后端接口、配置与验证说明 |
 | [`harmony/README.md`](./harmony/README.md) | HarmonyOS 客户端结构、运行方式与截图说明 |
-| [`docs/local-development.md`](./docs/local-development.md) | 本地开发与联调补充说明 |
+| [`docs/README.md`](./docs/README.md) | 最小化文档索引与补充入口 |
 
 ## 🙏 鸣谢
 

@@ -191,4 +191,4 @@ sudo bash scripts/deploy/deploy-backend-linux.sh --install-systemd --host 0.0.0.
 | [`../README.md`](../README.md) | 项目总览、模块说明与快速开始 |
 | [`../backend/README.md`](../backend/README.md) | FastAPI 后端结构、配置与验证说明 |
 | [`../android/README.md`](../android/README.md) | Android 客户端构建与运行说明 |
-| [`../docs/local-development.md`](../docs/local-development.md) | 本地联调补充文档 |
+| [`../docs/README.md`](../docs/README.md) | 最小化文档索引与补充入口 |
