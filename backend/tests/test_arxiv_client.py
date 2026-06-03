@@ -15,7 +15,11 @@ EMPTY_FEED = """<?xml version='1.0' encoding='UTF-8'?>
 
 def build_client() -> ArxivClient:
     client = ArxivClient()
-    client.settings = SimpleNamespace(arxiv_request_timeout_seconds=20, arxiv_base_url="https://example.test")
+    client.settings = SimpleNamespace(
+        arxiv_request_timeout_seconds=20,
+        arxiv_base_url="https://example.test",
+        arxiv_min_request_interval_seconds=0,
+    )
     return client
 
 
@@ -23,6 +27,7 @@ def build_search_client(monkeypatch: pytest.MonkeyPatch) -> ArxivClient:
     settings = SimpleNamespace(
         arxiv_base_url="https://export.arxiv.org/api/query",
         arxiv_request_timeout_seconds=3,
+        arxiv_min_request_interval_seconds=0,
     )
     monkeypatch.setattr("app.clients.arxiv_client.get_settings", lambda: settings)
     client = ArxivClient()
@@ -159,3 +164,211 @@ async def test_search_retries_when_arxiv_returns_429(monkeypatch: pytest.MonkeyP
 
     assert result == []
     assert calls == 2
+
+
+@pytest.mark.anyio("asyncio")
+async def test_search_retries_after_read_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = build_search_client(monkeypatch)
+    calls = 0
+
+    async def fake_sleep(seconds: float) -> None:
+        return None
+
+    class FakeResponse:
+        status_code = 200
+        text = EMPTY_FEED
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, params: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise httpx.ReadTimeout("slow arxiv")
+            return FakeResponse()
+
+    monkeypatch.setattr("app.clients.arxiv_client.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await client.search("cs.CV", None, 10)
+
+    assert result == []
+    assert calls == 2
+
+
+@pytest.mark.anyio("asyncio")
+async def test_search_returns_empty_after_repeated_read_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = build_search_client(monkeypatch)
+    sleep_calls: list[float] = []
+    calls = 0
+
+    async def fake_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, params: dict[str, object], headers: dict[str, str]):
+            nonlocal calls
+            calls += 1
+            raise httpx.ReadTimeout("slow arxiv")
+
+    monkeypatch.setattr("app.clients.arxiv_client.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await client.search("cs.CV", None, 10)
+
+    assert result == []
+    assert calls == 3
+    assert sleep_calls == [4.0, 8.0]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_search_uses_retry_after_for_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = build_search_client(monkeypatch)
+    sleep_calls: list[float] = []
+    requested_statuses = [429, 200]
+
+    async def fake_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+
+    class FakeResponse:
+        def __init__(self, status_code: int) -> None:
+            self.status_code = status_code
+            self.headers = {"Retry-After": "7"}
+            self.text = EMPTY_FEED
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, params: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            return FakeResponse(requested_statuses.pop(0))
+
+    monkeypatch.setattr("app.clients.arxiv_client.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await client.search("cs.CV", None, 10)
+
+    assert result == []
+    assert sleep_calls == [7.0]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_search_returns_empty_after_repeated_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = build_search_client(monkeypatch)
+    calls = 0
+
+    async def fake_sleep(seconds: float) -> None:
+        return None
+
+    class FakeResponse:
+        status_code = 429
+        headers = {}
+        text = EMPTY_FEED
+
+        def raise_for_status(self) -> None:
+            raise AssertionError("retryable status should not call raise_for_status")
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, params: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            nonlocal calls
+            calls += 1
+            return FakeResponse()
+
+    monkeypatch.setattr("app.clients.arxiv_client.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await client.search("cs.CV", None, 10)
+
+    assert result == []
+    assert calls == 3
+
+
+@pytest.mark.anyio("asyncio")
+async def test_search_retries_when_arxiv_returns_503(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = build_search_client(monkeypatch)
+    requested_statuses = [503, 200]
+
+    async def fake_sleep(seconds: float) -> None:
+        return None
+
+    class FakeResponse:
+        def __init__(self, status_code: int) -> None:
+            self.status_code = status_code
+            self.headers = {}
+            self.text = EMPTY_FEED
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, params: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            return FakeResponse(requested_statuses.pop(0))
+
+    monkeypatch.setattr("app.clients.arxiv_client.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await client.search("cs.CV", None, 10)
+
+    assert result == []
+    assert requested_statuses == []
+
+
+@pytest.mark.anyio("asyncio")
+async def test_search_returns_empty_when_xml_is_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = build_search_client(monkeypatch)
+
+    class FakeResponse:
+        status_code = 200
+        headers = {}
+        text = "<feed>"
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, params: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            return FakeResponse()
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await client.search("cs.CV", None, 10)
+
+    assert result == []

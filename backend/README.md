@@ -116,7 +116,13 @@ GET  http://127.0.0.1:8000/zotero/config/status
 | `APP_PORT` | 监听端口 | `8000` |
 | `DATABASE_URL` | 数据库地址 | `sqlite:///./data/xivdaily.db` |
 | `ARXIV_BASE_URL` | arXiv API 地址 | `https://export.arxiv.org/api/query` |
+| `ARXIV_REQUEST_TIMEOUT_SECONDS` | arXiv 请求超时 | `45` |
+| `ARXIV_MIN_REQUEST_INTERVAL_SECONDS` | arXiv 最小请求间隔 | `3.5` |
 | `ARXIV_CACHE_TTL_SECONDS` | 论文列表缓存秒数 | `900` |
+| `ARXIV_SYNC_ENABLED` | 是否启用后台同步任务 | `true` |
+| `ARXIV_SYNC_CATEGORIES` | 后台同步分类 | `["cs.CV","cs.AI","cs.CL"]` |
+| `ARXIV_SYNC_INTERVAL_SECONDS` | 后台同步周期 | `7200` |
+| `ARXIV_SYNC_MAX_RESULTS` | 单轮同步最大条数 | `50` |
 | `LLM_BASE_URL` | OpenAI 兼容 LLM 地址 | `https://example.com/v1` |
 | `LLM_API_KEY` | LLM Key | 无 |
 | `LLM_MODEL` | 模型名 | `grok-4.20-0309-non-reasoning` |

@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     app_log_level: str = Field(default="INFO", validation_alias="APP_LOG_LEVEL")
     database_url: str = Field(default="sqlite:///./data/xivdaily.db", validation_alias="DATABASE_URL")
     arxiv_base_url: str = Field(default="https://export.arxiv.org/api/query", validation_alias="ARXIV_BASE_URL")
-    arxiv_request_timeout_seconds: int = Field(default=20, validation_alias="ARXIV_REQUEST_TIMEOUT_SECONDS")
+    arxiv_request_timeout_seconds: int = Field(default=45, validation_alias="ARXIV_REQUEST_TIMEOUT_SECONDS")
+    arxiv_min_request_interval_seconds: float = Field(default=3.5, validation_alias="ARXIV_MIN_REQUEST_INTERVAL_SECONDS")
     arxiv_cache_ttl_seconds: int = Field(default=900, validation_alias="ARXIV_CACHE_TTL_SECONDS")
     arxiv_sync_enabled: bool = Field(default=True, validation_alias="ARXIV_SYNC_ENABLED")
     arxiv_sync_categories: str = Field(
@@ -31,8 +32,8 @@ class Settings(BaseSettings):
         validation_alias="ARXIV_SYNC_CATEGORIES",
     )
     arxiv_sync_window_days: int = Field(default=7, validation_alias="ARXIV_SYNC_WINDOW_DAYS")
-    arxiv_sync_interval_seconds: int = Field(default=1200, validation_alias="ARXIV_SYNC_INTERVAL_SECONDS")
-    arxiv_sync_max_results: int = Field(default=200, validation_alias="ARXIV_SYNC_MAX_RESULTS")
+    arxiv_sync_interval_seconds: int = Field(default=7200, validation_alias="ARXIV_SYNC_INTERVAL_SECONDS")
+    arxiv_sync_max_results: int = Field(default=50, validation_alias="ARXIV_SYNC_MAX_RESULTS")
     paper_library_stale_after_seconds: int = Field(default=3600, validation_alias="PAPER_LIBRARY_STALE_AFTER_SECONDS")
     paper_library_retention_days: int = Field(default=14, validation_alias="PAPER_LIBRARY_RETENTION_DAYS")
     paper_library_max_papers_per_category: int = Field(

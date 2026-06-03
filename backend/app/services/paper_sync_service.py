@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class PaperSyncService:
-    """负责按固定分类串行同步 arXiv 论文元数据到本地库。"""
+    """同步 arXiv 论文元数据到本地数据库。"""
 
     def __init__(
         self,
@@ -32,7 +32,7 @@ class PaperSyncService:
         self.arxiv_client = arxiv_client or ArxivClient()
 
     async def run_periodic(self, stop_event: asyncio.Event) -> None:
-        """后台常驻任务：先立即同步一次，之后按固定周期循环。"""
+        """先立即同步一轮，再按配置周期持续同步。"""
         while not stop_event.is_set():
             try:
                 await self.sync_once()
@@ -45,30 +45,52 @@ class PaperSyncService:
                 continue
 
     async def sync_once(self) -> dict[str, int]:
-        """手动执行一轮同步，并返回本轮写入与清理统计。"""
+        """执行一轮同步，并返回写入、清理和失败分类统计。"""
         categories = self.settings.arxiv_sync_category_list
         if not categories:
             logger.warning("未配置任何 arXiv 同步分类，本轮同步已跳过")
-            return {"upserted": 0, "deleted": 0}
+            return {"upserted": 0, "deleted": 0, "failed": 0}
 
         cutoff = datetime.now(UTC) - timedelta(days=self.settings.arxiv_sync_window_days)
         upserted = 0
+        deleted = 0
+        failed = 0
+        successful_categories: list[str] = []
+
         with self.session_factory() as db:
             for category in categories:
-                items = await self.arxiv_client.search(category=category, keyword=None, max_results=self.settings.arxiv_sync_max_results)
-                for item in items:
-                    published_at = self._parse_datetime(str(item["published_at"]))
-                    if published_at < cutoff:
-                        continue
-                    self._upsert_record(db, item, published_at)
-                    upserted += 1
+                try:
+                    items = await self.arxiv_client.search(
+                        category=category,
+                        keyword=None,
+                        max_results=self.settings.arxiv_sync_max_results,
+                    )
+                    for item in items:
+                        published_at = self._parse_datetime(str(item["published_at"]))
+                        if published_at < cutoff:
+                            continue
+                        self._upsert_record(db, item, published_at)
+                        upserted += 1
+                    db.commit()
+                    successful_categories.append(category)
+                except Exception:  # noqa: BLE001
+                    failed += 1
+                    db.rollback()
+                    logger.exception("arXiv 分类同步失败。category=%s", category)
+                    continue
+
+            if successful_categories:
+                deleted = self._cleanup_records(db, successful_categories)
                 db.commit()
 
-            deleted = self._cleanup_records(db, categories)
-            db.commit()
-
-        logger.info("论文同步完成。upserted=%s deleted=%s categories=%s", upserted, deleted, ",".join(categories))
-        return {"upserted": upserted, "deleted": deleted}
+        logger.info(
+            "论文同步完成。upserted=%s deleted=%s failed=%s categories=%s",
+            upserted,
+            deleted,
+            failed,
+            ",".join(categories),
+        )
+        return {"upserted": upserted, "deleted": deleted, "failed": failed}
 
     def _upsert_record(
         self,
@@ -102,12 +124,14 @@ class PaperSyncService:
         deleted = 0
         retention_cutoff = datetime.now(UTC) - timedelta(days=self.settings.paper_library_retention_days)
         stale_records = db.scalars(
-            select(PaperRecordModel).where(PaperRecordModel.published_at < retention_cutoff)
+            select(PaperRecordModel).where(
+                PaperRecordModel.published_at < retention_cutoff,
+                PaperRecordModel.primary_category.in_(categories),
+            )
         ).all()
         for record in stale_records:
             db.delete(record)
             deleted += 1
-        # SessionLocal 关闭了 autoflush，这里先落一次删除状态，避免后续限额查询重复看到已删除旧记录。
         db.flush()
 
         limit = self.settings.paper_library_max_papers_per_category

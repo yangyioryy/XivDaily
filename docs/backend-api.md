@@ -86,12 +86,14 @@
 | `APP_LOG_LEVEL` | `INFO` | 日志级别 |
 | `DATABASE_URL` | `sqlite:///./data/xivdaily.db` | 数据库连接 |
 | `ARXIV_BASE_URL` | `https://export.arxiv.org/api/query` | arXiv API 地址 |
+| `ARXIV_REQUEST_TIMEOUT_SECONDS` | `45` | arXiv 请求超时 |
+| `ARXIV_MIN_REQUEST_INTERVAL_SECONDS` | `3.5` | arXiv 最小请求间隔 |
 | `ARXIV_CACHE_TTL_SECONDS` | `900` | 论文列表缓存时间 |
 | `ARXIV_SYNC_ENABLED` | `true` | 是否启用后台同步任务 |
 | `ARXIV_SYNC_CATEGORIES` | `["cs.CV","cs.AI","cs.CL"]` | 后台同步分类 |
 | `ARXIV_SYNC_WINDOW_DAYS` | `7` | 后台同步时间窗口 |
-| `ARXIV_SYNC_INTERVAL_SECONDS` | `1200` | 后台同步周期 |
-| `ARXIV_SYNC_MAX_RESULTS` | `200` | 单轮同步最大条数 |
+| `ARXIV_SYNC_INTERVAL_SECONDS` | `7200` | 后台同步周期 |
+| `ARXIV_SYNC_MAX_RESULTS` | `50` | 单轮同步最大条数 |
 | `PAPER_LIBRARY_STALE_AFTER_SECONDS` | `3600` | 本地论文库过期阈值 |
 | `PAPER_LIBRARY_RETENTION_DAYS` | `14` | 论文库保留天数 |
 | `PAPER_LIBRARY_MAX_PAPERS_PER_CATEGORY` | `200` | 每分类保留上限 |

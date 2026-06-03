@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from time import monotonic
 import xml.etree.ElementTree as ET
 
@@ -9,10 +10,13 @@ import httpx
 from app.core.config import get_settings
 
 ATOM_NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
+RETRYABLE_STATUS_CODES = {429, 502, 503, 504}
+
+logger = logging.getLogger(__name__)
 
 
 class ArxivClient:
-    """arXiv Atom API 客户端，只负责请求和 XML 解析，不做业务过滤。"""
+    """arXiv Atom API client. It fetches metadata and parses XML only."""
 
     _rate_limit_lock = asyncio.Lock()
     _last_request_at = 0.0
@@ -20,6 +24,11 @@ class ArxivClient:
 
     def __init__(self) -> None:
         self.settings = get_settings()
+        self._min_request_interval_seconds = getattr(
+            self.settings,
+            "arxiv_min_request_interval_seconds",
+            self.__class__._min_request_interval_seconds,
+        )
 
     async def search(self, category: str | None, keyword: str | None, max_results: int) -> list[dict[str, object]]:
         query_parts: list[str] = []
@@ -40,14 +49,47 @@ class ArxivClient:
         async with httpx.AsyncClient(timeout=self.settings.arxiv_request_timeout_seconds) as client:
             for attempt in range(3):
                 await self._respect_rate_limit()
-                response = await client.get(self.settings.arxiv_base_url, params=params, headers=headers)
-                if response.status_code == 429 and attempt < 2:
-                    # arXiv 明确按请求频率限流；退避后重试，避免服务刚重启或多筛选并发时直接空列表。
-                    await asyncio.sleep(4 * (attempt + 1))
+                try:
+                    response = await client.get(self.settings.arxiv_base_url, params=params, headers=headers)
+                except (httpx.TimeoutException, httpx.RequestError) as exc:
+                    if attempt >= 2:
+                        logger.warning(
+                            "arXiv request failed after retries. category=%s error=%s",
+                            category,
+                            exc,
+                        )
+                        return []
+                    await asyncio.sleep(self._retry_delay_seconds(attempt))
                     continue
+
+                if response.status_code in RETRYABLE_STATUS_CODES:
+                    if attempt >= 2:
+                        logger.warning(
+                            "arXiv returned retryable status after retries. category=%s status=%s",
+                            category,
+                            response.status_code,
+                        )
+                        return []
+                    await asyncio.sleep(self._retry_delay_seconds(attempt, response))
+                    continue
+
                 response.raise_for_status()
-                return self._parse_entries(response.text)
+                try:
+                    return self._parse_entries(response.text)
+                except ET.ParseError as exc:
+                    logger.warning("arXiv XML parse failed. category=%s error=%s", category, exc)
+                    return []
         return []
+
+    def _retry_delay_seconds(self, attempt: int, response: httpx.Response | None = None) -> float:
+        if response is not None:
+            retry_after = getattr(response, "headers", {}).get("Retry-After")
+            if retry_after:
+                try:
+                    return max(float(retry_after), self._min_request_interval_seconds)
+                except ValueError:
+                    pass
+        return max(4.0 * (attempt + 1), self._min_request_interval_seconds)
 
     async def _respect_rate_limit(self) -> None:
         async with self._rate_limit_lock:
@@ -70,6 +112,11 @@ class ArxivClient:
                 if category.attrib.get("term")
             ]
             primary_category = entry.find("arxiv:primary_category", ATOM_NS)
+            primary_category_value = (
+                primary_category.attrib.get("term", categories[0] if categories else "")
+                if primary_category is not None
+                else (categories[0] if categories else "")
+            )
             entries.append(
                 {
                     "id": self._text(entry, "atom:id").rsplit("/", 1)[-1],
@@ -82,8 +129,7 @@ class ArxivClient:
                     "published_at": self._text(entry, "atom:published"),
                     "updated_at": self._text(entry, "atom:updated"),
                     "categories": categories,
-                    # 某些返回可能缺主分类标签，首版回退到分类列表首项避免解析直接失败。
-                    "primary_category": primary_category.attrib.get("term", categories[0] if categories else "") if primary_category is not None else (categories[0] if categories else ""),
+                    "primary_category": primary_category_value,
                     "source_url": source_url,
                     "pdf_url": pdf_url,
                 }
