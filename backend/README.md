@@ -18,6 +18,7 @@
 | 运行入口 | `app/main.py` |
 | 默认地址 | `http://127.0.0.1:8000/` |
 | 默认数据库 | `sqlite:///./data/xivdaily.db` |
+| 本地论文库 | `paper_records` |
 | 运行时覆盖文件 | `data/runtime_config.json` |
 
 ## 🚀 当前能力
@@ -25,7 +26,8 @@
 | 能力 | 说明 | 关键位置 |
 | --- | --- | --- |
 | ❤️ 健康检查 | 提供服务存活与基础信息检查 | `app/api/health.py` |
-| 📄 论文检索 | 拉取 arXiv 论文流，支持分类、关键词、天数、分页与缓存 | `app/api/papers.py`、`app/services/paper_service.py` |
+| 📄 论文检索 | 优先读取本地论文库，支持分类、关键词、天数与分页；关键词全局搜索可实时请求 arXiv | `app/api/papers.py`、`app/services/paper_service.py` |
+| 🔁 后台同步 | 启动后按分类同步 arXiv 元数据到本地论文库，并清理过期或超限记录 | `app/services/paper_sync_service.py`、`app/models/paper_record.py` |
 | 🧠 趋势摘要 | 对近期论文流生成趋势摘要，未配置模型时自动降级 | `app/api/ai.py`、`app/services/ai_service.py` |
 | 🌐 摘要翻译 | 单篇论文摘要翻译为中文 | `app/api/ai.py` |
 | 💬 论文对话 | 基于多篇论文元数据与 PDF 文本进行问答 | `app/api/ai.py`、`app/services/paper_text_service.py` |
@@ -61,9 +63,9 @@ backend/
 │   ├── clients/           # arXiv / Zotero 外部客户端
 │   ├── core/              # 配置、日志、异常
 │   ├── db/                # 会话与基础数据库封装
-│   ├── models/            # SQLAlchemy 模型
+│   ├── models/            # SQLAlchemy 论文、同步记录与缓存模型
 │   ├── schemas/           # 请求 / 响应模型
-│   └── services/          # 论文、AI、配置、Zotero 业务逻辑
+│   └── services/          # 论文、后台同步、AI、配置、Zotero 业务逻辑
 ├── migrations/            # Alembic 迁移
 ├── tests/                 # API / service / client 自动化测试
 ├── requirements.txt
@@ -112,8 +114,10 @@ GET  http://127.0.0.1:8000/zotero/config/status
 | 配置项 | 说明 | 默认值 |
 | --- | --- | --- |
 | `APP_NAME` | FastAPI 标题 | `XivDaily Backend` |
+| `APP_ENV` | 应用环境标识 | `development` |
 | `APP_HOST` | 监听地址 | `127.0.0.1` |
 | `APP_PORT` | 监听端口 | `8000` |
+| `APP_LOG_LEVEL` | 日志级别 | `INFO` |
 | `DATABASE_URL` | 数据库地址 | `sqlite:///./data/xivdaily.db` |
 | `ARXIV_BASE_URL` | arXiv API 地址 | `https://export.arxiv.org/api/query` |
 | `ARXIV_REQUEST_TIMEOUT_SECONDS` | arXiv 请求超时 | `45` |
@@ -121,11 +125,16 @@ GET  http://127.0.0.1:8000/zotero/config/status
 | `ARXIV_CACHE_TTL_SECONDS` | 论文列表缓存秒数 | `900` |
 | `ARXIV_SYNC_ENABLED` | 是否启用后台同步任务 | `true` |
 | `ARXIV_SYNC_CATEGORIES` | 后台同步分类 | `["cs.CV","cs.AI","cs.CL"]` |
+| `ARXIV_SYNC_WINDOW_DAYS` | 同步时保留的近期论文窗口 | `7` |
 | `ARXIV_SYNC_INTERVAL_SECONDS` | 后台同步周期 | `7200` |
 | `ARXIV_SYNC_MAX_RESULTS` | 单轮同步最大条数 | `50` |
+| `PAPER_LIBRARY_STALE_AFTER_SECONDS` | 本地论文库过期提示阈值 | `3600` |
+| `PAPER_LIBRARY_RETENTION_DAYS` | 本地论文库保留天数 | `14` |
+| `PAPER_LIBRARY_MAX_PAPERS_PER_CATEGORY` | 单分类最多保留论文数 | `200` |
 | `LLM_BASE_URL` | OpenAI 兼容 LLM 地址 | `https://example.com/v1` |
 | `LLM_API_KEY` | LLM Key | 无 |
 | `LLM_MODEL` | 模型名 | `grok-4.20-0309-non-reasoning-console` |
+| `LLM_REQUEST_TIMEOUT_SECONDS` | LLM 请求超时 | `60` |
 | `PAPER_PDF_TIMEOUT_SECONDS` | PDF 抽取超时 | `20` |
 | `PAPER_PDF_MAX_BYTES` | PDF 下载大小上限 | `15728640` |
 | `PAPER_CHAT_CONTEXT_CHARS_PER_PAPER` | 单篇论文进入聊天上下文的字符上限 | `12000` |
@@ -144,7 +153,7 @@ GET  http://127.0.0.1:8000/zotero/config/status
 | 测试范围 | 文件示例 |
 | --- | --- |
 | API 接口 | `test_papers_api.py`、`test_ai_api.py`、`test_config_api.py`、`test_zotero_api.py` |
-| 业务服务 | `test_paper_service.py`、`test_ai_service.py`、`test_zotero_service.py` |
+| 业务服务 | `test_paper_service.py`、`test_paper_sync_service.py`、`test_ai_service.py`、`test_zotero_service.py` |
 | 外部客户端 / 网关 | `test_arxiv_client.py`、`test_llm_gateway.py`、`test_zotero_client.py` |
 | 文本处理 | `test_paper_text_service.py` |
 
@@ -158,5 +167,6 @@ python -m pytest -q
 ## 📝 开发说明
 
 - `app/main.py` 统一挂载 `health`、`papers`、`ai`、`config`、`zotero` 五组路由。
+- `PaperSyncService` 会在非测试环境启动后按配置周期同步 arXiv 论文元数据，`PaperService` 再从本地论文库提供常规列表查询。
 - `ConfigService` 会把设置页写回的 LLM / Zotero 配置持久化到运行时覆盖文件，避免直接改仓库中的 `.env`。
 - `ZoteroService` 除了新建条目，也负责检查目标集合是否存在，并在条目未正确挂入集合时执行 repair。

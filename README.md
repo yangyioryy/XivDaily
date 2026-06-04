@@ -20,14 +20,14 @@
 | --- | --- | --- | --- |
 | 🤖 Android 客户端 | `android/` | Jetpack Compose 论文流、收藏库、论文对话、设置页 | 已落地四页主流程与本地收藏 |
 | 🌈 HarmonyOS 客户端 | `harmony/` | ArkUI 版本的首页、收藏、对话、设置体验 | 已落地 Stage 模型单模块应用 |
-| ⚙️ FastAPI 后端 | `backend/` | arXiv 检索、趋势摘要、摘要翻译、论文对话、Zotero 同步 | 已具备本地可运行接口骨架 |
+| ⚙️ FastAPI 后端 | `backend/` | arXiv 检索、本地论文库、趋势摘要、摘要翻译、论文对话、Zotero 同步 | 已具备本地可运行接口与后台同步能力 |
 | 🖼️ 演示资源 | `asset/` | Android / Harmony 双端界面截图 | 可直接用于 README 展示与汇报材料 |
 
 ## 🚀 核心能力
 
 | 能力 | 说明 |
 | --- | --- |
-| 📄 论文流 | 按 `cs.CV`、`cs.AI`、`cs.CL` 等分类拉取论文，支持关键词、时间窗口与分页 |
+| 📄 论文流 | 后端按 `cs.CV`、`cs.AI`、`cs.CL` 等分类同步本地论文库，客户端支持关键词、时间窗口与分页 |
 | 🧠 AI 导读 | 提供趋势摘要、摘要翻译与多论文对话，未配置模型时走明确降级提示 |
 | ⭐ 收藏管理 | Android 与 Harmony 客户端都提供本地收藏、筛选与跳转对话入口 |
 | 🔄 Zotero 同步 | 后端支持目标集合检查、单篇同步与 BibTeX 导出 |
@@ -189,8 +189,8 @@ Harmony 工程当前使用官方 `hvigor` 插件，仓库内没有额外封装 `
 Harmony 客户端内置的候选后端地址依次为：
 
 ```text
-http://10.0.2.2:8000/
 https://beginnerforever.eu.cc/
+http://10.0.2.2:8000/
 http://127.0.0.1:8000/
 ```
 
@@ -204,8 +204,14 @@ http://127.0.0.1:8000/
 | `ARXIV_REQUEST_TIMEOUT_SECONDS` | arXiv 请求超时 | `45` |
 | `ARXIV_MIN_REQUEST_INTERVAL_SECONDS` | arXiv 最小请求间隔 | `3.5` |
 | `ARXIV_CACHE_TTL_SECONDS` | 论文列表缓存时长 | `900` |
+| `ARXIV_SYNC_ENABLED` | 是否启用后台论文同步 | `true` |
+| `ARXIV_SYNC_CATEGORIES` | 后台同步分类 | `["cs.CV","cs.AI","cs.CL"]` |
+| `ARXIV_SYNC_WINDOW_DAYS` | 同步时保留的近期论文窗口 | `7` |
 | `ARXIV_SYNC_INTERVAL_SECONDS` | 后台同步周期 | `7200` |
 | `ARXIV_SYNC_MAX_RESULTS` | 单轮同步最大条数 | `50` |
+| `PAPER_LIBRARY_STALE_AFTER_SECONDS` | 本地论文库过期提示阈值 | `3600` |
+| `PAPER_LIBRARY_RETENTION_DAYS` | 本地论文库保留天数 | `14` |
+| `PAPER_LIBRARY_MAX_PAPERS_PER_CATEGORY` | 单分类最多保留论文数 | `200` |
 | `LLM_BASE_URL` | OpenAI 兼容模型服务地址 | `https://example.com/v1` |
 | `LLM_MODEL` | 摘要、翻译、对话使用的模型名 | `grok-4.20-0309-non-reasoning-console` |
 | `PAPER_CHAT_CONTEXT_CHARS_PER_PAPER` | 每篇论文进入聊天上下文的字符上限 | `12000` |

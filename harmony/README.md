@@ -118,8 +118,8 @@ ohpm install
 `PaperService.ets` 当前内置以下候选后端地址，并在请求失败时按顺序重试：
 
 ```text
-http://10.0.2.2:8000/
 https://beginnerforever.eu.cc/
+http://10.0.2.2:8000/
 http://127.0.0.1:8000/
 ```
 
