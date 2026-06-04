@@ -20,8 +20,11 @@ import {
 import favoriteStoreService from '../service/FavoriteStoreService';
 import paperService from '../service/PaperService';
 import preferenceService from '../service/PreferenceService';
+import trendSummaryCacheService from '../service/TrendSummaryCacheService';
 import hilog from '@ohos.hilog';
 import { normalizeXivThemeMode } from '../common/theme/XivTheme';
+
+const FIXED_TREND_DAYS: number = 3;
 
 @Observed
 export class AppViewModel {
@@ -45,6 +48,7 @@ export class AppViewModel {
     preferenceService.initialize(this.settingsState);
     const storedFavorites = favoriteStoreService.read([]);
     favoriteStoreService.initialize(storedFavorites);
+    trendSummaryCacheService.initialize();
     this.applyLocalSettings(preferenceService.read(this.settingsState));
     this.refreshFavorites();
   }
@@ -246,16 +250,24 @@ export class AppViewModel {
   }
 
   private async refreshTrendSummary(): Promise<void> {
-    this.updateHomeState((state: HomeUiState) => {
-      state.isSummaryLoading = true;
-    });
     const isCustomTagSelected = this.isSelectedCategoryCustomTag();
     const category = isCustomTagSelected ? undefined : this.homeState.selectedCategory;
     // 自定义标签不是 arXiv category，趋势简报按 keyword 请求，避免复用全局趋势缓存。
     const keyword = isCustomTagSelected ? this.toCustomTagSearchKeyword(this.homeState.selectedCategory) : undefined;
+    const cachedSummary = trendSummaryCacheService.read(category, keyword, FIXED_TREND_DAYS);
+
+    this.updateHomeState((state: HomeUiState) => {
+      state.isSummaryLoading = true;
+      if (cachedSummary) {
+        // 先展示本地最近一次成功结果，后台请求完成后再用最新服务端数据替换。
+        state.trendSummary = cachedSummary;
+        state.trendErrorMessage = undefined;
+      }
+    });
 
     try {
       const trendSummary = await paperService.getTrendSummary(category, keyword);
+      trendSummaryCacheService.save(category, keyword, FIXED_TREND_DAYS, trendSummary);
       this.updateHomeState((state: HomeUiState) => {
         state.trendSummary = trendSummary;
         state.trendErrorMessage = undefined;
@@ -269,7 +281,12 @@ export class AppViewModel {
       );
     } catch (error) {
       this.updateHomeState((state: HomeUiState) => {
-        state.trendErrorMessage = mapUserFriendlyError('趋势摘要暂时不可用', error);
+        if (state.trendSummary) {
+          // 网络失败时保留本地缓存结果，避免旧摘要被错误态覆盖。
+          state.trendErrorMessage = undefined;
+        } else {
+          state.trendErrorMessage = mapUserFriendlyError('趋势摘要暂时不可用', error);
+        }
       });
     } finally {
       this.updateHomeState((state: HomeUiState) => {
