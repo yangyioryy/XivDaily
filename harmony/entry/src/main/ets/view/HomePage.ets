@@ -1,6 +1,7 @@
 import AppConstants from '../common/constants/AppConstants';
 import Context from '@ohos.app.ability.application';
 import common from '@ohos.app.ability.common';
+import { ExternalLinkOpener } from '../common/ExternalLinkOpener';
 import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { PaperItem, TrendItem } from '../model/AppModels';
 import { AppViewModel } from '../viewmodel/AppViewModel';
@@ -163,13 +164,14 @@ export struct HomePage {
 
   private async openPaperSource(paper: PaperItem): Promise<void> {
     const hostContext = this.getUIContext().getHostContext();
-    if (!hostContext || paper.sourceUrl.trim().length === 0) {
+    const sourceUrl = paper.sourceUrl.trim();
+    if (!hostContext || sourceUrl.length === 0) {
       this.showToast('论文链接暂不可用');
       return;
     }
 
     try {
-      await (hostContext as common.UIAbilityContext).openLink(paper.sourceUrl.trim());
+      await ExternalLinkOpener.open(hostContext as common.UIAbilityContext, sourceUrl);
     } catch (error) {
       this.showToast('打开论文原文失败');
     }
