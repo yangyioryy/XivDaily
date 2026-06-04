@@ -1,5 +1,4 @@
 import AppConstants from '../common/constants/AppConstants';
-import { ArrayDataSource } from '../common/ArrayDataSource';
 import Context from '@ohos.app.ability.application';
 import { ExternalLinkOpener } from '../common/ExternalLinkOpener';
 import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
@@ -299,10 +298,6 @@ export struct HomePage {
       return;
     }
     this.vm.selectCategory(tag);
-  }
-
-  private paperDataSource(): ArrayDataSource<PaperItem> {
-    return new ArrayDataSource<PaperItem>(this.vm.homeState.papers);
   }
 
   @Builder
@@ -1037,8 +1032,8 @@ export struct HomePage {
             this.emptyStateCard();
           }
         } else {
-          // 论文卡片数量后续可能继续增长，使用 LazyForEach 避免一次性构建整页论文卡。
-          LazyForEach(this.paperDataSource(), (paper: PaperItem) => {
+          // 这里直接绑定状态数组；分页追加后 ForEach 会随 papers 更新重新构建新增论文卡。
+          ForEach(this.vm.homeState.papers, (paper: PaperItem) => {
             ListItem() {
               this.paperCard(paper);
             }
