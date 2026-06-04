@@ -38,5 +38,8 @@ class PaperListResponse(BaseModel):
     warning: str | None = Field(default=None, description="需要提示给前端的补充说明")
     empty_reason: str | None = Field(
         default=None,
-        description="空列表原因：time_window_filtered、no_results，非空时留空",
+        description=(
+            "空列表原因：time_window_filtered、no_results、rate_limited、"
+            "upstream_unavailable、category_filtered，非空时留空"
+        ),
     )

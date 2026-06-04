@@ -12,7 +12,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from app.clients.arxiv_client import ArxivClient
+from app.clients.arxiv_client import ArxivClient, ArxivSearchResult
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models.paper_record import PaperRecordModel
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheEntry:
     created_at: float
-    items: list[dict[str, object]]
+    result: ArxivSearchResult
 
 
 @dataclass
@@ -40,7 +40,7 @@ class PaperService:
 
     # 保留旧字段，避免现有测试或调用方直接访问时报错。
     _shared_cache: dict[tuple[str, str, int], CacheEntry] = {}
-    _shared_inflight: dict[tuple[str, str, int], asyncio.Task[list[dict[str, object]]]] = {}
+    _shared_inflight: dict[tuple[str, str, int], asyncio.Task[ArxivSearchResult]] = {}
     _REMOTE_SEARCH_MAX_RESULTS_CAP = 200
 
     def __init__(
@@ -86,12 +86,13 @@ class PaperService:
     async def _list_remote_keyword_results(self, query: PaperQuery) -> PaperListResponse:
         keyword = (query.keyword or "").strip()
         max_results = self._remote_search_max_results(query)
-        raw_items = await self._search_arxiv_with_cache(query.category, keyword, max_results)
-        papers = [self._arxiv_item_to_paper(item) for item in raw_items]
+        search_result = await self._search_arxiv_with_cache(query.category, keyword, max_results)
+        papers = [self._arxiv_item_to_paper(item) for item in search_result.items]
         filtered = self._filter_by_category(papers, query.category)
         start = (query.page - 1) * query.page_size
         end = start + query.page_size
         page_items = filtered[start:end]
+        empty_reason = self._resolve_remote_empty_reason(search_result, papers, filtered, query.category)
         return PaperListResponse(
             query=query,
             items=page_items,
@@ -99,9 +100,9 @@ class PaperService:
             page_size=query.page_size,
             total=len(filtered),
             has_more=end < len(filtered),
-            status="empty" if not filtered else "ok",
-            warning=None,
-            empty_reason=None if filtered else "no_results",
+            status=self._resolve_remote_response_status(search_result, filtered),
+            warning=self._build_remote_warning(search_result, empty_reason),
+            empty_reason=empty_reason,
         )
 
     async def _search_arxiv_with_cache(
@@ -109,30 +110,40 @@ class PaperService:
         category: str | None,
         keyword: str,
         max_results: int,
-    ) -> list[dict[str, object]]:
+    ) -> ArxivSearchResult:
         cache_key = ((category or "").strip(), keyword.lower(), max_results)
         cached = self.__class__._shared_cache.get(cache_key)
         if cached is not None and monotonic() - cached.created_at < self.settings.arxiv_cache_ttl_seconds:
-            return cached.items
+            return cached.result
 
         inflight = self.__class__._shared_inflight.get(cache_key)
         if inflight is None:
-            inflight = asyncio.create_task(
-                self.arxiv_client.search(category=category, keyword=keyword, max_results=max_results)
-            )
+            inflight = asyncio.create_task(self._search_arxiv_with_status(category, keyword, max_results))
             self.__class__._shared_inflight[cache_key] = inflight
             owns_task = True
         else:
             owns_task = False
 
         try:
-            items = await inflight
-            if owns_task:
-                self.__class__._shared_cache[cache_key] = CacheEntry(created_at=monotonic(), items=items)
-            return items
+            result = await inflight
+            # 只缓存 arXiv 正常响应，避免限流或超时状态在 TTL 内被误认为稳定空结果。
+            if owns_task and result.status == "ok":
+                self.__class__._shared_cache[cache_key] = CacheEntry(created_at=monotonic(), result=result)
+            return result
         finally:
             if owns_task:
                 self.__class__._shared_inflight.pop(cache_key, None)
+
+    async def _search_arxiv_with_status(
+        self,
+        category: str | None,
+        keyword: str,
+        max_results: int,
+    ) -> ArxivSearchResult:
+        if hasattr(self.arxiv_client, "search_with_status"):
+            return await self.arxiv_client.search_with_status(category=category, keyword=keyword, max_results=max_results)
+        items = await self.arxiv_client.search(category=category, keyword=keyword, max_results=max_results)
+        return ArxivSearchResult(items=items)
 
     def _should_use_remote_keyword_search(self, query: PaperQuery) -> bool:
         return self._normalize(query.keyword) is not None and query.days is None
@@ -270,11 +281,42 @@ class PaperService:
             return load_status
         return "empty" if not filtered else "ok"
 
+    def _resolve_remote_empty_reason(
+        self,
+        search_result: ArxivSearchResult,
+        papers: list[Paper],
+        filtered: list[Paper],
+        category: str | None,
+    ) -> str | None:
+        if filtered:
+            return None
+        if search_result.status == "rate_limited":
+            return "rate_limited"
+        if search_result.status != "ok":
+            return "upstream_unavailable"
+        if category and papers:
+            return "category_filtered"
+        return "no_results"
+
+    def _resolve_remote_response_status(self, search_result: ArxivSearchResult, filtered: list[Paper]) -> str:
+        if filtered:
+            return "ok"
+        if search_result.status != "ok":
+            return "unavailable"
+        return "empty"
+
     def _build_warning(self, days: int | None, load_warning: str | None, empty_reason: str | None) -> str | None:
         if load_warning:
             return load_warning
         if empty_reason == "time_window_filtered" and days is not None:
             return f"当前 {days} 天时间窗内暂无结果，可以尝试切换到 7 天或 30 天。"
+        return None
+
+    def _build_remote_warning(self, search_result: ArxivSearchResult, empty_reason: str | None) -> str | None:
+        if search_result.warning:
+            return search_result.warning
+        if empty_reason == "category_filtered":
+            return "arXiv 找到了相关论文，但当前分类没有命中。可以切换分类或清空分类后再搜索。"
         return None
 
     def _recover_missing_library_table(self, db: Session, exc: OperationalError) -> bool:

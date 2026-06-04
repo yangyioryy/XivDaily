@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.db.base import Base
 from app.models.paper_record import PaperRecordModel
 from app.schemas.paper import PaperQuery
+from app.clients.arxiv_client import ArxivSearchResult
 from app.services.paper_service import PaperService
 
 
@@ -19,6 +20,42 @@ class FakeArxivClient:
     async def search(self, category: str | None, keyword: str | None, max_results: int) -> list[dict[str, object]]:
         self.requests.append((category, keyword, max_results))
         return self.items
+
+
+class StatusFakeArxivClient:
+    def __init__(self, result: ArxivSearchResult) -> None:
+        self.result = result
+        self.requests: list[tuple[str | None, str | None, int]] = []
+
+    async def search_with_status(
+        self,
+        category: str | None,
+        keyword: str | None,
+        max_results: int,
+    ) -> ArxivSearchResult:
+        self.requests.append((category, keyword, max_results))
+        return self.result
+
+
+class SequencedStatusFakeArxivClient:
+    def __init__(self, results: list[ArxivSearchResult]) -> None:
+        self.results = results
+        self.requests: list[tuple[str | None, str | None, int]] = []
+
+    async def search_with_status(
+        self,
+        category: str | None,
+        keyword: str | None,
+        max_results: int,
+    ) -> ArxivSearchResult:
+        self.requests.append((category, keyword, max_results))
+        return self.results.pop(0)
+
+
+@pytest.fixture(autouse=True)
+def clear_remote_search_cache() -> None:
+    PaperService._shared_cache.clear()
+    PaperService._shared_inflight.clear()
 
 
 def build_session() -> Session:
@@ -256,3 +293,97 @@ async def test_list_papers_marks_no_results_after_keyword_filtering() -> None:
     assert result.status == "empty"
     assert result.empty_reason == "no_results"
     assert result.warning is None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_remote_keyword_search_exposes_rate_limit_warning() -> None:
+    db = build_session()
+    arxiv_client = StatusFakeArxivClient(
+        ArxivSearchResult(
+            items=[],
+            status="rate_limited",
+            warning="arXiv 当前限流，已重试但仍失败。可以稍后重试。",
+        )
+    )
+    service = PaperService(db=db, arxiv_client=arxiv_client)
+
+    result = await service.list_papers(PaperQuery(category=None, keyword="omibench", days=None, page=1, page_size=10))
+
+    assert arxiv_client.requests == [(None, "omibench", 50)]
+    assert result.total == 0
+    assert result.status == "unavailable"
+    assert result.empty_reason == "rate_limited"
+    assert result.warning == "arXiv 当前限流，已重试但仍失败。可以稍后重试。"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_remote_keyword_search_keeps_plain_no_results_when_arxiv_is_empty() -> None:
+    db = build_session()
+    arxiv_client = StatusFakeArxivClient(ArxivSearchResult(items=[]))
+    service = PaperService(db=db, arxiv_client=arxiv_client)
+
+    result = await service.list_papers(PaperQuery(category=None, keyword="omibench", days=None, page=1, page_size=10))
+
+    assert result.total == 0
+    assert result.status == "empty"
+    assert result.empty_reason == "no_results"
+    assert result.warning is None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_remote_keyword_search_explains_category_filtered_results() -> None:
+    db = build_session()
+    now = datetime.now(UTC)
+    arxiv_client = StatusFakeArxivClient(
+        ArxivSearchResult(
+            items=[
+                build_arxiv_item(
+                    paper_id="2604.20806v1",
+                    title="OMIBench",
+                    categories=["cs.AI"],
+                    published_at=now,
+                    summary="A benchmark for embodied AI",
+                )
+            ]
+        )
+    )
+    service = PaperService(db=db, arxiv_client=arxiv_client)
+
+    result = await service.list_papers(PaperQuery(category="cs.CV", keyword="omibench", days=None, page=1, page_size=10))
+
+    assert result.total == 0
+    assert result.status == "empty"
+    assert result.empty_reason == "category_filtered"
+    assert result.warning == "arXiv 找到了相关论文，但当前分类没有命中。可以切换分类或清空分类后再搜索。"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_remote_keyword_search_does_not_cache_rate_limited_result() -> None:
+    db = build_session()
+    now = datetime.now(UTC)
+    arxiv_client = SequencedStatusFakeArxivClient(
+        [
+            ArxivSearchResult(items=[], status="rate_limited", warning="arXiv 当前限流。"),
+            ArxivSearchResult(
+                items=[
+                    build_arxiv_item(
+                        paper_id="2604.20806v1",
+                        title="OMIBench",
+                        categories=["cs.CV"],
+                        published_at=now,
+                    )
+                ]
+            ),
+        ]
+    )
+    service = PaperService(db=db, arxiv_client=arxiv_client)
+    query = PaperQuery(category="cs.CV", keyword="omibench", days=None, page=1, page_size=10)
+
+    first = await service.list_papers(query)
+    second = await service.list_papers(query)
+
+    assert first.status == "unavailable"
+    assert first.empty_reason == "rate_limited"
+    assert second.status == "ok"
+    assert second.items[0].id == "2604.20806v1"
+    assert arxiv_client.requests == [("cs.CV", "omibench", 50), ("cs.CV", "omibench", 50)]

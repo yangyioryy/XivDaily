@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from time import monotonic
 import xml.etree.ElementTree as ET
 
@@ -13,6 +14,13 @@ ATOM_NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/sch
 RETRYABLE_STATUS_CODES = {429, 502, 503, 504}
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ArxivSearchResult:
+    items: list[dict[str, object]]
+    status: str = "ok"
+    warning: str | None = None
 
 
 class ArxivClient:
@@ -31,6 +39,15 @@ class ArxivClient:
         )
 
     async def search(self, category: str | None, keyword: str | None, max_results: int) -> list[dict[str, object]]:
+        result = await self.search_with_status(category, keyword, max_results)
+        return result.items
+
+    async def search_with_status(
+        self,
+        category: str | None,
+        keyword: str | None,
+        max_results: int,
+    ) -> ArxivSearchResult:
         query_parts: list[str] = []
         if category:
             query_parts.append(f"cat:{category}")
@@ -58,7 +75,11 @@ class ArxivClient:
                             category,
                             exc,
                         )
-                        return []
+                        return ArxivSearchResult(
+                            items=[],
+                            status="unavailable",
+                            warning="arXiv 暂时无法连接，已返回空结果。请稍后重试。",
+                        )
                     await asyncio.sleep(self._retry_delay_seconds(attempt))
                     continue
 
@@ -69,17 +90,43 @@ class ArxivClient:
                             category,
                             response.status_code,
                         )
-                        return []
+                        if response.status_code == 429:
+                            return ArxivSearchResult(
+                                items=[],
+                                status="rate_limited",
+                                warning="arXiv 当前限流，已重试但仍失败。可以稍后重试，或切换分类后再搜索。",
+                            )
+                        return ArxivSearchResult(
+                            items=[],
+                            status="unavailable",
+                            warning="arXiv 暂时不可用，已重试但仍失败。请稍后重试。",
+                        )
                     await asyncio.sleep(self._retry_delay_seconds(attempt, response))
                     continue
 
-                response.raise_for_status()
                 try:
-                    return self._parse_entries(response.text)
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as exc:
+                    logger.warning("arXiv returned non-retryable status. category=%s error=%s", category, exc)
+                    return ArxivSearchResult(
+                        items=[],
+                        status="unavailable",
+                        warning="arXiv 暂时无法完成搜索请求，请稍后重试或调整搜索条件。",
+                    )
+                try:
+                    return ArxivSearchResult(items=self._parse_entries(response.text))
                 except ET.ParseError as exc:
                     logger.warning("arXiv XML parse failed. category=%s error=%s", category, exc)
-                    return []
-        return []
+                    return ArxivSearchResult(
+                        items=[],
+                        status="unavailable",
+                        warning="arXiv 返回内容暂时无法解析，请稍后重试。",
+                    )
+        return ArxivSearchResult(
+            items=[],
+            status="unavailable",
+            warning="arXiv 搜索暂时不可用，请稍后重试。",
+        )
 
     def _retry_delay_seconds(self, attempt: int, response: httpx.Response | None = None) -> float:
         if response is not None:

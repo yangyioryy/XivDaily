@@ -310,6 +310,46 @@ async def test_search_returns_empty_after_repeated_429(monkeypatch: pytest.Monke
 
 
 @pytest.mark.anyio("asyncio")
+async def test_search_with_status_returns_rate_limited_after_repeated_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = build_search_client(monkeypatch)
+    calls = 0
+
+    async def fake_sleep(seconds: float) -> None:
+        return None
+
+    class FakeResponse:
+        status_code = 429
+        headers = {}
+        text = EMPTY_FEED
+
+        def raise_for_status(self) -> None:
+            raise AssertionError("retryable status should not call raise_for_status")
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, params: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            nonlocal calls
+            calls += 1
+            return FakeResponse()
+
+    monkeypatch.setattr("app.clients.arxiv_client.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await client.search_with_status("cs.CV", "omibench", 10)
+
+    assert result.items == []
+    assert result.status == "rate_limited"
+    assert result.warning is not None
+    assert "限流" in result.warning
+    assert calls == 3
+
+
+@pytest.mark.anyio("asyncio")
 async def test_search_retries_when_arxiv_returns_503(monkeypatch: pytest.MonkeyPatch) -> None:
     client = build_search_client(monkeypatch)
     requested_statuses = [503, 200]

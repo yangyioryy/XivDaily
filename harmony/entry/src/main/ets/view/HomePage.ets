@@ -105,6 +105,15 @@ export struct HomePage {
     if (this.vm.homeState.emptyReason === 'no_results') {
       return '当前搜索条件下没有命中论文，可以切换领域或重新搜索。';
     }
+    if (this.vm.homeState.emptyReason === 'rate_limited') {
+      return 'arXiv 当前限流，可以稍后重试，或先切换分类缩小搜索范围。';
+    }
+    if (this.vm.homeState.emptyReason === 'upstream_unavailable') {
+      return 'arXiv 暂时不可用，可以稍后重试，或先检查网络连接。';
+    }
+    if (this.vm.homeState.emptyReason === 'category_filtered') {
+      return '该关键词有论文命中，但当前分类没有结果，可以切换分类或清空分类。';
+    }
     if (this.vm.homeState.listStatus === 'unavailable') {
       return '请稍后重试，或先检查本地网络与服务状态。';
     }
