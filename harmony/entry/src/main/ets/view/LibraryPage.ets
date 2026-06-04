@@ -59,6 +59,18 @@ export struct LibraryPage {
     return this.vm.libraryState.selectedPaperIds.indexOf(paperId) >= 0;
   }
 
+  private favoriteCardBackgroundColor(paperId: string): string {
+    return this.isPaperSelected(paperId) ? this.palette().primaryContainer : this.palette().surface;
+  }
+
+  private favoriteCardBorderColor(paperId: string): string {
+    return this.isPaperSelected(paperId) ? this.palette().primary : this.palette().outline;
+  }
+
+  private favoriteCardBorderWidth(paperId: string): number {
+    return this.isPaperSelected(paperId) ? 2 : 1;
+  }
+
   private isSyncFilterSelected(filter: string): boolean {
     return this.vm.libraryState.syncFilter === filter;
   }
@@ -258,36 +270,41 @@ export struct LibraryPage {
   @Builder
   private favoriteCard(favorite: FavoritePaperItem) {
     Column({ space: 10 }) {
-      Row({ space: 12 }) {
-        Column({ space: 4 }) {
-          Text(favorite.paper.title)
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.palette().textPrimary)
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.Ellipsis });
-          Text(`收藏于 ${favorite.savedAt.slice(0, 10)}`)
-            .fontSize(12)
-            .fontColor(this.palette().textSecondary)
-            .width('100%')
-            .textAlign(TextAlign.Start);
+      Column({ space: 10 }) {
+        Row({ space: 12 }) {
+          Column({ space: 4 }) {
+            Text(favorite.paper.title)
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.palette().textPrimary)
+              .maxLines(2)
+              .textOverflow({ overflow: TextOverflow.Ellipsis });
+            Text(`收藏于 ${favorite.savedAt.slice(0, 10)}`)
+              .fontSize(12)
+              .fontColor(this.palette().textSecondary)
+              .width('100%')
+              .textAlign(TextAlign.Start);
+          }
+          .layoutWeight(1);
+          SymbolGlyph($r('sys.symbol.star_fill'))
+            .fontSize(20)
+            .fontColor([this.palette().warning]);
         }
-        .layoutWeight(1);
-        SymbolGlyph($r('sys.symbol.star_fill'))
-          .fontSize(20)
-          .fontColor([this.palette().warning]);
-      }
-      .width('100%');
+        .width('100%');
 
-      Row({ space: 8 }) {
-        this.statusPill(this.syncStatusLabel(favorite.paper.zoteroSyncState), this.syncStatusColor(favorite.paper.zoteroSyncState));
-        this.statusPill(this.isPaperSelected(favorite.paper.id) ? '已选中' : '点按可加入批量选择',
-          this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline);
-        if (this.isPaperSyncing(favorite.paper.id)) {
-          this.statusPill('同步中...', this.palette().primary);
+        Row({ space: 8 }) {
+          this.statusPill(this.syncStatusLabel(favorite.paper.zoteroSyncState), this.syncStatusColor(favorite.paper.zoteroSyncState));
+          this.statusPill(this.isPaperSelected(favorite.paper.id) ? '已选中' : '点按可加入批量选择',
+            this.isPaperSelected(favorite.paper.id) ? this.palette().primary : this.palette().outline);
+          if (this.isPaperSyncing(favorite.paper.id)) {
+            this.statusPill('同步中...', this.palette().primary);
+          }
         }
+        .width('100%');
       }
-      .width('100%');
+      .width('100%')
+      // 选择点击只绑定卡片主体，避免对话、同步、删除按钮误触发批量选择。
+      .onClick(() => this.vm.toggleLibrarySelection(favorite.paper.id));
 
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
         Row({ space: 6 }) {
@@ -361,10 +378,9 @@ export struct LibraryPage {
     }
     .width('100%')
     .padding(16)
-    .backgroundColor(this.palette().surface)
+    .backgroundColor(this.favoriteCardBackgroundColor(favorite.paper.id))
     .borderRadius(10)
-    .border({ width: 1, color: this.palette().outline })
-    .onClick(() => this.vm.toggleLibrarySelection(favorite.paper.id));
+    .border({ width: this.favoriteCardBorderWidth(favorite.paper.id), color: this.favoriteCardBorderColor(favorite.paper.id) });
   }
 
   private batchBarBackgroundColor(): string {
