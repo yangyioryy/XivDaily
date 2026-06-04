@@ -121,6 +121,28 @@ export struct HomePage {
     return '可以切换领域、时间窗口或重新搜索';
   }
 
+  private paperPaginationLabel(): string {
+    const loadedCount = this.vm.homeState.papers.length;
+    const totalCount = this.vm.homeState.totalPapers;
+    if (this.vm.homeState.isLoadingMore) {
+      return totalCount > 0 ? `正在加载更多论文 · ${loadedCount}/${totalCount}` : '正在加载更多论文';
+    }
+    if (this.vm.homeState.hasMorePapers) {
+      return totalCount > 0 ? `继续加载 · 已显示 ${loadedCount}/${totalCount}` : '继续加载更多论文';
+    }
+    return totalCount > 0 ? `已加载全部 ${loadedCount}/${totalCount} 篇` : '已加载当前全部论文';
+  }
+
+  private loadMoreFooterOpacity(): number {
+    return this.vm.homeState.hasMorePapers || this.vm.homeState.isLoadingMore ? 1 : 0.72;
+  }
+
+  private triggerLoadMoreIfNeeded(): void {
+    if (this.vm.homeState.hasMorePapers && !this.vm.homeState.isLoading && !this.vm.homeState.isLoadingMore) {
+      void this.vm.loadMoreHomePapers();
+    }
+  }
+
   private representativeTitles(item: TrendItem): string {
     const titles: string[] = item.representativePaperIds.map((paperId: string) => {
       const paper = this.vm.homeState.papers.find((candidate: PaperItem) => candidate.id === paperId);
@@ -878,6 +900,35 @@ export struct HomePage {
   }
 
   @Builder
+  private paperPaginationFooter() {
+    Row({ space: 8 }) {
+      if (this.vm.homeState.isLoadingMore) {
+        LoadingProgress()
+          .width(18)
+          .height(18)
+          .color(this.palette().primary);
+      } else {
+        Text(this.vm.homeState.hasMorePapers ? '↓' : '✓')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().primary);
+      }
+
+      Text(this.paperPaginationLabel())
+        .fontSize(13)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().textSecondary);
+    }
+    .width('100%')
+    .justifyContent(FlexAlign.Center)
+    .padding({ top: 14, bottom: 14 })
+    .opacity(this.loadMoreFooterOpacity())
+    // 底部 footer 出现在可视区域时主动请求下一页，同时保留点击触发作为手动兜底。
+    .onAppear(() => this.triggerLoadMoreIfNeeded())
+    .onClick(() => this.triggerLoadMoreIfNeeded());
+  }
+
+  @Builder
   private addTagDialogOverlay() {
     Stack({ alignContent: Alignment.Center }) {
       Row()
@@ -992,10 +1043,15 @@ export struct HomePage {
               this.paperCard(paper);
             }
           }, (paper: PaperItem) => `${paper.id}:${paper.favoriteState ? '1' : '0'}:${paper.zoteroSyncState}`);
+
+          ListItem() {
+            this.paperPaginationFooter();
+          }
         }
       }
       .width('100%')
       .height('100%')
+      .onReachEnd(() => this.triggerLoadMoreIfNeeded())
       .onClick(() => {
         if (this.pendingDeletionTag.length > 0) {
           this.clearPendingDeletion();

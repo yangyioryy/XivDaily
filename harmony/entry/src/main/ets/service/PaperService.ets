@@ -40,6 +40,10 @@ interface PaperDto {
 
 interface PaperListResponseDto {
   items: PaperDto[];
+  page: number;
+  page_size: number;
+  total: number;
+  has_more: boolean;
   status: string;
   warning?: string | null;
   empty_reason?: string | null;
@@ -192,6 +196,10 @@ interface EmptyPayload {
 
 export interface HomePaperResult {
   items: PaperItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
   status: string;
   warning?: string;
   emptyReason?: string;
@@ -236,6 +244,10 @@ export class PaperService {
 
     return {
       items: items,
+      page: response.page,
+      pageSize: response.page_size,
+      total: response.total,
+      hasMore: response.has_more,
       status: response.status,
       warning: this.normalizeOptionalText(response.warning),
       emptyReason: this.normalizeOptionalText(response.empty_reason)

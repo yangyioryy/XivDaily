@@ -48,11 +48,16 @@ export interface HomeUiState {
   searchKeywordDraft: string;
   searchKeyword: string;
   papers: PaperItem[];
+  currentPage: number;
+  pageSize: number;
+  totalPapers: number;
+  hasMorePapers: boolean;
   trendSummary?: TrendSummary;
   listStatus: string;
   listWarning?: string;
   emptyReason?: string;
   isLoading: boolean;
+  isLoadingMore: boolean;
   isSummaryLoading: boolean;
   summaryExpanded: boolean;
   dismissedSummary: boolean;

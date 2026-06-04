@@ -18,13 +18,15 @@ import {
   createDefaultSettingsStatus
 } from '../model/StateFactory';
 import favoriteStoreService from '../service/FavoriteStoreService';
-import paperService from '../service/PaperService';
+import paperService, { HomePaperResult } from '../service/PaperService';
 import preferenceService from '../service/PreferenceService';
 import trendSummaryCacheService from '../service/TrendSummaryCacheService';
 import hilog from '@ohos.hilog';
 import { normalizeXivThemeMode } from '../common/theme/XivTheme';
+import { PaperQuery } from '../model/ApiModels';
 
 const FIXED_TREND_DAYS: number = 3;
+const HOME_PAPER_PAGE_SIZE: number = 20;
 
 @Observed
 export class AppViewModel {
@@ -39,6 +41,7 @@ export class AppViewModel {
   private homeActionTimerId?: number;
   private libraryFeedbackTimerId?: number;
   private settingsFeedbackTimerId?: number;
+  private homePaperRequestVersion: number = 0;
   private bootstrapped: boolean = false;
   private isEditingLlmDraft: boolean = false;
   // 用会话版本隔离收藏库快速进入对话与旧请求返回，避免旧回复污染新上下文。
@@ -191,51 +194,55 @@ export class AppViewModel {
   }
 
   async refreshHome(): Promise<void> {
-    const searchKeyword = this.homeState.searchKeyword.trim();
-    const isCustomTagSelected = this.isSelectedCategoryCustomTag();
-    const keyword = searchKeyword.length > 0
-      ? searchKeyword
-      : isCustomTagSelected
-        ? this.toCustomTagSearchKeyword(this.homeState.selectedCategory)
-        : undefined;
-    const category = isCustomTagSelected ? undefined : this.homeState.selectedCategory;
-    const days = searchKeyword.length > 0 ? undefined : this.homeState.selectedDays;
+    const query = this.buildHomePaperQuery(1);
+    const querySignature = this.homePaperQuerySignature(query);
+    const requestVersion = this.nextHomePaperRequestVersion();
 
     this.updateHomeState((state: HomeUiState) => {
       state.isLoading = true;
+      state.isLoadingMore = false;
       state.errorMessage = undefined;
+      state.currentPage = 1;
+      state.pageSize = HOME_PAPER_PAGE_SIZE;
+      state.totalPapers = 0;
+      state.hasMorePapers = false;
     });
 
     try {
-      const result = await paperService.listHomePapers({
-        keyword: keyword,
-        category: category,
-        days: days,
-        page: 1,
-        pageSize: 20
-      });
+      const result = await paperService.listHomePapers(query);
 
       this.updateHomeState((state: HomeUiState) => {
+        // 搜索或分类切换后，旧请求可能晚于新请求返回；签名不一致时直接丢弃旧结果。
+        if (!this.isCurrentHomePaperRequest(requestVersion) ||
+          querySignature !== this.homePaperQuerySignature(this.buildHomePaperQuery(1))) {
+          return;
+        }
         state.papers = this.mergeHomePapersWithLocalFavorites(result.items);
-        state.listStatus = result.status;
-        state.listWarning = result.warning;
-        state.emptyReason = result.emptyReason;
+        this.applyHomePaperPageState(state, result);
       });
       hilog.info(
         0x0000,
         'XivDaily',
-        'refreshHome success. papers=%{public}s status=%{public}s warning=%{public}s emptyReason=%{public}s',
+        'refreshHome success. papers=%{public}s page=%{public}s hasMore=%{public}s status=%{public}s warning=%{public}s emptyReason=%{public}s',
         `${this.homeState.papers.length}`,
+        `${this.homeState.currentPage}`,
+        `${this.homeState.hasMorePapers}`,
         `${this.homeState.listStatus}`,
         `${this.homeState.listWarning ?? ''}`,
         `${this.homeState.emptyReason ?? ''}`
       );
     } catch (error) {
       this.updateHomeState((state: HomeUiState) => {
+        if (!this.isCurrentHomePaperRequest(requestVersion)) {
+          return;
+        }
         state.errorMessage = mapUserFriendlyError('论文列表暂时无法刷新', error);
       });
     } finally {
       this.updateHomeState((state: HomeUiState) => {
+        if (!this.isCurrentHomePaperRequest(requestVersion)) {
+          return;
+        }
         state.isLoading = false;
       });
       hilog.info(
@@ -246,6 +253,57 @@ export class AppViewModel {
         `${this.homeState.papers.length}`,
         `${this.homeState.errorMessage ?? ''}`
       );
+    }
+  }
+
+  async loadMoreHomePapers(): Promise<void> {
+    if (!this.homeState.hasMorePapers || this.homeState.isLoading || this.homeState.isLoadingMore) {
+      return;
+    }
+
+    const nextPage = this.homeState.currentPage + 1;
+    const query = this.buildHomePaperQuery(nextPage);
+    const querySignature = this.homePaperQuerySignature(query);
+    const requestVersion = this.nextHomePaperRequestVersion();
+
+    this.updateHomeState((state: HomeUiState) => {
+      state.isLoadingMore = true;
+      state.errorMessage = undefined;
+    });
+
+    try {
+      const result = await paperService.listHomePapers(query);
+      this.updateHomeState((state: HomeUiState) => {
+        if (!this.isCurrentHomePaperRequest(requestVersion) ||
+          querySignature !== this.homePaperQuerySignature(this.buildHomePaperQuery(nextPage))) {
+          return;
+        }
+        const mergedItems = state.papers.concat(this.mergeHomePapersWithLocalFavorites(result.items));
+        state.papers = this.deduplicatePapersById(mergedItems);
+        this.applyHomePaperPageState(state, result);
+      });
+      hilog.info(
+        0x0000,
+        'XivDaily',
+        'loadMoreHomePapers success. papers=%{public}s page=%{public}s hasMore=%{public}s',
+        `${this.homeState.papers.length}`,
+        `${this.homeState.currentPage}`,
+        `${this.homeState.hasMorePapers}`
+      );
+    } catch (error) {
+      this.updateHomeState((state: HomeUiState) => {
+        if (!this.isCurrentHomePaperRequest(requestVersion)) {
+          return;
+        }
+        state.errorMessage = mapUserFriendlyError('加载更多论文暂时失败', error);
+      });
+    } finally {
+      this.updateHomeState((state: HomeUiState) => {
+        if (!this.isCurrentHomePaperRequest(requestVersion)) {
+          return;
+        }
+        state.isLoadingMore = false;
+      });
     }
   }
 
@@ -1306,11 +1364,16 @@ export class AppViewModel {
       searchKeywordDraft: source.searchKeywordDraft,
       searchKeyword: source.searchKeyword,
       papers: source.papers.slice(),
+      currentPage: source.currentPage,
+      pageSize: source.pageSize,
+      totalPapers: source.totalPapers,
+      hasMorePapers: source.hasMorePapers,
       trendSummary: nextTrendSummary,
       listStatus: source.listStatus,
       listWarning: source.listWarning,
       emptyReason: source.emptyReason,
       isLoading: source.isLoading,
+      isLoadingMore: source.isLoadingMore,
       isSummaryLoading: source.isSummaryLoading,
       summaryExpanded: source.summaryExpanded,
       dismissedSummary: source.dismissedSummary,
@@ -1494,6 +1557,66 @@ export class AppViewModel {
 
   private isSearchActive(): boolean {
     return this.homeState.searchKeyword.trim().length > 0;
+  }
+
+  private buildHomePaperQuery(page: number): PaperQuery {
+    const searchKeyword = this.homeState.searchKeyword.trim();
+    const isCustomTagSelected = this.isSelectedCategoryCustomTag();
+    const keyword = searchKeyword.length > 0
+      ? searchKeyword
+      : isCustomTagSelected
+        ? this.toCustomTagSearchKeyword(this.homeState.selectedCategory)
+        : undefined;
+    const category = isCustomTagSelected ? undefined : this.homeState.selectedCategory;
+    const days = searchKeyword.length > 0 ? undefined : this.homeState.selectedDays;
+    return {
+      keyword: keyword,
+      category: category,
+      days: days,
+      page: page,
+      pageSize: HOME_PAPER_PAGE_SIZE
+    };
+  }
+
+  private homePaperQuerySignature(query: PaperQuery): string {
+    return [
+      query.keyword ?? '',
+      query.category ?? '',
+      query.days ?? '',
+      query.page ?? '',
+      query.pageSize ?? ''
+    ].join('|');
+  }
+
+  private applyHomePaperPageState(state: HomeUiState, result: HomePaperResult): void {
+    state.currentPage = result.page;
+    state.pageSize = result.pageSize;
+    state.totalPapers = result.total;
+    state.hasMorePapers = result.hasMore;
+    state.listStatus = result.status;
+    state.listWarning = result.warning;
+    state.emptyReason = result.emptyReason;
+  }
+
+  private nextHomePaperRequestVersion(): number {
+    this.homePaperRequestVersion += 1;
+    return this.homePaperRequestVersion;
+  }
+
+  private isCurrentHomePaperRequest(requestVersion: number): boolean {
+    return requestVersion === this.homePaperRequestVersion;
+  }
+
+  private deduplicatePapersById(papers: PaperItem[]): PaperItem[] {
+    const seenIds: string[] = [];
+    const result: PaperItem[] = [];
+    papers.forEach((paper: PaperItem) => {
+      if (seenIds.indexOf(paper.id) < 0) {
+        seenIds.push(paper.id);
+        result.push(paper);
+      }
+    });
+    return result;
   }
 
   private toCustomTagSearchKeyword(value: string): string {
