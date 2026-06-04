@@ -17,6 +17,7 @@ struct XivDailyPage {
 
   aboutToAppear(): void {
     this.applyThemeMode();
+    this.localSelectedTab = this.vm.selectedTab;
     // 当 ViewModel 内部触发 tab 切换时（如从收藏库进入对话），同步更新本地状态
     this.vm.onTabChanged = (index: number) => {
       this.localSelectedTab = index;
@@ -56,6 +57,18 @@ struct XivDailyPage {
     return resolveXivPalette(this.vm.settingsState.themeMode, this.readSystemColorMode());
   }
 
+  private isTabSelected(index: number): boolean {
+    return this.localSelectedTab === index;
+  }
+
+  private selectTab(index: number): void {
+    if (this.localSelectedTab === index && this.vm.selectedTab === index) {
+      return;
+    }
+    this.localSelectedTab = index;
+    this.vm.selectTab(index);
+  }
+
   @Builder
   private homeActionBanner() {
     if (this.vm.homeState.actionMessage) {
@@ -80,21 +93,21 @@ struct XivDailyPage {
   @Builder
   private tabIcon(index: number) {
     if (index === 0) {
-      SymbolGlyph($r(this.localSelectedTab === index ? 'sys.symbol.star_fill' : 'sys.symbol.star'))
+      SymbolGlyph($r(this.isTabSelected(index) ? 'sys.symbol.star_fill' : 'sys.symbol.star'))
         .fontSize(19)
-        .fontColor([this.localSelectedTab === index ? this.palette().primary : this.palette().textSecondary]);
+        .fontColor([this.isTabSelected(index) ? this.palette().primary : this.palette().textSecondary]);
     } else if (index === 1) {
-      SymbolGlyph($r(this.localSelectedTab === index ? 'sys.symbol.bookmark_book_fill' : 'sys.symbol.bookmark_book_closed'))
+      SymbolGlyph($r(this.isTabSelected(index) ? 'sys.symbol.bookmark_book_fill' : 'sys.symbol.bookmark_book_closed'))
         .fontSize(19)
-        .fontColor([this.localSelectedTab === index ? this.palette().primary : this.palette().textSecondary]);
+        .fontColor([this.isTabSelected(index) ? this.palette().primary : this.palette().textSecondary]);
     } else if (index === 2) {
-      SymbolGlyph($r(this.localSelectedTab === index ? 'sys.symbol.paperplane_right_fill' : 'sys.symbol.paperplane_fill'))
+      SymbolGlyph($r(this.isTabSelected(index) ? 'sys.symbol.paperplane_right_fill' : 'sys.symbol.paperplane_fill'))
         .fontSize(19)
-        .fontColor([this.localSelectedTab === index ? this.palette().primary : this.palette().textSecondary]);
+        .fontColor([this.isTabSelected(index) ? this.palette().primary : this.palette().textSecondary]);
     } else {
-      SymbolGlyph($r(this.localSelectedTab === index ? 'sys.symbol.slider_horizontal_2_square_fill' : 'sys.symbol.slider_horizontal_2'))
+      SymbolGlyph($r(this.isTabSelected(index) ? 'sys.symbol.slider_horizontal_2_square_fill' : 'sys.symbol.slider_horizontal_2'))
         .fontSize(19)
-        .fontColor([this.localSelectedTab === index ? this.palette().primary : this.palette().textSecondary]);
+        .fontColor([this.isTabSelected(index) ? this.palette().primary : this.palette().textSecondary]);
     }
   }
 
@@ -105,20 +118,27 @@ struct XivDailyPage {
         Row()
           .width(42)
           .height(30)
-          .backgroundColor(this.localSelectedTab === index ? this.palette().primaryContainer : '#00000000')
-          .borderRadius(15);
+          .backgroundColor(this.isTabSelected(index) ? this.palette().primaryContainer : '#00000000')
+          .borderRadius(15)
+          .opacity(this.isTabSelected(index) ? 1 : 0);
         this.tabIcon(index);
       }
       .width(42)
-      .height(30);
+      .height(30)
+      .scale({ x: this.isTabSelected(index) ? 1.06 : 1, y: this.isTabSelected(index) ? 1.06 : 1 })
+      .animation({ duration: 160, curve: Curve.EaseOut });
       Text(label)
         .fontSize(12)
-        .fontWeight(this.localSelectedTab === index ? FontWeight.Bold : FontWeight.Medium)
-        .fontColor(this.localSelectedTab === index ? this.palette().primary : this.palette().textSecondary);
+        .fontWeight(this.isTabSelected(index) ? FontWeight.Bold : FontWeight.Medium)
+        .fontColor(this.isTabSelected(index) ? this.palette().primary : this.palette().textSecondary)
+        .opacity(this.isTabSelected(index) ? 1 : 0.78)
+        .animation({ duration: 160, curve: Curve.EaseOut });
     }
     .width('100%')
     .height(AppConstants.TAB_BAR_HEIGHT)
-    .justifyContent(FlexAlign.Center);
+    .justifyContent(FlexAlign.Center)
+    // 自定义 tabBar 点击先更新本地选中态，再交给 Tabs onChange 兜底同步页面索引。
+    .onClick(() => this.selectTab(index));
   }
 
   build() {
@@ -171,8 +191,7 @@ struct XivDailyPage {
     .barBackgroundColor(this.palette().surface)
     .scrollable(false)
     .onChange((index: number) => {
-      this.localSelectedTab = index;
-      this.vm.selectTab(index);
+      this.selectTab(index);
     })
     .onAppear(() => {
       this.applyThemeMode();
