@@ -34,6 +34,7 @@ export class AppViewModel {
 
   private nextActionMessageId: number = 1;
   private homeActionTimerId?: number;
+  private libraryFeedbackTimerId?: number;
   private settingsFeedbackTimerId?: number;
   private bootstrapped: boolean = false;
   private isEditingLlmDraft: boolean = false;
@@ -1333,9 +1334,11 @@ export class AppViewModel {
   }
 
   private updateLibraryState(mutator: (state: LibraryUiState) => void): void {
+    const previousFeedbackSignature = this.libraryFeedbackSignature(this.libraryState);
     const nextState = this.cloneLibraryState(this.libraryState);
     mutator(nextState);
     this.libraryState = nextState;
+    this.syncLibraryFeedbackTimer(previousFeedbackSignature, this.libraryFeedbackSignature(nextState));
   }
 
   private updateSettingsState(mutator: (state: SettingsStatus) => void): void {
@@ -1375,6 +1378,45 @@ export class AppViewModel {
   private canRefreshLlmDrafts(state: SettingsStatus): boolean {
     // LLM 弹窗编辑期间，远程配置刷新只能更新展示态，不能把用户正在输入的 draft 拉回旧值。
     return !state.isLlmDetailDialogVisible || !this.isEditingLlmDraft;
+  }
+
+  private libraryFeedbackSignature(state: LibraryUiState): string {
+    if (state.errorMessage && state.errorMessage.length > 0) {
+      return `error:${state.errorMessage}`;
+    }
+    if (state.actionMessage && state.actionMessage.length > 0) {
+      return `action:${state.actionMessage}`;
+    }
+    return '';
+  }
+
+  private clearLibraryFeedbackTimer(): void {
+    if (this.libraryFeedbackTimerId !== undefined) {
+      clearTimeout(this.libraryFeedbackTimerId);
+      this.libraryFeedbackTimerId = undefined;
+    }
+  }
+
+  private syncLibraryFeedbackTimer(previousSignature: string, nextSignature: string): void {
+    if (previousSignature === nextSignature) {
+      return;
+    }
+    this.clearLibraryFeedbackTimer();
+    if (nextSignature.length === 0) {
+      return;
+    }
+    // 收藏页导出和批量操作反馈只短暂停留；签名校验避免旧 timer 清空新提示。
+    this.libraryFeedbackTimerId = setTimeout(() => {
+      if (this.libraryFeedbackSignature(this.libraryState) === nextSignature) {
+        this.updateLibraryState((state: LibraryUiState) => {
+          if (this.libraryFeedbackSignature(state) === nextSignature) {
+            state.actionMessage = undefined;
+            state.errorMessage = undefined;
+          }
+        });
+      }
+      this.libraryFeedbackTimerId = undefined;
+    }, 2500) as number;
   }
 
   private settingsFeedbackSignature(state: SettingsStatus): string {
