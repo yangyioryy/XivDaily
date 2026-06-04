@@ -17,6 +17,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 
+internal data class HomePaperListRequest(
+    val keyword: String?,
+    val category: String?,
+    val days: Int?,
+    val page: Int,
+    val pageSize: Int,
+)
+
 internal class FakePreferencesRepository(
     initial: UserPreferences = UserPreferences(),
 ) : UserPreferencesRepositoryContract {
@@ -59,9 +67,13 @@ internal class FakePreferencesRepository(
 internal open class FakePaperRepository(
     private val favoritesFlow: Flow<List<FavoritePaperItem>> = flowOf(emptyList()),
 ) : PaperRepositoryContract {
-    var listRequests: MutableList<Triple<String?, String?, Int?>> = mutableListOf()
+    var listRequests: MutableList<HomePaperListRequest> = mutableListOf()
     val trendRequests: MutableList<Pair<String?, String?>> = mutableListOf()
     val homePapers: MutableList<PaperItem> = mutableListOf()
+    val pagedHomePapers: MutableMap<Int, List<PaperItem>> = mutableMapOf()
+    val homePaperHasMoreByPage: MutableMap<Int, Boolean> = mutableMapOf()
+    var homePaperTotal: Int? = null
+    var homePaperHasMore: Boolean? = null
     var homePaperStatus: String = "ok"
     var homePaperWarning: String? = null
     var homePaperEmptyReason: String? = null
@@ -89,13 +101,24 @@ internal open class FakePaperRepository(
         ),
     )
 
-    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int?): HomePaperResult {
-        listRequests.add(Triple(keyword, category, days))
+    override suspend fun listHomePapers(
+        keyword: String?,
+        category: String?,
+        days: Int?,
+        page: Int,
+        pageSize: Int,
+    ): HomePaperResult {
+        listRequests += HomePaperListRequest(keyword, category, days, page, pageSize)
+        val items = pagedHomePapers[page] ?: homePapers.toList()
         return HomePaperResult(
-            items = homePapers.toList(),
+            items = items,
             status = homePaperStatus,
             warning = homePaperWarning,
             emptyReason = homePaperEmptyReason,
+            page = page,
+            pageSize = pageSize,
+            total = homePaperTotal ?: items.size,
+            hasMore = homePaperHasMoreByPage[page] ?: homePaperHasMore ?: false,
         )
     }
 

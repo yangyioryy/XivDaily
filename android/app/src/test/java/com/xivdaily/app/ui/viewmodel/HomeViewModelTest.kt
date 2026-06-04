@@ -31,7 +31,7 @@ class HomeViewModelTest {
             assertEquals("cs.AI", viewModel.uiState.value.selectedCategory)
             assertEquals(7, viewModel.uiState.value.selectedDays)
             assertEquals(null to "cs.AI", repository.trendRequests.last())
-            assertEquals(Triple(null, "cs.AI", 7), repository.listRequests.last())
+            assertEquals(homePaperRequest(null, "cs.AI", 7), repository.listRequests.last())
 
             viewModel.selectCategory("cs.CL")
             viewModel.selectDays(30)
@@ -40,7 +40,7 @@ class HomeViewModelTest {
             assertEquals("cs.CL", viewModel.uiState.value.selectedCategory)
             assertEquals(30, viewModel.uiState.value.selectedDays)
             assertEquals(listOf(null to "cs.AI", null to "cs.CL"), repository.trendRequests)
-            assertEquals(Triple(null, "cs.CL", 30), repository.listRequests.last())
+            assertEquals(homePaperRequest(null, "cs.CL", 30), repository.listRequests.last())
         }
     }
 
@@ -67,7 +67,7 @@ class HomeViewModelTest {
 
             assertEquals("diffusion", viewModel.uiState.value.searchKeyword)
             assertTrue(viewModel.uiState.value.isSearchActive)
-            assertEquals(Triple("diffusion", "cs.CV", null), repository.listRequests.last())
+            assertEquals(homePaperRequest("diffusion", "cs.CV", null), repository.listRequests.last())
             assertEquals("diffusion" to "cs.CV", repository.trendRequests.last())
         }
     }
@@ -85,7 +85,7 @@ class HomeViewModelTest {
             viewModel.submitKeyword()
             advanceUntilIdle()
 
-            assertEquals(Triple("diffusion", "cs.CV", null), repository.listRequests.last())
+            assertEquals(homePaperRequest("diffusion", "cs.CV", null), repository.listRequests.last())
             assertEquals("diffusion" to "cs.CV", repository.trendRequests.last())
 
             viewModel.exitSearch()
@@ -93,7 +93,7 @@ class HomeViewModelTest {
 
             assertEquals("", viewModel.uiState.value.searchKeyword)
             assertTrue(!viewModel.uiState.value.isSearchActive)
-            assertEquals(Triple(null, "cs.CV", 3), repository.listRequests.last())
+            assertEquals(homePaperRequest(null, "cs.CV", 3), repository.listRequests.last())
             assertEquals(null to "cs.CV", repository.trendRequests.last())
         }
     }
@@ -114,7 +114,7 @@ class HomeViewModelTest {
 
             assertEquals(listOf("embodied-ai"), viewModel.uiState.value.customTags)
             assertEquals("embodied-ai", viewModel.uiState.value.selectedCategory)
-            assertEquals(Triple("embodied ai", null, 3), repository.listRequests.last())
+            assertEquals(homePaperRequest("embodied ai", null, 3), repository.listRequests.last())
             assertEquals("embodied ai" to null, repository.trendRequests.last())
         }
     }
@@ -130,7 +130,7 @@ class HomeViewModelTest {
 
             viewModel.selectCategory("embodied-ai")
             advanceUntilIdle()
-            assertEquals(Triple("embodied ai", null, 3), repository.listRequests.last())
+            assertEquals(homePaperRequest("embodied ai", null, 3), repository.listRequests.last())
 
             viewModel.markTagPendingDeletion("embodied-ai")
             viewModel.deleteCustomTag("embodied-ai")
@@ -138,8 +138,48 @@ class HomeViewModelTest {
 
             assertTrue(viewModel.uiState.value.customTags.isEmpty())
             assertEquals("cs.CV", viewModel.uiState.value.selectedCategory)
-            assertEquals(Triple(null, "cs.CV", 3), repository.listRequests.last())
+            assertEquals(homePaperRequest(null, "cs.CV", 3), repository.listRequests.last())
             assertEquals(null to "cs.CV", repository.trendRequests.last())
+        }
+    }
+
+    @Test
+    fun loadMoreHomePapers_requestsNextPageAndAppendsDeduplicatedItems() {
+        runTest {
+            val firstPaper = samplePaper("2401.00001")
+            val duplicatePaper = samplePaper("2401.00002")
+            val nextPaper = samplePaper("2401.00003")
+            val repository = FakePaperRepository().apply {
+                pagedHomePapers[1] = listOf(firstPaper, duplicatePaper)
+                pagedHomePapers[2] = listOf(duplicatePaper.copy(title = "Duplicate Title"), nextPaper)
+                homePaperTotal = 3
+                homePaperHasMoreByPage[1] = true
+                homePaperHasMoreByPage[2] = false
+            }
+
+            val viewModel = HomeViewModel(repository, FakePreferencesRepository())
+            advanceUntilIdle()
+
+            assertEquals(listOf(firstPaper.id, duplicatePaper.id), viewModel.uiState.value.papers.map { it.id })
+            assertTrue(viewModel.uiState.value.hasMorePapers)
+
+            viewModel.loadMoreHomePapers()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(
+                    homePaperRequest(null, "cs.CV", 3, page = 1),
+                    homePaperRequest(null, "cs.CV", 3, page = 2),
+                ),
+                repository.listRequests,
+            )
+            assertEquals(
+                listOf(firstPaper.id, duplicatePaper.id, nextPaper.id),
+                viewModel.uiState.value.papers.map { it.id },
+            )
+            assertEquals(2, viewModel.uiState.value.currentPage)
+            assertEquals(3, viewModel.uiState.value.totalPapers)
+            assertTrue(!viewModel.uiState.value.hasMorePapers)
         }
     }
 
@@ -292,4 +332,20 @@ class HomeViewModelTest {
             assertNull(viewModel.uiState.value.actionMessage)
         }
     }
+}
+
+private fun homePaperRequest(
+    keyword: String?,
+    category: String?,
+    days: Int?,
+    page: Int = 1,
+    pageSize: Int = 20,
+): HomePaperListRequest {
+    return HomePaperListRequest(
+        keyword = keyword,
+        category = category,
+        days = days,
+        page = page,
+        pageSize = pageSize,
+    )
 }

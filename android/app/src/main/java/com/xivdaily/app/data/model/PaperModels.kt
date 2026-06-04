@@ -20,6 +20,10 @@ data class HomePaperResult(
     val status: String,
     val warning: String?,
     val emptyReason: String?,
+    val page: Int = 1,
+    val pageSize: Int = items.size,
+    val total: Int = items.size,
+    val hasMore: Boolean = false,
 )
 
 data class TrendSummaryItem(

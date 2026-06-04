@@ -23,6 +23,7 @@ class HomeViewModel(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     private var nextActionMessageId = 0L
     private var actionMessageJob: Job? = null
+    private var homePaperRequestVersion = 0L
 
     init {
         preferencesRepository.preferences
@@ -155,6 +156,61 @@ class HomeViewModel(
     fun refreshFeed() {
         refreshPapers()
         refreshTrendSummary()
+    }
+
+    fun loadMoreHomePapers() {
+        val current = _uiState.value
+        if (!current.hasMorePapers || current.isLoading || current.isLoadingMore) {
+            return
+        }
+        val query = current.toFeedQuery()
+        val nextPage = current.currentPage + 1
+        val pageSize = current.pageSize
+        val requestVersion = nextHomePaperRequestVersion()
+        _uiState.update { it.copy(isLoadingMore = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            runCatching {
+                repository.listHomePapers(
+                    keyword = query.keyword,
+                    category = query.category,
+                    days = query.days,
+                    page = nextPage,
+                    pageSize = pageSize,
+                )
+            }.onSuccess { result ->
+                _uiState.update { state ->
+                    if (!isCurrentHomePaperRequest(requestVersion) || state.toFeedQuery() != query) {
+                        return@update state
+                    }
+                    // 后端分页理论上不重复，这里仍按 id 去重，防止同步期间数据变化导致卡片重复。
+                    val mergedPapers = deduplicatePapersById(state.papers + result.items)
+                    state.copy(
+                        papers = mergedPapers,
+                        listStatus = result.status,
+                        listWarning = result.warning,
+                        emptyReason = result.emptyReason,
+                        currentPage = result.page,
+                        pageSize = result.pageSize,
+                        totalPapers = result.total,
+                        hasMorePapers = result.hasMore,
+                        isLoadingMore = false,
+                        errorMessage = null,
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { state ->
+                    if (!isCurrentHomePaperRequest(requestVersion) || state.toFeedQuery() != query) {
+                        state
+                    } else {
+                        state.copy(
+                            isLoadingMore = false,
+                            errorMessage = mapUserFriendlyError("加载更多论文暂时失败", error),
+                        )
+                    }
+                }
+            }
+        }
     }
 
     fun toggleSummaryExpanded() {
@@ -295,27 +351,58 @@ class HomeViewModel(
     private fun refreshPapers() {
         viewModelScope.launch {
             val current = _uiState.value
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val query = current.toFeedQuery()
+            val requestVersion = nextHomePaperRequestVersion()
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    isLoadingMore = false,
+                    errorMessage = null,
+                    currentPage = FIRST_HOME_PAPER_PAGE,
+                    pageSize = HOME_PAPER_PAGE_SIZE,
+                    totalPapers = 0,
+                    hasMorePapers = false,
+                )
+            }
             runCatching {
-                val query = current.toFeedQuery()
                 repository.listHomePapers(
                     keyword = query.keyword,
                     category = query.category,
                     days = query.days,
+                    page = FIRST_HOME_PAPER_PAGE,
+                    pageSize = HOME_PAPER_PAGE_SIZE,
                 )
             }.onSuccess { result ->
-                _uiState.update {
-                    it.copy(
+                _uiState.update { state ->
+                    // 搜索、分类、时间窗口快速切换时，旧请求晚返回不能覆盖新查询结果。
+                    if (!isCurrentHomePaperRequest(requestVersion) || state.toFeedQuery() != query) {
+                        return@update state
+                    }
+                    state.copy(
                         papers = result.items,
                         listStatus = result.status,
                         listWarning = result.warning,
                         emptyReason = result.emptyReason,
+                        currentPage = result.page,
+                        pageSize = result.pageSize,
+                        totalPapers = result.total,
+                        hasMorePapers = result.hasMore,
                         isLoading = false,
+                        isLoadingMore = false,
                     )
                 }
             }.onFailure { error ->
-                _uiState.update { it.copy(isLoading = false) }
-                setError(mapUserFriendlyError("论文列表暂时无法刷新", error))
+                _uiState.update { state ->
+                    if (!isCurrentHomePaperRequest(requestVersion) || state.toFeedQuery() != query) {
+                        state
+                    } else {
+                        state.copy(
+                            isLoading = false,
+                            isLoadingMore = false,
+                            errorMessage = mapUserFriendlyError("论文列表暂时无法刷新", error),
+                        )
+                    }
+                }
             }
         }
     }
@@ -350,6 +437,10 @@ class HomeViewModel(
         _uiState.update { it.copy(errorMessage = message) }
     }
 
+    private fun nextHomePaperRequestVersion(): Long = ++homePaperRequestVersion
+
+    private fun isCurrentHomePaperRequest(requestVersion: Long): Boolean = requestVersion == homePaperRequestVersion
+
     private fun showActionMessage(message: String) {
         // 用唯一 id 保护超时清理，避免旧协程把新提示提前清掉。
         val messageId = ++nextActionMessageId
@@ -369,6 +460,8 @@ class HomeViewModel(
 
     private companion object {
         const val ACTION_MESSAGE_TIMEOUT_MS = 2500L
+        const val FIRST_HOME_PAPER_PAGE = 1
+        const val HOME_PAPER_PAGE_SIZE = 20
     }
 }
 
@@ -394,6 +487,11 @@ private fun HomeUiState.toFeedQuery(): HomeFeedQuery {
 
 private fun String.toCustomTagSearchKeyword(): String {
     return replace(Regex("[-_]+"), " ").replace(Regex("\\s+"), " ").trim()
+}
+
+private fun deduplicatePapersById(papers: List<PaperItem>): List<PaperItem> {
+    val seenIds = mutableSetOf<String>()
+    return papers.filter { paper -> seenIds.add(paper.id) }
 }
 
 private fun zoteroSyncMessage(syncState: String): String {

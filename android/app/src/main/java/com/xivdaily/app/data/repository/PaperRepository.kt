@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.map
 
 // 按 UI 使用场景拆分契约，避免 ViewModel 依赖不属于自己的远端能力。
 interface HomePaperRepositoryContract {
-    suspend fun listHomePapers(keyword: String?, category: String?, days: Int?): HomePaperResult
+    suspend fun listHomePapers(keyword: String?, category: String?, days: Int?, page: Int, pageSize: Int): HomePaperResult
     suspend fun getTrendSummary(keyword: String?, category: String?): TrendSummary
     suspend fun translatePaper(paper: PaperItem): PaperItem
     suspend fun saveFavorite(paper: PaperItem)
@@ -68,13 +68,19 @@ class PaperRepository(
     private val apiService: ApiService,
     private val favoritePaperDao: FavoritePaperDao,
 ) : PaperRepositoryContract {
-    override suspend fun listHomePapers(keyword: String?, category: String?, days: Int?): HomePaperResult {
+    override suspend fun listHomePapers(
+        keyword: String?,
+        category: String?,
+        days: Int?,
+        page: Int,
+        pageSize: Int,
+    ): HomePaperResult {
         val response = apiService.listPapers(
             keyword = keyword?.takeIf { it.isNotBlank() },
             category = category,
             days = days,
-            page = 1,
-            pageSize = 20,
+            page = page,
+            pageSize = pageSize,
         )
         val localFavoriteIds = favoritePaperDao.getFavoriteIds().toSet()
         val items = response.items.map { dto ->
@@ -85,6 +91,10 @@ class PaperRepository(
             status = response.status,
             warning = response.warning,
             emptyReason = response.emptyReason,
+            page = response.page,
+            pageSize = response.pageSize,
+            total = response.total,
+            hasMore = response.hasMore,
         )
     }
 

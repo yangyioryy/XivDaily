@@ -160,6 +160,7 @@ fun AppNavGraph(
                     onTogglePaperAbstract = homeViewModel::togglePaperAbstract,
                     onDismissSummary = homeViewModel::dismissSummary,
                     onRefresh = homeViewModel::refreshFeed,
+                    onLoadMore = homeViewModel::loadMoreHomePapers,
                 )
             }
             composable("library") {

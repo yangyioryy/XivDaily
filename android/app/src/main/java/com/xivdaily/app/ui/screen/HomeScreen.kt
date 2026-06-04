@@ -2,6 +2,7 @@ package com.xivdaily.app.ui.screen
 
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -98,6 +99,7 @@ fun HomeScreen(
     onTogglePaperAbstract: (String) -> Unit,
     onDismissSummary: () -> Unit,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
 ) {
     val spacing = MaterialTheme.xivSpacing
     val uriHandler = LocalUriHandler.current
@@ -198,6 +200,18 @@ fun HomeScreen(
                     onSyncToZotero = { onSyncToZotero(paper) },
                 )
             }
+            if (uiState.papers.isNotEmpty()) {
+                item {
+                    PaperPaginationFooter(
+                        isLoading = uiState.isLoading,
+                        isLoadingMore = uiState.isLoadingMore,
+                        hasMore = uiState.hasMorePapers,
+                        loadedCount = uiState.papers.size,
+                        totalCount = uiState.totalPapers,
+                        onLoadMore = onLoadMore,
+                    )
+                }
+            }
             item {
                 Spacer(modifier = Modifier.height(spacing.xl))
             }
@@ -222,6 +236,58 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.inverseOnSurface,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PaperPaginationFooter(
+    isLoading: Boolean,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    loadedCount: Int,
+    totalCount: Int,
+    onLoadMore: () -> Unit,
+) {
+    val spacing = MaterialTheme.xivSpacing
+    LaunchedEffect(hasMore, loadedCount, totalCount) {
+        if (hasMore && !isLoading && !isLoadingMore) {
+            // footer 被 LazyColumn 组合出来时说明用户已经接近底部，自动补下一页。
+            // 失败后 loadedCount 不变，不会因为 isLoadingMore 回落而自动重试；用户仍可点击 footer 手动兜底。
+            onLoadMore()
+        }
+    }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = hasMore && !isLoading && !isLoadingMore, onClick = onLoadMore),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (isLoadingMore) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            } else {
+                Text(
+                    text = if (hasMore) "↓" else "✓",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Spacer(modifier = Modifier.size(spacing.xs))
+            Text(
+                text = paperPaginationLabel(isLoadingMore, hasMore, loadedCount, totalCount),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -1131,5 +1197,21 @@ private fun resolveEmptySubtitle(uiState: HomeUiState): String {
         } else {
             "可以切换领域、时间窗口或重新搜索"
         }
+    }
+}
+
+private fun paperPaginationLabel(
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    loadedCount: Int,
+    totalCount: Int,
+): String {
+    return when {
+        isLoadingMore && totalCount > 0 -> "正在加载更多论文 · $loadedCount/$totalCount"
+        isLoadingMore -> "正在加载更多论文"
+        hasMore && totalCount > 0 -> "继续加载 · 已显示 $loadedCount/$totalCount"
+        hasMore -> "继续加载更多论文"
+        totalCount > 0 -> "已加载全部 $loadedCount/$totalCount"
+        else -> "已加载全部论文"
     }
 }
