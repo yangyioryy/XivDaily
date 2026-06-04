@@ -75,6 +75,14 @@ export struct SettingsPage {
     return normalizeXivThemeMode(this.vm.settingsState.themeMode);
   }
 
+  private isDefaultCategorySelected(value: string): boolean {
+    return this.vm.settingsState.defaultCategory === value;
+  }
+
+  private isDefaultDaysSelected(value: number): boolean {
+    return this.vm.settingsState.defaultDays === value;
+  }
+
   private languageLabel(): string {
     if (this.vm.settingsState.language === 'en-US') {
       return 'English';
@@ -449,19 +457,38 @@ export struct SettingsPage {
   }
 
   @Builder
-  private numberChipGroup(values: number[], selectedValue: number, onSelect: (value: number) => void) {
+  private defaultCategoryChipGroup(values: string[]) {
+    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+      ForEach(values, (value: string) => {
+        Text(value)
+          .fontSize(13)
+          .fontWeight(this.isDefaultCategorySelected(value) ? FontWeight.Medium : FontWeight.Regular)
+          .fontColor(this.isDefaultCategorySelected(value) ? this.palette().onPrimaryContainer : this.palette().textSecondary)
+          .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+          .margin({ right: 8, bottom: 8 })
+          .backgroundColor(this.isDefaultCategorySelected(value) ? this.palette().primaryContainer : this.palette().surface)
+          .borderRadius(14)
+          .border({ width: 1, color: this.isDefaultCategorySelected(value) ? this.palette().primary : this.palette().outline })
+          .onClick(() => this.vm.updateDefaultCategory(value));
+      }, (value: string) => value);
+    }
+    .width('100%');
+  }
+
+  @Builder
+  private defaultDaysChipGroup(values: number[]) {
     Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
       ForEach(values, (value: number) => {
         Text(value === 1 ? '24h' : `${value} 天`)
           .fontSize(13)
-          .fontWeight(selectedValue === value ? FontWeight.Medium : FontWeight.Regular)
-          .fontColor(selectedValue === value ? this.palette().onPrimaryContainer : this.palette().textSecondary)
+          .fontWeight(this.isDefaultDaysSelected(value) ? FontWeight.Medium : FontWeight.Regular)
+          .fontColor(this.isDefaultDaysSelected(value) ? this.palette().onPrimaryContainer : this.palette().textSecondary)
           .padding({ left: 14, right: 14, top: 8, bottom: 8 })
           .margin({ right: 8, bottom: 8 })
-          .backgroundColor(selectedValue === value ? this.palette().primaryContainer : this.palette().surface)
+          .backgroundColor(this.isDefaultDaysSelected(value) ? this.palette().primaryContainer : this.palette().surface)
           .borderRadius(14)
-          .border({ width: 1, color: selectedValue === value ? this.palette().primary : this.palette().outline })
-          .onClick(() => onSelect(value));
+          .border({ width: 1, color: this.isDefaultDaysSelected(value) ? this.palette().primary : this.palette().outline })
+          .onClick(() => this.vm.updateDefaultDays(value));
       }, (value: number) => `${value}`);
     }
     .width('100%');
@@ -506,6 +533,68 @@ export struct SettingsPage {
       if (!disabled && action) {
         action();
       }
+    });
+  }
+
+  @Builder
+  private themeModeSettingRow() {
+    Row({ space: 12 }) {
+      this.leadingIcon('☾', true);
+      Column({ space: 2 }) {
+        Text('主题模式')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().textPrimary)
+          .width('100%')
+          .textAlign(TextAlign.Start);
+        Text('支持浅色、深色与跟随系统')
+          .fontSize(13)
+          .fontColor(this.palette().textSecondary)
+          .width('100%')
+          .textAlign(TextAlign.Start);
+      }
+      .layoutWeight(1);
+      Text(this.themeModeLabel())
+        .fontSize(13)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.palette().textSecondary)
+        .textAlign(TextAlign.Start);
+      Text('›')
+        .fontSize(18)
+        .fontColor(this.palette().textSecondary);
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+    .onClick(() => this.vm.showThemePicker());
+  }
+
+  @Builder
+  private themeOptionRow(themeMode: string, title: string) {
+    Row({ space: 12 }) {
+      this.leadingIcon(this.normalizedThemeMode() === themeMode ? '✦' : '›');
+      Column({ space: 2 }) {
+        Text(title)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().textPrimary)
+          .width('100%')
+          .textAlign(TextAlign.Start);
+        Text(this.normalizedThemeMode() === themeMode ? '当前已选中' : '点击切换到该选项')
+          .fontSize(13)
+          .fontColor(this.palette().textSecondary)
+          .width('100%')
+          .textAlign(TextAlign.Start);
+      }
+      .layoutWeight(1);
+      Text('›')
+        .fontSize(18)
+        .fontColor(this.palette().textSecondary);
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+    .onClick(() => {
+      this.vm.selectThemeMode(themeMode);
+      this.applyThemeMode(themeMode);
     });
   }
 
@@ -660,9 +749,8 @@ export struct SettingsPage {
         }
         .width('100%')
         .alignItems(VerticalAlign.Center);
-        this.chipGroup(this.defaultCategoryOptions(), this.vm.settingsState.defaultCategory, (value: string) => {
-          this.vm.updateDefaultCategory(value);
-        });
+        // 选中态必须在 chip 渲染时直接读取 ViewModel，避免 @Builder 参数缓存导致高亮停留在旧值。
+        this.defaultCategoryChipGroup(this.defaultCategoryOptions());
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 12, bottom: 10 });
@@ -690,7 +778,8 @@ export struct SettingsPage {
         }
         .width('100%')
         .alignItems(VerticalAlign.Center);
-        this.numberChipGroup([1, 3, 7, 30], this.vm.settingsState.defaultDays, (value: number) => this.vm.updateDefaultDays(value));
+        // 时间窗口同样直接读取当前设置，保证文字提示和 chip 高亮同步刷新。
+        this.defaultDaysChipGroup([1, 3, 7, 30]);
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 12, bottom: 10 });
@@ -722,7 +811,8 @@ export struct SettingsPage {
   @Builder
   private appearanceSection() {
     Column({ space: 0 }) {
-      this.settingRow('☾', '主题模式', '支持浅色、深色与跟随系统', this.themeModeLabel(), () => this.vm.showThemePicker(), false, true);
+      // 主题文案依赖当前模式与系统深浅色，需要放在行内部计算，避免切换后仍显示旧提示。
+      this.themeModeSettingRow();
       this.sectionDivider();
       this.settingRow('A', '字体大小', '当前版本采用统一阅读字号体系', '标准', undefined, true);
     }
@@ -755,21 +845,9 @@ export struct SettingsPage {
         Column({ space: 12 }) {
           this.optionDialogTitle('选择主题模式');
           Column({ space: 4 }) {
-            this.settingRow(this.normalizedThemeMode() === 'system' ? '✦' : '›', '跟随系统',
-              this.normalizedThemeMode() === 'system' ? '当前已选中' : '点击切换到该选项', undefined, () => {
-              this.vm.selectThemeMode('system');
-              this.applyThemeMode('system');
-            });
-            this.settingRow(this.normalizedThemeMode() === 'light' ? '✦' : '›', '浅色',
-              this.normalizedThemeMode() === 'light' ? '当前已选中' : '点击切换到该选项', undefined, () => {
-              this.vm.selectThemeMode('light');
-              this.applyThemeMode('light');
-            });
-            this.settingRow(this.normalizedThemeMode() === 'dark' ? '✦' : '›', '深色',
-              this.normalizedThemeMode() === 'dark' ? '当前已选中' : '点击切换到该选项', undefined, () => {
-              this.vm.selectThemeMode('dark');
-              this.applyThemeMode('dark');
-            });
+            this.themeOptionRow('system', '跟随系统');
+            this.themeOptionRow('light', '浅色');
+            this.themeOptionRow('dark', '深色');
           }
           .width('100%');
           Row() {
