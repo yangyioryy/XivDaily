@@ -36,6 +36,7 @@ export class AppViewModel {
   private homeActionTimerId?: number;
   private settingsFeedbackTimerId?: number;
   private bootstrapped: boolean = false;
+  private isEditingLlmDraft: boolean = false;
   // 用会话版本隔离收藏库快速进入对话与旧请求返回，避免旧回复污染新上下文。
   private activeChatSessionVersion: number = 0;
 
@@ -847,6 +848,7 @@ export class AppViewModel {
   }
 
   showLlmDetailDialog(): void {
+    this.isEditingLlmDraft = false;
     this.updateSettingsState((state: SettingsStatus) => {
       state.isLlmDetailDialogVisible = true;
       state.llmBaseUrlDraft = state.llmBaseUrl;
@@ -857,6 +859,7 @@ export class AppViewModel {
   }
 
   hideLlmDetailDialog(): void {
+    this.isEditingLlmDraft = false;
     this.updateSettingsState((state: SettingsStatus) => {
       state.isLlmDetailDialogVisible = false;
     });
@@ -887,18 +890,21 @@ export class AppViewModel {
   }
 
   updateLlmBaseUrlDraft(value: string): void {
+    this.isEditingLlmDraft = true;
     this.updateSettingsState((state: SettingsStatus) => {
       state.llmBaseUrlDraft = value;
     });
   }
 
   updateLlmApiKeyDraft(value: string): void {
+    this.isEditingLlmDraft = true;
     this.updateSettingsState((state: SettingsStatus) => {
       state.llmApiKeyDraft = value;
     });
   }
 
   updateLlmModelDraft(value: string): void {
+    this.isEditingLlmDraft = true;
     this.updateSettingsState((state: SettingsStatus) => {
       state.llmModelDraft = value;
     });
@@ -1026,6 +1032,7 @@ export class AppViewModel {
         normalizeOptionalDraft(this.settingsState.llmApiKeyDraft),
         this.settingsState.llmModelDraft.trim().length > 0 ? this.settingsState.llmModelDraft.trim() : DEFAULT_LLM_MODEL
       );
+      this.isEditingLlmDraft = false;
       this.applyRemoteIntegrationStatus(status);
       this.updateSettingsState((state: SettingsStatus) => {
         state.isConfigBusy = false;
@@ -1357,12 +1364,17 @@ export class AppViewModel {
         state.zoteroLibraryTypeDraft = status.zoteroLibraryType ?? 'user';
         state.zoteroTargetCollectionNameDraft = status.zoteroTargetCollectionName;
       }
-      if (!state.isLlmDetailDialogVisible) {
+      if (this.canRefreshLlmDrafts(state)) {
         state.llmBaseUrlDraft = status.llmBaseUrl;
         state.llmModelDraft = status.llmModel;
       }
       state.integrationStatusFailed = false;
     });
+  }
+
+  private canRefreshLlmDrafts(state: SettingsStatus): boolean {
+    // LLM 弹窗编辑期间，远程配置刷新只能更新展示态，不能把用户正在输入的 draft 拉回旧值。
+    return !state.isLlmDetailDialogVisible || !this.isEditingLlmDraft;
   }
 
   private settingsFeedbackSignature(state: SettingsStatus): string {
