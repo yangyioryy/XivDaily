@@ -79,6 +79,10 @@ export struct LibraryPage {
     return this.vm.libraryState.syncingPaperIds.indexOf(paperId) >= 0;
   }
 
+  private shouldScrollExportContent(content: string): boolean {
+    return content.length > 720 || content.split('\n').length > 12;
+  }
+
   private filterLabel(): string {
     if (this.vm.libraryState.syncFilter === 'synced') {
       return '已同步';
@@ -233,11 +237,29 @@ export struct LibraryPage {
       Text('生成后可直接复制到你的文献管理工具中。')
         .fontSize(13)
         .fontColor(this.palette().onSecondaryContainer);
-      Text(content.length > 0 ? content : '未导出任何条目')
-        .fontSize(12)
-        .lineHeight(18)
-        .fontColor(this.palette().onSecondaryContainer)
-        .width('100%');
+      if (this.shouldScrollExportContent(content)) {
+        Scroll() {
+          Text(content.length > 0 ? content : '未导出任何条目')
+            .fontSize(12)
+            .lineHeight(18)
+            .fontColor(this.palette().onSecondaryContainer)
+            .width('100%');
+        }
+        .width('100%')
+        .height(144)
+        .padding(10)
+        .backgroundColor(this.palette().surfaceVariant)
+        .borderRadius(12)
+        .scrollBar(BarState.Auto)
+        .scrollable(ScrollDirection.Vertical);
+      } else {
+        // 短导出保持自然高度，长内容才进入内部滚动区，避免卡片挤压收藏列表。
+        Text(content.length > 0 ? content : '未导出任何条目')
+          .fontSize(12)
+          .lineHeight(18)
+          .fontColor(this.palette().onSecondaryContainer)
+          .width('100%');
+      }
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
