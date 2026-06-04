@@ -211,10 +211,25 @@ export struct LibraryPage {
   @Builder
   private exportCard(content: string) {
     Column({ space: 8 }) {
-      Text('BibTeX 导出结果')
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.palette().onSecondaryContainer);
+      Row({ space: 12 }) {
+        Text('BibTeX 导出结果')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().onSecondaryContainer)
+          .layoutWeight(1);
+        Text('×')
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().onSecondaryContainer)
+          .width(32)
+          .height(32)
+          .textAlign(TextAlign.Center)
+          .backgroundColor(this.palette().surfaceVariant)
+          .borderRadius(16)
+          .onClick(() => this.vm.dismissLibraryExport());
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Center);
       Text('生成后可直接复制到你的文献管理工具中。')
         .fontSize(13)
         .fontColor(this.palette().onSecondaryContainer);

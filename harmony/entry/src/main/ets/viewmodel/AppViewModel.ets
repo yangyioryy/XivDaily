@@ -500,13 +500,21 @@ export class AppViewModel {
   async exportSelectedBibtex(): Promise<void> {
     if (this.libraryState.selectedPaperIds.length === 0) {
       this.updateLibraryState((state: LibraryUiState) => {
+        state.exportContent = undefined;
         state.errorMessage = '请先选择要导出的论文';
       });
       return;
     }
 
+    const selectedPaperIdsSnapshot = this.libraryState.selectedPaperIds.slice();
+    this.updateLibraryState((state: LibraryUiState) => {
+      // 新导出开始时先隐藏旧结果，避免旧 BibTeX 被误认为本次生成内容。
+      state.exportContent = undefined;
+      state.errorMessage = undefined;
+    });
+
     try {
-      const exportContent = await paperService.exportBibtex(this.libraryState.selectedPaperIds);
+      const exportContent = await paperService.exportBibtex(selectedPaperIdsSnapshot);
       this.updateLibraryState((state: LibraryUiState) => {
         state.exportContent = exportContent;
         // 导出成功后立即清空批量选择，避免后续删除/再次导出误用旧选中集合。
@@ -519,6 +527,12 @@ export class AppViewModel {
         state.errorMessage = mapUserFriendlyError('导出暂时失败', error);
       });
     }
+  }
+
+  dismissLibraryExport(): void {
+    this.updateLibraryState((state: LibraryUiState) => {
+      state.exportContent = undefined;
+    });
   }
 
   deleteFavorite(paperId: string): void {
