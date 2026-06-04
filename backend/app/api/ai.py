@@ -22,10 +22,11 @@ def get_ai_config_status() -> dict[str, bool]:
 @router.get("/summaries/trends", response_model=TrendSummary)
 async def get_trend_summary(
     category: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
     days: int = Query(default=7, ge=1, le=30),
     service: AiService = Depends(get_ai_service),
 ) -> TrendSummary:
-    return await service.generate_trend_summary(category, days)
+    return await service.generate_trend_summary(category, days, keyword)
 
 
 @router.post("/translations", response_model=TranslationTask)

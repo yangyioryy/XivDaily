@@ -19,9 +19,11 @@ class FakeGateway:
         self.text = text
         self.warning = warning
         self.calls = 0
+        self.prompts: list[str] = []
 
     async def complete(self, prompt: str, task_name: str) -> LlmResult:
         self.calls += 1
+        self.prompts.append(prompt)
         self.last_prompt = prompt
         return LlmResult(text=self.text, status=self.status, warning=self.warning)
 
@@ -226,6 +228,32 @@ async def test_generate_trend_summary_hits_cache_without_second_llm_call() -> No
     assert gateway.calls == 1
     assert len(paper_service.requests) == 1
     assert db.get(TrendSummaryCacheModel, next(iter([row.cache_key for row in db.query(TrendSummaryCacheModel).all()]))) is not None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_generate_trend_summary_uses_keyword_with_independent_cache_key() -> None:
+    db = build_session()
+    gateway = FakeGateway(
+        status="success",
+        text='{"intro":"关键词趋势","items":[{"rank":1,"trend_title":"🤖 Embodied AI","summary":"关注具身智能。","representative_paper_ids":["2401.00001"]}]}',
+    )
+    paper_service = FakePaperService()
+    service = AiService(db=db, llm_gateway=gateway, paper_service=paper_service)
+
+    first = await service.generate_trend_summary(None, 3, keyword="embodied ai")
+    second = await service.generate_trend_summary(None, 3, keyword="nlp")
+    cached_keys = [row.cache_key for row in db.query(TrendSummaryCacheModel).all()]
+
+    assert first.status == "success"
+    assert second.status == "success"
+    assert paper_service.requests[0].keyword == "embodied ai"
+    assert paper_service.requests[1].keyword == "nlp"
+    assert paper_service.requests[0].category is None
+    assert "关键词 embodied ai" in gateway.prompts[0]
+    assert "关键词 nlp" in gateway.prompts[1]
+    assert gateway.calls == 2
+    assert any(":kw:embodied-ai:" in key for key in cached_keys)
+    assert any(":kw:nlp:" in key for key in cached_keys)
 
 
 @pytest.mark.anyio("asyncio")

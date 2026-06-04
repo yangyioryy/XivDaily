@@ -249,10 +249,13 @@ export class AppViewModel {
     this.updateHomeState((state: HomeUiState) => {
       state.isSummaryLoading = true;
     });
-    const category = this.isSelectedCategoryCustomTag() ? undefined : this.homeState.selectedCategory;
+    const isCustomTagSelected = this.isSelectedCategoryCustomTag();
+    const category = isCustomTagSelected ? undefined : this.homeState.selectedCategory;
+    // 自定义标签不是 arXiv category，趋势简报按 keyword 请求，避免复用全局趋势缓存。
+    const keyword = isCustomTagSelected ? this.toCustomTagSearchKeyword(this.homeState.selectedCategory) : undefined;
 
     try {
-      const trendSummary = await paperService.getTrendSummary(category);
+      const trendSummary = await paperService.getTrendSummary(category, keyword);
       this.updateHomeState((state: HomeUiState) => {
         state.trendSummary = trendSummary;
         state.trendErrorMessage = undefined;

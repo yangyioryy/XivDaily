@@ -32,14 +32,15 @@ class AiService:
         self.paper_service = paper_service or PaperService(db=db)
         self.paper_text_service = paper_text_service or PaperTextService()
 
-    async def generate_trend_summary(self, category: str | None, days: int) -> TrendSummary:
+    async def generate_trend_summary(self, category: str | None, days: int, keyword: str | None = None) -> TrendSummary:
         fixed_days = FIXED_TREND_DAYS
-        cache_key, window_start, window_end = self._build_cache_window(category)
+        normalized_keyword = self._normalize_optional_text(keyword)
+        cache_key, window_start, window_end = self._build_cache_window(category, normalized_keyword)
         cached = self._load_cached_summary(cache_key)
         if cached is not None and self._should_use_cached_summary(cached):
             return cached
 
-        paper_query = PaperQuery(category=category, keyword=None, days=fixed_days, page=1, page_size=TREND_MAX_PAPERS)
+        paper_query = PaperQuery(category=category, keyword=normalized_keyword, days=fixed_days, page=1, page_size=TREND_MAX_PAPERS)
         paper_result = await self.paper_service.list_papers(paper_query)
         papers = paper_result.items
         fallback_items = self._build_fallback_trends(papers)
@@ -61,7 +62,10 @@ class AiService:
             f"{paper.id} | {paper.title} | {paper.primary_category} | {paper.summary[:TREND_SUMMARY_CHARS]}"
             for paper in papers[:TREND_MAX_PAPERS]
         ]
-        result = await self.llm_gateway.complete(build_trend_prompt(fixed_days, category, snippets), task_name="trend_summary")
+        result = await self.llm_gateway.complete(
+            build_trend_prompt(fixed_days, self._build_trend_focus(category, normalized_keyword), snippets),
+            task_name="trend_summary",
+        )
 
         if result.status == "success":
             parsed = self._parse_trend_response(result.text, fallback_items)
@@ -218,13 +222,33 @@ class AiService:
     def _should_use_cached_summary(self, cached: TrendSummary) -> bool:
         return cached.status == "success"
 
-    def _build_cache_window(self, category: str | None) -> tuple[str, datetime, datetime]:
+    def _build_cache_window(self, category: str | None, keyword: str | None = None) -> tuple[str, datetime, datetime]:
         window_end = datetime.now(UTC)
         window_start = window_end - timedelta(days=FIXED_TREND_DAYS)
         normalized_category = (category or "").strip()
+        normalized_keyword = self._normalize_optional_text(keyword)
         date_key = window_end.date().isoformat()
-        cache_key = f"{normalized_category or 'all'}:{FIXED_TREND_DAYS}:{date_key}"
+        if normalized_keyword is None:
+            cache_key = f"{normalized_category or 'all'}:{FIXED_TREND_DAYS}:{date_key}"
+        else:
+            keyword_key = self._normalize_cache_part(normalized_keyword)
+            cache_key = f"{normalized_category or 'all'}:kw:{keyword_key}:{FIXED_TREND_DAYS}:{date_key}"
         return cache_key, window_start, window_end
+
+    def _build_trend_focus(self, category: str | None, keyword: str | None) -> str | None:
+        normalized_keyword = self._normalize_optional_text(keyword)
+        if normalized_keyword is not None:
+            return f"关键词 {normalized_keyword}"
+        return category
+
+    def _normalize_optional_text(self, value: str | None) -> str | None:
+        normalized = (value or "").strip()
+        return normalized if normalized else None
+
+    def _normalize_cache_part(self, value: str) -> str:
+        normalized = "-".join(value.lower().split())
+        normalized = "".join(char if char.isalnum() or char in {"-", "_", "."} else "-" for char in normalized)
+        return normalized[:48] or "keyword"
 
     def _parse_trend_response(self, payload: str, fallback_items: list[TrendSummaryItem]) -> dict[str, object]:
         try:

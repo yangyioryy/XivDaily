@@ -8,7 +8,15 @@ from app.schemas.ai import PaperChatResponse, PaperChatUsedPaper, TranslationTas
 
 
 class FakeAiService:
-    async def generate_trend_summary(self, category: str | None, days: int) -> TrendSummary:
+    def __init__(self) -> None:
+        self.last_category: str | None = None
+        self.last_days: int | None = None
+        self.last_keyword: str | None = None
+
+    async def generate_trend_summary(self, category: str | None, days: int, keyword: str | None = None) -> TrendSummary:
+        self.last_category = category
+        self.last_days = days
+        self.last_keyword = keyword
         return TrendSummary(
             category=category,
             days=3,
@@ -60,6 +68,19 @@ def test_trend_summary_api_returns_payload() -> None:
     assert response.status_code == 200
     assert response.json()["days"] == 3
     assert response.json()["items"][0]["trend_title"] == "📊 Mock Trend"
+
+
+def test_trend_summary_api_passes_keyword() -> None:
+    fake_service = FakeAiService()
+    app.dependency_overrides[get_ai_service] = lambda: fake_service
+    client = TestClient(app)
+
+    response = client.get("/summaries/trends?keyword=embodied-ai&days=3")
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert fake_service.last_category is None
+    assert fake_service.last_keyword == "embodied-ai"
 
 
 def test_translation_api_returns_payload() -> None:

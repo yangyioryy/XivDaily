@@ -242,8 +242,8 @@ export class PaperService {
     };
   }
 
-  async getTrendSummary(category?: string): Promise<TrendSummary> {
-    const query = this.buildTrendSummaryQuery(category);
+  async getTrendSummary(category?: string, keyword?: string): Promise<TrendSummary> {
+    const query = this.buildTrendSummaryQuery(category, keyword);
     const response = await this.request<TrendSummaryResponseDto>(this.buildUrl('summaries/trends', query), this.createGetOptions());
     const trendItems: TrendItem[] = [];
 
@@ -541,9 +541,10 @@ export class PaperService {
     return params.join('&');
   }
 
-  private buildTrendSummaryQuery(category?: string): string {
+  private buildTrendSummaryQuery(category?: string, keyword?: string): string {
     const params: string[] = [];
     this.appendQueryParam(params, 'category', category);
+    this.appendQueryParam(params, 'keyword', keyword);
     this.appendQueryParam(params, 'days', FIXED_TREND_DAYS);
     return params.join('&');
   }
