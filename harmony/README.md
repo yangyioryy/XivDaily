@@ -18,7 +18,7 @@
 | 构建工具 | Harmony 官方 `hvigor` 插件 |
 | 模块 | `entry` 单模块应用 |
 | 目标设备 | `phone` |
-| 当前版本 | `0.1.0` |
+| 应用版本 | `0.1.0`（根 `oh-package.json5` 包版本为 `1.0.0`） |
 | 权限 | 已声明 `ohos.permission.INTERNET` |
 
 ## 🧭 页面能力
@@ -29,12 +29,13 @@
 | 📚 收藏库 | `entry/src/main/ets/view/LibraryPage.ets` | 本地收藏、同步状态筛选、批量删除、BibTeX 导出 |
 | 💬 论文对话 | `entry/src/main/ets/view/ChatPage.ets` | 选择收藏论文发起对话，结合历史消息与论文上下文问答 |
 | ⚙️ 设置页 | `entry/src/main/ets/view/SettingsPage.ets` | 管理偏好、清理缓存、保存 / 测试 Zotero 与 LLM 配置 |
+| 📄 论文原文 | `entry/src/main/ets/pages/PaperWebPage.ets` | 通过 WebView 打开论文原文链接，支持加载状态与返回导航 |
 
 ## 🚀 当前实现重点
 
 | 方向 | 位置 | 说明 |
 | --- | --- | --- |
-| 应用入口 | `entry/src/main/ets/pages/XivDailyPage.ets` | 使用四个标签页组织主界面 |
+| 应用入口 | `entry/src/main/ets/pages/XivDailyPage.ets` | 使用四个标签页组织主界面，并通过 `PaperWebPage.ets` 承接论文原文路由 |
 | 统一状态 | `entry/src/main/ets/viewmodel/AppViewModel.ets` | 汇总首页、收藏、聊天、设置状态和动作 |
 | 网络请求 | `entry/src/main/ets/service/PaperService.ets` | 对接后端论文流、趋势、翻译、聊天、配置、Zotero 接口 |
 | 收藏持久化 | `entry/src/main/ets/service/FavoriteStoreService.ets` | 本地保存收藏论文与同步状态 |
@@ -86,7 +87,7 @@ harmony/
 │       │   ├── common/              # 常量与主题
 │       │   ├── entryability/        # EntryAbility
 │       │   ├── model/               # 页面状态模型
-│       │   ├── pages/               # 根页面与标签页容器
+│       │   ├── pages/               # 根页面、标签页容器与论文原文 WebView
 │       │   ├── service/             # 后端请求 / 本地存储 / 偏好
 │       │   ├── view/                # Home / Library / Chat / Settings
 │       │   └── viewmodel/           # AppViewModel

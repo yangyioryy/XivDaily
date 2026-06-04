@@ -34,10 +34,10 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 ```powershell
 cd android
-.\gradlew.bat :app:assembleDebug --no-daemon --console=plain
+.\gradlew.bat :app:assembleDebug -Pxivdaily.debugBaseUrl=http://10.0.2.2:8000/ --no-daemon --console=plain
 ```
 
-Android Debug 默认通过 `http://10.0.2.2:8000/` 连接本机后端。
+上面的 Debug 构建会通过 `http://10.0.2.2:8000/` 连接本机后端。
 
 ### 3. 运行 HarmonyOS 客户端
 

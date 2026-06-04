@@ -168,10 +168,10 @@ GET  http://127.0.0.1:8000/zotero/config/status
 
 ```powershell
 cd android
-.\gradlew.bat :app:assembleDebug --no-daemon --console=plain
+.\gradlew.bat :app:assembleDebug -Pxivdaily.debugBaseUrl=http://10.0.2.2:8000/ --no-daemon --console=plain
 ```
 
-Android Debug 默认访问：
+上面的 Debug 构建访问：
 
 ```text
 http://10.0.2.2:8000/
@@ -218,8 +218,8 @@ http://127.0.0.1:8000/
 | `ZOTERO_USER_ID` | Zotero 用户或群组标识 | 'your-zotero-user-id' |
 | `ZOTERO_LIBRARY_TYPE` | Zotero 库类型 | `user` / `group` |
 | `ZOTERO_TARGET_COLLECTION_NAME` | 自动归档集合名 | `XivDaily` |
-| `xivdaily.debugBaseUrl` | Android Debug 后端地址 | `http://10.0.2.2:8000/` |
-| `xivdaily.releaseBaseUrl` | Android Release 后端地址 | `https://beginnerforever.eu.cc/` |
+| `xivdaily.debugBaseUrl` | Android Debug 后端地址 | `http://beginnerforever.eu.cc/`，本地联调可覆盖为 `http://10.0.2.2:8000/` |
+| `xivdaily.releaseBaseUrl` | Android Release 后端地址 | `http://beginnerforever.eu.cc/` |
 
 ## 🧪 本地验证
 
@@ -241,6 +241,7 @@ cd android
 | [`backend/README.md`](./backend/README.md) | FastAPI 后端接口、配置与验证说明 |
 | [`harmony/README.md`](./harmony/README.md) | HarmonyOS 客户端结构、运行方式与截图说明 |
 | [`docs/README.md`](./docs/README.md) | 最小化文档索引与补充入口 |
+| [`scripts/README.md`](./scripts/README.md) | 本地联调、Android 打包与 Linux 部署脚本说明 |
 
 ## 🙏 鸣谢
 

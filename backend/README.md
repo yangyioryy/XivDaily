@@ -66,8 +66,13 @@ backend/
 │   ├── models/            # SQLAlchemy 论文、同步记录与缓存模型
 │   ├── schemas/           # 请求 / 响应模型
 │   └── services/          # 论文、后台同步、AI、配置、Zotero 业务逻辑
+├── data/                  # SQLite 数据与运行时覆盖配置
+├── fixtures/              # 示例论文数据
 ├── migrations/            # Alembic 迁移
 ├── tests/                 # API / service / client 自动化测试
+├── .env.example           # 本地配置示例
+├── alembic.ini
+├── MODEL_CONTRACT.md
 ├── requirements.txt
 └── README.md
 ```
@@ -80,6 +85,8 @@ backend/
 cd backend
 python -m pip install -r requirements.txt
 ```
+
+如需自定义 LLM、Zotero 或数据库配置，可参考 `.env.example` 创建 `.env`。
 
 如果你在 Conda 环境里运行：
 
@@ -108,6 +115,8 @@ GET  http://127.0.0.1:8000/summaries/trends?category=cs.CV&days=3
 GET  http://127.0.0.1:8000/config/integrations
 GET  http://127.0.0.1:8000/zotero/config/status
 ```
+
+> 当前趋势摘要服务内部固定使用 3 天论文窗口生成摘要。
 
 ## 🔐 配置项
 
