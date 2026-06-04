@@ -233,6 +233,7 @@ private fun LibraryFilterToolbar(
         listOf(
             "all" to "全部 ${uiState.favorites.size}",
             "synced" to "已同步 ${uiState.favorites.count { it.paper.zoteroSyncState == "synced" }}",
+            "unverified" to "待确认 ${uiState.favorites.count { it.paper.zoteroSyncState == "unverified" }}",
             "not_synced" to "未同步 ${uiState.favorites.count { it.paper.zoteroSyncState == "not_synced" }}",
         ).forEach { (value, label) ->
             FilterChip(
@@ -573,6 +574,8 @@ private fun filterLabel(syncFilter: String): String {
     return when (syncFilter) {
         "synced" -> "已同步"
         "failed" -> "同步失败"
+        "unverified" -> "待确认"
+        "missing_from_collection" -> "集合不可见"
         "not_synced" -> "待同步"
         else -> "全部"
     }
@@ -582,6 +585,8 @@ private fun statusLabel(syncState: String): String {
     return when (syncState) {
         "synced" -> "已同步"
         "failed" -> "同步失败"
+        "unverified" -> "待确认"
+        "missing_from_collection" -> "集合不可见"
         "not_synced" -> "待同步"
         else -> syncState.ifBlank { "未知状态" }
     }
@@ -591,6 +596,8 @@ private fun statusColor(syncState: String): Color {
     return when (syncState) {
         "synced" -> XivDailySuccess
         "failed" -> XivDailyDanger
+        "unverified" -> XivDailyWarning
+        "missing_from_collection" -> XivDailyWarning
         "not_synced" -> XivDailyWarning
         else -> XivDailyInfo
     }

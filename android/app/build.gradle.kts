@@ -6,9 +6,9 @@ plugins {
 }
 
 val releaseBackendBaseUrl = providers.gradleProperty("xivdaily.releaseBaseUrl")
-    .orElse("https://beginnerforever.eu.cc/")
+    .orElse("http://beginnerforever.eu.cc/")
 val debugBackendBaseUrl = providers.gradleProperty("xivdaily.debugBaseUrl")
-    .orElse("http://10.0.2.2:8000/")
+    .orElse("http://beginnerforever.eu.cc/")
 
 // release 签名信息全部来自 local.properties / -P 参数，避免把 keystore 路径与密码提交进仓库。
 val releaseStoreFile = providers.gradleProperty("xivdaily.releaseStoreFile")

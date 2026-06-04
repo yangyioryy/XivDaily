@@ -56,11 +56,13 @@ class HomeViewModel(
     fun submitKeyword() {
         _uiState.update { it.copy(searchKeyword = it.searchKeywordDraft.trim()) }
         refreshPapers()
+        refreshTrendSummary()
     }
 
     fun exitSearch() {
         _uiState.update { it.copy(searchKeyword = "", searchKeywordDraft = "") }
         refreshPapers()
+        refreshTrendSummary()
     }
 
     fun selectCategory(category: String) {
@@ -278,11 +280,7 @@ class HomeViewModel(
                         )
                     }
                     showActionMessage(
-                        if (synced.zoteroSyncState == "synced") {
-                            "已同步到 Zotero"
-                        } else {
-                            "Zotero 同步暂未完成"
-                        }
+                        zoteroSyncMessage(synced.zoteroSyncState)
                     )
                 }
                 .onFailure { error ->
@@ -299,16 +297,11 @@ class HomeViewModel(
             val current = _uiState.value
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching {
-                // 自定义标签保留 chip 里的短横线写法，但查询时转成空格，更贴近 arXiv 关键词搜索。
-                val keyword = current.searchKeyword
-                    .takeIf { it.isNotBlank() }
-                    ?: current.selectedCategory.takeIf { current.isCustomTag(it) }?.toCustomTagSearchKeyword()
-                val category = current.selectedCategory.takeUnless { current.isCustomTag(it) }
-                val days = if (current.searchKeyword.isBlank()) current.selectedDays else null
+                val query = current.toFeedQuery()
                 repository.listHomePapers(
-                    keyword = keyword,
-                    category = category,
-                    days = days,
+                    keyword = query.keyword,
+                    category = query.category,
+                    days = query.days,
                 )
             }.onSuccess { result ->
                 _uiState.update {
@@ -331,8 +324,8 @@ class HomeViewModel(
         viewModelScope.launch {
             val current = _uiState.value
             _uiState.update { it.copy(isSummaryLoading = true) }
-            val summaryCategory = current.selectedCategory.takeUnless { current.isCustomTag(it) }
-            runCatching { repository.getTrendSummary(summaryCategory) }
+            val query = current.toFeedQuery()
+            runCatching { repository.getTrendSummary(keyword = query.keyword, category = query.category) }
                 .onSuccess { summary ->
                     _uiState.update {
                         it.copy(
@@ -383,8 +376,34 @@ private fun normalizeCustomTag(value: String): String {
     return value.trim().replace(Regex("\\s+"), "-").lowercase()
 }
 
+private data class HomeFeedQuery(
+    val keyword: String?,
+    val category: String?,
+    val days: Int?,
+)
+
+private fun HomeUiState.toFeedQuery(): HomeFeedQuery {
+    // 自定义标签保留 chip 里的短横线写法，但查询时转成空格，更贴近 arXiv 关键词搜索。
+    val keyword = searchKeyword
+        .takeIf { it.isNotBlank() }
+        ?: selectedCategory.takeIf { isCustomTag(it) }?.toCustomTagSearchKeyword()
+    val category = selectedCategory.takeUnless { isCustomTag(it) }
+    val days = if (searchKeyword.isBlank()) selectedDays else null
+    return HomeFeedQuery(keyword = keyword, category = category, days = days)
+}
+
 private fun String.toCustomTagSearchKeyword(): String {
     return replace(Regex("[-_]+"), " ").replace(Regex("\\s+"), " ").trim()
+}
+
+private fun zoteroSyncMessage(syncState: String): String {
+    return when (syncState) {
+        "synced" -> "已同步到 Zotero"
+        "unverified" -> "Zotero 已响应，但集合可见性未确认"
+        "missing_from_collection" -> "Zotero 条目未在目标集合中确认可见"
+        "failed" -> "Zotero 同步失败"
+        else -> "Zotero 同步暂未完成"
+    }
 }
 
 private fun mapUserFriendlyError(prefix: String, error: Throwable): String {

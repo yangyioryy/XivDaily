@@ -60,7 +60,7 @@ internal open class FakePaperRepository(
     private val favoritesFlow: Flow<List<FavoritePaperItem>> = flowOf(emptyList()),
 ) : PaperRepositoryContract {
     var listRequests: MutableList<Triple<String?, String?, Int?>> = mutableListOf()
-    val trendRequests: MutableList<String?> = mutableListOf()
+    val trendRequests: MutableList<Pair<String?, String?>> = mutableListOf()
     val homePapers: MutableList<PaperItem> = mutableListOf()
     var homePaperStatus: String = "ok"
     var homePaperWarning: String? = null
@@ -99,8 +99,8 @@ internal open class FakePaperRepository(
         )
     }
 
-    override suspend fun getTrendSummary(category: String?): TrendSummary {
-        trendRequests += category
+    override suspend fun getTrendSummary(keyword: String?, category: String?): TrendSummary {
+        trendRequests += keyword to category
         trendError?.let { throw it }
         return TrendSummary(intro = "intro", items = emptyList(), status = "success", warning = null)
     }
@@ -118,7 +118,8 @@ internal open class FakePaperRepository(
         deletedFavoriteIds += paperId
     }
     override suspend fun deleteFavorites(paperIds: List<String>) {}
-    override suspend fun syncFavoriteToZotero(paperId: String): PaperItem = samplePaper(paperId)
+    var favoriteSyncResult: PaperItem? = null
+    override suspend fun syncFavoriteToZotero(paperId: String): PaperItem = favoriteSyncResult ?: samplePaper(paperId)
     override suspend fun syncPaperToZotero(paper: PaperItem): PaperItem = paper.copy(zoteroSyncState = "synced")
     override suspend fun exportBibtex(paperIds: List<String>): String = "@misc{demo}"
     override suspend fun chatWithPapers(papers: List<PaperItem>, messages: List<PaperChatMessage>): PaperChatResult {

@@ -21,8 +21,8 @@
 | 最低版本 | `minSdk = 26` |
 | 目标版本 | `targetSdk = 36` |
 | 当前版本 | `0.1.0` |
-| Debug 后端 | `http://10.0.2.2:8000/` |
-| Release 后端 | Gradle 属性 `xivdaily.releaseBaseUrl` 覆盖 |
+| Debug 后端 | `http://beginnerforever.eu.cc/` |
+| Release 后端 | `http://beginnerforever.eu.cc/`，可用 Gradle 属性 `xivdaily.releaseBaseUrl` 覆盖 |
 
 ## 🧭 页面能力
 
@@ -125,8 +125,8 @@ D:\AndroidSdk\platform-tools\adb.exe shell am start -n com.xivdaily.app/.MainAct
 
 | 参数 | 作用 | 说明 |
 | --- | --- | --- |
-| `xivdaily.debugBaseUrl` | Debug 包后端地址 | 默认 `http://10.0.2.2:8000/` |
-| `xivdaily.releaseBaseUrl` | Release 包后端地址 | 默认 `https://beginnerforever.eu.cc/` |
+| `xivdaily.debugBaseUrl` | Debug 包后端地址 | 默认 `http://beginnerforever.eu.cc/` |
+| `xivdaily.releaseBaseUrl` | Release 包后端地址 | 默认 `http://beginnerforever.eu.cc/` |
 | `xivdaily.releaseStoreFile` | Release keystore 路径 | 仅在正式签名时提供 |
 | `xivdaily.releaseStorePassword` | keystore 密码 | 建议放 `local.properties` 或 `-P` |
 | `xivdaily.releaseKeyAlias` | 签名别名 | 与 keystore 配套 |

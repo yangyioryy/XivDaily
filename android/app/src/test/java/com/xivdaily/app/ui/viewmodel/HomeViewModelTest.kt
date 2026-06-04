@@ -30,7 +30,7 @@ class HomeViewModelTest {
 
             assertEquals("cs.AI", viewModel.uiState.value.selectedCategory)
             assertEquals(7, viewModel.uiState.value.selectedDays)
-            assertEquals("cs.AI", repository.trendRequests.last())
+            assertEquals(null to "cs.AI", repository.trendRequests.last())
             assertEquals(Triple(null, "cs.AI", 7), repository.listRequests.last())
 
             viewModel.selectCategory("cs.CL")
@@ -39,7 +39,7 @@ class HomeViewModelTest {
 
             assertEquals("cs.CL", viewModel.uiState.value.selectedCategory)
             assertEquals(30, viewModel.uiState.value.selectedDays)
-            assertEquals(listOf("cs.AI", "cs.CL"), repository.trendRequests)
+            assertEquals(listOf(null to "cs.AI", null to "cs.CL"), repository.trendRequests)
             assertEquals(Triple(null, "cs.CL", 30), repository.listRequests.last())
         }
     }
@@ -53,6 +53,7 @@ class HomeViewModelTest {
             val viewModel = HomeViewModel(repository, preferences)
             advanceUntilIdle()
             repository.listRequests.clear()
+            repository.trendRequests.clear()
 
             viewModel.updateKeyword("diffusion")
             advanceUntilIdle()
@@ -67,6 +68,7 @@ class HomeViewModelTest {
             assertEquals("diffusion", viewModel.uiState.value.searchKeyword)
             assertTrue(viewModel.uiState.value.isSearchActive)
             assertEquals(Triple("diffusion", "cs.CV", null), repository.listRequests.last())
+            assertEquals("diffusion" to "cs.CV", repository.trendRequests.last())
         }
     }
 
@@ -77,12 +79,14 @@ class HomeViewModelTest {
             val viewModel = HomeViewModel(repository, FakePreferencesRepository())
             advanceUntilIdle()
             repository.listRequests.clear()
+            repository.trendRequests.clear()
 
             viewModel.updateKeyword("diffusion")
             viewModel.submitKeyword()
             advanceUntilIdle()
 
             assertEquals(Triple("diffusion", "cs.CV", null), repository.listRequests.last())
+            assertEquals("diffusion" to "cs.CV", repository.trendRequests.last())
 
             viewModel.exitSearch()
             advanceUntilIdle()
@@ -90,6 +94,7 @@ class HomeViewModelTest {
             assertEquals("", viewModel.uiState.value.searchKeyword)
             assertTrue(!viewModel.uiState.value.isSearchActive)
             assertEquals(Triple(null, "cs.CV", 3), repository.listRequests.last())
+            assertEquals(null to "cs.CV", repository.trendRequests.last())
         }
     }
 
@@ -100,6 +105,7 @@ class HomeViewModelTest {
             val viewModel = HomeViewModel(repository, FakePreferencesRepository())
             advanceUntilIdle()
             repository.listRequests.clear()
+            repository.trendRequests.clear()
 
             viewModel.showAddTagDialog()
             viewModel.updateCustomTagDraft("Embodied AI")
@@ -109,6 +115,7 @@ class HomeViewModelTest {
             assertEquals(listOf("embodied-ai"), viewModel.uiState.value.customTags)
             assertEquals("embodied-ai", viewModel.uiState.value.selectedCategory)
             assertEquals(Triple("embodied ai", null, 3), repository.listRequests.last())
+            assertEquals("embodied ai" to null, repository.trendRequests.last())
         }
     }
 
@@ -132,6 +139,7 @@ class HomeViewModelTest {
             assertTrue(viewModel.uiState.value.customTags.isEmpty())
             assertEquals("cs.CV", viewModel.uiState.value.selectedCategory)
             assertEquals(Triple(null, "cs.CV", 3), repository.listRequests.last())
+            assertEquals(null to "cs.CV", repository.trendRequests.last())
         }
     }
 

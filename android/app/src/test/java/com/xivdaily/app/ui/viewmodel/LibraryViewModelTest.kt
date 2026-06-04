@@ -49,4 +49,46 @@ class LibraryViewModelTest {
             assertEquals("这篇论文已经同步到 Zotero", viewModel.uiState.value.actionMessage)
         }
     }
+
+    @Test
+    fun syncFavoriteToZotero_reportsUnverifiedBusinessState() {
+        runTest {
+            val paper = samplePaper()
+            val favorites = listOf(FavoritePaperItem(paper, "2026-04-29T10:00:00Z"))
+            val repository = FakePaperRepository(flowOf(favorites)).apply {
+                favoriteSyncResult = paper.copy(zoteroSyncState = "unverified")
+            }
+            val viewModel = LibraryViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.syncFavoriteToZotero(paper.id)
+            advanceUntilIdle()
+
+            assertEquals(
+                "Zotero 已响应，但集合可见性未确认：${paper.title}",
+                viewModel.uiState.value.actionMessage,
+            )
+        }
+    }
+
+    @Test
+    fun syncFavoriteToZotero_reportsFailedBusinessState() {
+        runTest {
+            val paper = samplePaper()
+            val favorites = listOf(FavoritePaperItem(paper, "2026-04-29T10:00:00Z"))
+            val repository = FakePaperRepository(flowOf(favorites)).apply {
+                favoriteSyncResult = paper.copy(zoteroSyncState = "failed")
+            }
+            val viewModel = LibraryViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.syncFavoriteToZotero(paper.id)
+            advanceUntilIdle()
+
+            assertEquals(
+                "Zotero 同步失败：${paper.title}",
+                viewModel.uiState.value.actionMessage,
+            )
+        }
+    }
 }

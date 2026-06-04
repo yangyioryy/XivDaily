@@ -20,6 +20,7 @@ interface ApiService {
 
     @GET("summaries/trends")
     suspend fun getTrendSummary(
+        @Query("keyword") keyword: String?,
         @Query("category") category: String?,
         @Query("days") days: Int,
     ): TrendSummaryDto
@@ -220,6 +221,13 @@ data class ZoteroSyncDto(
     @Json(name = "zotero_item_key") val zoteroItemKey: String?,
     val message: String?,
     @Json(name = "synced_at") val syncedAt: String?,
+    @Json(name = "library_type") val libraryType: String?,
+    @Json(name = "user_id") val userId: String?,
+    @Json(name = "target_collection_name") val targetCollectionName: String?,
+    @Json(name = "target_collection_key") val targetCollectionKey: String?,
+    @Json(name = "target_collection_status") val targetCollectionStatus: String?,
+    @Json(name = "visibility_status") val visibilityStatus: String?,
+    @Json(name = "visibility_message") val visibilityMessage: String?,
 )
 
 data class PaperSyncPayloadDto(

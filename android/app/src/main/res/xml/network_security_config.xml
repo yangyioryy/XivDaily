@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 正式包只允许当前已部署后端域名使用明文 HTTP。 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">beginnerforever.eu.cc</domain>
+    </domain-config>
+</network-security-config>

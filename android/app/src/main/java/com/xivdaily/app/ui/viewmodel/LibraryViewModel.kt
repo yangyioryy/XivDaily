@@ -108,7 +108,7 @@ class LibraryViewModel(private val repository: FavoritePaperRepositoryContract) 
                     _uiState.update {
                         it.copy(
                             syncingPaperIds = it.syncingPaperIds - paperId,
-                            actionMessage = "已同步到 Zotero：${synced.title}",
+                            actionMessage = zoteroSyncMessage(synced.zoteroSyncState, synced.title),
                             errorMessage = null,
                         )
                     }
@@ -152,5 +152,15 @@ private fun mapLibraryError(prefix: String, error: Throwable): String {
         detail.contains("Failed to connect", ignoreCase = true) ||
             detail.contains("Connection refused", ignoreCase = true) -> "$prefix，请确认本地服务已经启动。"
         else -> "$prefix，请稍后再试。"
+    }
+}
+
+private fun zoteroSyncMessage(syncState: String, title: String): String {
+    return when (syncState) {
+        "synced" -> "已同步到 Zotero：$title"
+        "unverified" -> "Zotero 已响应，但集合可见性未确认：$title"
+        "missing_from_collection" -> "Zotero 条目未在目标集合中确认可见：$title"
+        "failed" -> "Zotero 同步失败：$title"
+        else -> "Zotero 同步暂未完成：$title"
     }
 }

@@ -22,6 +22,7 @@ import com.xivdaily.app.data.remote.PaperDto
 import com.xivdaily.app.data.remote.PaperSyncPayloadDto
 import com.xivdaily.app.data.remote.TranslationRequestDto
 import com.xivdaily.app.data.remote.ZoteroConfigSaveRequestDto
+import com.xivdaily.app.data.remote.ZoteroSyncDto
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -29,7 +30,7 @@ import kotlinx.coroutines.flow.map
 // 按 UI 使用场景拆分契约，避免 ViewModel 依赖不属于自己的远端能力。
 interface HomePaperRepositoryContract {
     suspend fun listHomePapers(keyword: String?, category: String?, days: Int?): HomePaperResult
-    suspend fun getTrendSummary(category: String?): TrendSummary
+    suspend fun getTrendSummary(keyword: String?, category: String?): TrendSummary
     suspend fun translatePaper(paper: PaperItem): PaperItem
     suspend fun saveFavorite(paper: PaperItem)
     suspend fun deleteFavorite(paperId: String)
@@ -87,9 +88,13 @@ class PaperRepository(
         )
     }
 
-    override suspend fun getTrendSummary(category: String?): TrendSummary {
+    override suspend fun getTrendSummary(keyword: String?, category: String?): TrendSummary {
         // 趋势简报在客户端固定取最近三天，和论文列表时间窗彻底解耦。
-        val dto = apiService.getTrendSummary(category = category, days = FIXED_TREND_DAYS)
+        val dto = apiService.getTrendSummary(
+            keyword = keyword?.takeIf { it.isNotBlank() },
+            category = category,
+            days = FIXED_TREND_DAYS,
+        )
         return TrendSummary(
             intro = dto.intro,
             items = dto.items.map {
@@ -159,7 +164,7 @@ class PaperRepository(
             pdfUrl = paper.pdfUrl,
         )
         val result = apiService.syncPaperToZotero(paper.id, payload)
-        val nextState = result.status.ifBlank { "failed" }
+        val nextState = result.toLocalSyncState()
         favoritePaperDao.updateZoteroSyncState(paper.id, nextState)
         return paper.copy(favoriteState = true, zoteroSyncState = nextState)
     }
@@ -304,8 +309,33 @@ class PaperRepository(
         )
     }
 
+    private fun ZoteroSyncDto.toLocalSyncState(): String {
+        val normalizedStatus = status.ifBlank { ZOTERO_STATUS_FAILED }
+        if (normalizedStatus != ZOTERO_STATUS_SYNCED) {
+            return normalizedStatus
+        }
+
+        val collectionStatus = targetCollectionStatus?.takeIf { it.isNotBlank() }
+        if (collectionStatus != null && collectionStatus != ZOTERO_COLLECTION_READY) {
+            return ZOTERO_STATUS_FAILED
+        }
+
+        return when (visibilityStatus?.takeIf { it.isNotBlank() }) {
+            null, ZOTERO_VISIBILITY_VERIFIED -> ZOTERO_STATUS_SYNCED
+            ZOTERO_VISIBILITY_MISSING_FROM_COLLECTION -> ZOTERO_STATUS_MISSING_FROM_COLLECTION
+            else -> ZOTERO_STATUS_UNVERIFIED
+        }
+    }
+
     private companion object {
         const val AUTHOR_SEPARATOR = ";;"
         const val FIXED_TREND_DAYS = 3
+        const val ZOTERO_STATUS_SYNCED = "synced"
+        const val ZOTERO_STATUS_FAILED = "failed"
+        const val ZOTERO_STATUS_UNVERIFIED = "unverified"
+        const val ZOTERO_STATUS_MISSING_FROM_COLLECTION = "missing_from_collection"
+        const val ZOTERO_COLLECTION_READY = "ready"
+        const val ZOTERO_VISIBILITY_VERIFIED = "verified"
+        const val ZOTERO_VISIBILITY_MISSING_FROM_COLLECTION = "missing_from_collection"
     }
 }
