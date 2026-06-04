@@ -1,6 +1,5 @@
 import AppConstants from '../common/constants/AppConstants';
 import Context from '@ohos.app.ability.application';
-import common from '@ohos.app.ability.common';
 import { ExternalLinkOpener } from '../common/ExternalLinkOpener';
 import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { FavoritePaperItem, PaperChatMessage, PaperChatUsedPaper } from '../model/AppModels';
@@ -75,15 +74,14 @@ export struct ChatPage {
   }
 
   private async openExternalLink(url: string): Promise<void> {
-    const hostContext = this.getUIContext().getHostContext();
     const targetUrl = url.trim();
-    if (!hostContext || targetUrl.length === 0) {
+    if (targetUrl.length === 0) {
       this.showToast('链接暂不可用');
       return;
     }
 
     try {
-      await ExternalLinkOpener.open(hostContext as common.UIAbilityContext, targetUrl);
+      await ExternalLinkOpener.open(targetUrl);
     } catch (error) {
       this.showToast('打开链接失败');
     }

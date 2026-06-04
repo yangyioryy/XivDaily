@@ -1,21 +1,16 @@
-import { Want } from '@kit.AbilityKit';
-import common from '@ohos.app.ability.common';
+import router from '@ohos.router';
 
 export class ExternalLinkOpener {
-  static async open(hostContext: common.UIAbilityContext, rawUrl: string): Promise<void> {
+  static async open(rawUrl: string, title?: string): Promise<void> {
     const targetUrl = ExternalLinkOpener.normalizeHttpUrl(rawUrl);
-    const browserWant: Want = {
-      action: 'ohos.want.action.viewData',
-      uri: targetUrl,
-      entities: ['entity.system.browsable']
-    };
 
-    try {
-      // Prefer the browser Want path for normal web pages.
-      await hostContext.startAbility(browserWant);
-    } catch (error) {
-      await hostContext.openLink(targetUrl);
-    }
+    await router.pushUrl({
+      url: 'pages/PaperWebPage',
+      params: {
+        url: targetUrl,
+        title: title ?? '论文原文'
+      }
+    });
   }
 
   private static normalizeHttpUrl(rawUrl: string): string {
