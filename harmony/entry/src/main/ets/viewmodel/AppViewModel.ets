@@ -35,6 +35,7 @@ export class AppViewModel {
   private nextActionMessageId: number = 1;
   private homeActionTimerId?: number;
   private settingsFeedbackTimerId?: number;
+  private bootstrapped: boolean = false;
   // 用会话版本隔离收藏库快速进入对话与旧请求返回，避免旧回复污染新上下文。
   private activeChatSessionVersion: number = 0;
 
@@ -44,6 +45,13 @@ export class AppViewModel {
     favoriteStoreService.initialize(storedFavorites);
     this.applyLocalSettings(preferenceService.read(this.settingsState));
     this.refreshFavorites();
+  }
+
+  ensureBootstrapped(): void {
+    if (this.bootstrapped) {
+      return;
+    }
+    this.bootstrapped = true;
     void this.bootstrap();
   }
 
@@ -559,7 +567,7 @@ export class AppViewModel {
       return;
     }
     this.activeChatSessionVersion += 1;
-    this.selectedTab = 2;
+    this.selectTab(2);
     this.chatState = {
       favorites: this.chatState.favorites,
       selectedPaperIds: [paperId],

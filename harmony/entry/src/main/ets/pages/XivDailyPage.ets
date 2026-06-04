@@ -21,6 +21,7 @@ struct XivDailyPage {
     this.vm.onTabChanged = (index: number) => {
       this.localSelectedTab = index;
     };
+    this.vm.ensureBootstrapped();
   }
 
   private applyThemeMode(): void {
