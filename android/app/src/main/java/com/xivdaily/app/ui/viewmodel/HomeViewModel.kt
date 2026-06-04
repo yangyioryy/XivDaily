@@ -304,8 +304,7 @@ class HomeViewModel(
                     .takeIf { it.isNotBlank() }
                     ?: current.selectedCategory.takeIf { current.isCustomTag(it) }?.toCustomTagSearchKeyword()
                 val category = current.selectedCategory.takeUnless { current.isCustomTag(it) }
-                // 有关键词时后端按全 arXiv 搜索处理，时间窗只服务无关键词首页流。
-                val days = if (keyword == null) current.selectedDays else null
+                val days = if (current.searchKeyword.isBlank()) current.selectedDays else null
                 repository.listHomePapers(
                     keyword = keyword,
                     category = category,

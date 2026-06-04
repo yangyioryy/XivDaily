@@ -108,7 +108,7 @@ class HomeViewModelTest {
 
             assertEquals(listOf("embodied-ai"), viewModel.uiState.value.customTags)
             assertEquals("embodied-ai", viewModel.uiState.value.selectedCategory)
-            assertEquals(Triple("embodied ai", null, null), repository.listRequests.last())
+            assertEquals(Triple("embodied ai", null, 3), repository.listRequests.last())
         }
     }
 
@@ -123,7 +123,7 @@ class HomeViewModelTest {
 
             viewModel.selectCategory("embodied-ai")
             advanceUntilIdle()
-            assertEquals(Triple("embodied ai", null, null), repository.listRequests.last())
+            assertEquals(Triple("embodied ai", null, 3), repository.listRequests.last())
 
             viewModel.markTagPendingDeletion("embodied-ai")
             viewModel.deleteCustomTag("embodied-ai")

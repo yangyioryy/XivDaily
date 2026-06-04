@@ -186,14 +186,14 @@ export class AppViewModel {
 
   async refreshHome(): Promise<void> {
     const searchKeyword = this.homeState.searchKeyword.trim();
-    // 搜索态下沿用 Android 的语义：关键词优先，时间窗口仅服务无关键词首页流。
+    const isCustomTagSelected = this.isSelectedCategoryCustomTag();
     const keyword = searchKeyword.length > 0
       ? searchKeyword
-      : this.isSelectedCategoryCustomTag()
+      : isCustomTagSelected
         ? this.toCustomTagSearchKeyword(this.homeState.selectedCategory)
         : undefined;
-    const category = this.isSelectedCategoryCustomTag() ? undefined : this.homeState.selectedCategory;
-    const days = keyword ? undefined : this.homeState.selectedDays;
+    const category = isCustomTagSelected ? undefined : this.homeState.selectedCategory;
+    const days = searchKeyword.length > 0 ? undefined : this.homeState.selectedDays;
 
     this.updateHomeState((state: HomeUiState) => {
       state.isLoading = true;

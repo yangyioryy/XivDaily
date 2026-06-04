@@ -11,6 +11,16 @@ from app.schemas.paper import PaperQuery
 from app.services.paper_service import PaperService
 
 
+class FakeArxivClient:
+    def __init__(self, items: list[dict[str, object]]) -> None:
+        self.items = items
+        self.requests: list[tuple[str | None, str | None, int]] = []
+
+    async def search(self, category: str | None, keyword: str | None, max_results: int) -> list[dict[str, object]]:
+        self.requests.append((category, keyword, max_results))
+        return self.items
+
+
 def build_session() -> Session:
     engine = create_engine("sqlite:///:memory:", future=True)
     Base.metadata.create_all(bind=engine)
@@ -44,6 +54,29 @@ def add_paper_record(
         )
     )
     db.commit()
+
+
+def build_arxiv_item(
+    *,
+    paper_id: str,
+    title: str,
+    categories: list[str],
+    published_at: datetime,
+    summary: str = "Summary",
+    primary_category: str | None = None,
+) -> dict[str, object]:
+    return {
+        "id": paper_id,
+        "title": title,
+        "authors": ["A. Author"],
+        "summary": summary,
+        "published_at": published_at.isoformat(),
+        "updated_at": published_at.isoformat(),
+        "categories": categories,
+        "primary_category": primary_category or categories[0],
+        "source_url": f"https://arxiv.org/abs/{paper_id}",
+        "pdf_url": f"https://arxiv.org/pdf/{paper_id}",
+    }
 
 
 @pytest.mark.anyio("asyncio")
@@ -116,7 +149,37 @@ async def test_list_papers_marks_time_window_filtered_empty_state_for_local_libr
 
 
 @pytest.mark.anyio("asyncio")
-async def test_keyword_search_uses_local_library_and_allows_cross_category_hits() -> None:
+async def test_keyword_search_queries_arxiv_without_time_window() -> None:
+    db = build_session()
+    now = datetime.now(UTC)
+    arxiv_client = FakeArxivClient(
+        [
+            build_arxiv_item(
+                paper_id="2604.20806v1",
+                title="OMIBench",
+                categories=["cs.CV", "cs.AI", "cs.CL"],
+                primary_category="cs.CV",
+                published_at=now - timedelta(days=300),
+                summary="A benchmark for embodied AI",
+            )
+        ]
+    )
+    service = PaperService(db=db, arxiv_client=arxiv_client)
+
+    result = await service.list_papers(PaperQuery(category="cs.AI", keyword="omibench", days=None, page=1, page_size=10))
+
+    assert arxiv_client.requests == [("cs.AI", "omibench", 50)]
+    assert result.total == 1
+    assert result.items[0].id == "2604.20806v1"
+    assert result.items[0].primary_category == "cs.CV"
+    assert result.items[0].categories == ["cs.CV", "cs.AI", "cs.CL"]
+    assert result.status == "ok"
+    assert result.warning is None
+    assert result.empty_reason is None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_keyword_search_with_days_uses_local_library_time_window() -> None:
     db = build_session()
     now = datetime.now(UTC)
     add_paper_record(
@@ -125,21 +188,29 @@ async def test_keyword_search_uses_local_library_and_allows_cross_category_hits(
         title="OMIBench",
         categories=["cs.CV", "cs.AI", "cs.CL"],
         primary_category="cs.CV",
-        published_at=now - timedelta(days=7),
+        published_at=now - timedelta(days=2),
         synced_at=now,
         summary="A benchmark for embodied AI",
     )
-    service = PaperService(db=db)
+    arxiv_client = FakeArxivClient(
+        [
+            build_arxiv_item(
+                paper_id="9999.99999",
+                title="Remote OMIBench",
+                categories=["cs.AI"],
+                published_at=now,
+            )
+        ]
+    )
+    service = PaperService(db=db, arxiv_client=arxiv_client)
 
-    result = await service.list_papers(PaperQuery(category="cs.AI", keyword="omibench", days=None, page=1, page_size=10))
+    result = await service.list_papers(PaperQuery(category=None, keyword="omibench", days=3, page=1, page_size=10))
 
+    assert arxiv_client.requests == []
     assert result.total == 1
     assert result.items[0].id == "2604.20806v1"
-    assert result.items[0].primary_category == "cs.CV"
-    assert result.items[0].categories == ["cs.CV", "cs.AI", "cs.CL"]
     assert result.status == "ok"
     assert result.warning is None
-    assert result.empty_reason is None
 
 
 @pytest.mark.anyio("asyncio")

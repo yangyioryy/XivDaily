@@ -324,7 +324,7 @@ private fun ExploreControlCard(
                 color = MaterialTheme.colorScheme.secondaryContainer,
             ) {
                 Text(
-                    text = "关键词搜索覆盖全 arXiv；领域只做结果过滤，时间 Pills 只影响无关键词列表。",
+                    text = "关键词搜索覆盖全 arXiv；领域只做结果过滤，自定义标签仍按时间窗口筛选。",
                     modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -337,7 +337,7 @@ private fun ExploreControlCard(
                     color = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
                     Text(
-                        text = "自定义标签会用关键词在全 arXiv 召回论文，适合 embodied-ai 这类研究方向。",
+                        text = "自定义标签会按当前时间窗口筛选本地论文库，适合跟踪 embodied-ai 这类研究方向。",
                         modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,

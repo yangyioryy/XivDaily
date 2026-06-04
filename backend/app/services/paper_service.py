@@ -6,6 +6,7 @@ import logging
 from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from time import monotonic
 
 from sqlalchemy import desc, select
 from sqlalchemy.exc import OperationalError
@@ -35,11 +36,12 @@ class LoadResult:
 
 
 class PaperService:
-    """论文查询服务，统一从本地论文库读取数据并输出前端所需状态。"""
+    """论文查询服务，按查询语义选择本地论文库或实时 arXiv 搜索。"""
 
     # 保留旧字段，避免现有测试或调用方直接访问时报错。
-    _shared_cache: dict[tuple[str, str], CacheEntry] = {}
-    _shared_inflight: dict[tuple[str, str], asyncio.Task[list[dict[str, object]]]] = {}
+    _shared_cache: dict[tuple[str, str, int], CacheEntry] = {}
+    _shared_inflight: dict[tuple[str, str, int], asyncio.Task[list[dict[str, object]]]] = {}
+    _REMOTE_SEARCH_MAX_RESULTS_CAP = 200
 
     def __init__(
         self,
@@ -48,10 +50,12 @@ class PaperService:
     ) -> None:
         self.settings = get_settings()
         self.db = db
-        # 构造参数暂时保留，兼容旧测试注入；请求链路不再实时直连 arXiv。
         self.arxiv_client = arxiv_client or ArxivClient()
 
     async def list_papers(self, query: PaperQuery) -> PaperListResponse:
+        if self._should_use_remote_keyword_search(query):
+            return await self._list_remote_keyword_results(query)
+
         with self._session_scope() as db:
             load_result = self._load_papers(db)
             keyword_filtered = self._filter_by_keyword(load_result.items, query.keyword)
@@ -78,6 +82,65 @@ class PaperService:
                 warning=self._build_warning(query.days, load_result.warning, empty_reason),
                 empty_reason=empty_reason,
             )
+
+    async def _list_remote_keyword_results(self, query: PaperQuery) -> PaperListResponse:
+        keyword = (query.keyword or "").strip()
+        max_results = self._remote_search_max_results(query)
+        raw_items = await self._search_arxiv_with_cache(query.category, keyword, max_results)
+        papers = [self._arxiv_item_to_paper(item) for item in raw_items]
+        filtered = self._filter_by_category(papers, query.category)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        page_items = filtered[start:end]
+        return PaperListResponse(
+            query=query,
+            items=page_items,
+            page=query.page,
+            page_size=query.page_size,
+            total=len(filtered),
+            has_more=end < len(filtered),
+            status="empty" if not filtered else "ok",
+            warning=None,
+            empty_reason=None if filtered else "no_results",
+        )
+
+    async def _search_arxiv_with_cache(
+        self,
+        category: str | None,
+        keyword: str,
+        max_results: int,
+    ) -> list[dict[str, object]]:
+        cache_key = ((category or "").strip(), keyword.lower(), max_results)
+        cached = self.__class__._shared_cache.get(cache_key)
+        if cached is not None and monotonic() - cached.created_at < self.settings.arxiv_cache_ttl_seconds:
+            return cached.items
+
+        inflight = self.__class__._shared_inflight.get(cache_key)
+        if inflight is None:
+            inflight = asyncio.create_task(
+                self.arxiv_client.search(category=category, keyword=keyword, max_results=max_results)
+            )
+            self.__class__._shared_inflight[cache_key] = inflight
+            owns_task = True
+        else:
+            owns_task = False
+
+        try:
+            items = await inflight
+            if owns_task:
+                self.__class__._shared_cache[cache_key] = CacheEntry(created_at=monotonic(), items=items)
+            return items
+        finally:
+            if owns_task:
+                self.__class__._shared_inflight.pop(cache_key, None)
+
+    def _should_use_remote_keyword_search(self, query: PaperQuery) -> bool:
+        return self._normalize(query.keyword) is not None and query.days is None
+
+    def _remote_search_max_results(self, query: PaperQuery) -> int:
+        requested_end = query.page * query.page_size
+        desired = max(self.settings.arxiv_sync_max_results, requested_end)
+        return min(desired, self._REMOTE_SEARCH_MAX_RESULTS_CAP)
 
     def _load_papers(self, db: Session) -> LoadResult:
         try:
@@ -154,11 +217,32 @@ class PaperService:
             pdf_url=record.pdf_url,
         )
 
+    def _arxiv_item_to_paper(self, item: dict[str, object]) -> Paper:
+        categories = [str(value) for value in item.get("categories", [])]
+        primary_category = str(item.get("primary_category") or (categories[0] if categories else ""))
+        return Paper(
+            id=str(item["id"]),
+            title=str(item["title"]),
+            authors=[str(value) for value in item.get("authors", [])],
+            summary=str(item["summary"]),
+            published_at=self._parse_datetime(str(item["published_at"])),
+            updated_at=self._parse_datetime(str(item["updated_at"])),
+            categories=categories,
+            primary_category=primary_category,
+            source_url=str(item["source_url"]),
+            pdf_url=str(item["pdf_url"]),
+        )
+
     def _parse_json_list(self, payload: str) -> list[str]:
         parsed = json.loads(payload)
         if not isinstance(parsed, list):
             return []
         return [str(item) for item in parsed]
+
+    def _parse_datetime(self, value: str) -> datetime:
+        normalized = value.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
     def _ensure_utc(self, value: datetime) -> datetime:
         return value if value.tzinfo is not None else value.replace(tzinfo=UTC)

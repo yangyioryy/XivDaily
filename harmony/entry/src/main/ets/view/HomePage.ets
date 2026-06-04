@@ -436,7 +436,7 @@ export struct HomePage {
           .borderRadius(14);
       } else {
         if (this.vm.homeState.customTags.indexOf(this.vm.homeState.selectedCategory) >= 0) {
-          Text('自定义标签会用关键词在全 arXiv 召回论文，适合 embodied-ai 这类研究方向。')
+          Text('自定义标签会按当前时间窗口筛选本地论文库，适合跟踪 embodied-ai 这类研究方向。')
             .fontSize(13)
             .lineHeight(20)
             .fontColor(this.palette().onSecondaryContainer)
