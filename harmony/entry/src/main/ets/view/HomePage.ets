@@ -1,4 +1,5 @@
 import AppConstants from '../common/constants/AppConstants';
+import { ArrayDataSource } from '../common/ArrayDataSource';
 import Context from '@ohos.app.ability.application';
 import { ExternalLinkOpener } from '../common/ExternalLinkOpener';
 import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
@@ -276,6 +277,10 @@ export struct HomePage {
       return;
     }
     this.vm.selectCategory(tag);
+  }
+
+  private paperDataSource(): ArrayDataSource<PaperItem> {
+    return new ArrayDataSource<PaperItem>(this.vm.homeState.papers);
   }
 
   @Builder
@@ -938,63 +943,74 @@ export struct HomePage {
 
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
-      Column({ space: AppConstants.SECTION_SPACING }) {
-        this.heroSection();
-        this.exploreControlCard();
+      List({ space: AppConstants.SECTION_SPACING }) {
+        ListItem() {
+          Column({ space: AppConstants.SECTION_SPACING }) {
+            this.heroSection();
+            this.exploreControlCard();
 
-        if (this.vm.homeState.errorMessage) {
-          Text(this.vm.homeState.errorMessage!)
-            .fontSize(13)
-            .lineHeight(20)
-            .fontColor(this.palette().danger)
-            .width('100%')
-            .padding(12)
-            .backgroundColor(this.palette().dangerContainer)
-            .borderRadius(14);
-        }
+            if (this.vm.homeState.errorMessage) {
+              Text(this.vm.homeState.errorMessage!)
+                .fontSize(13)
+                .lineHeight(20)
+                .fontColor(this.palette().danger)
+                .width('100%')
+                .padding(12)
+                .backgroundColor(this.palette().dangerContainer)
+                .borderRadius(14);
+            }
 
-        if (this.vm.homeState.listWarning) {
-          Text(this.vm.homeState.listWarning!)
-            .fontSize(13)
-            .lineHeight(20)
-            .fontColor(this.palette().onSecondaryContainer)
-            .width('100%')
-            .padding(12)
-            .backgroundColor(this.palette().secondaryContainer)
-            .borderRadius(14);
-        }
+            if (this.vm.homeState.listWarning) {
+              Text(this.vm.homeState.listWarning!)
+                .fontSize(13)
+                .lineHeight(20)
+                .fontColor(this.palette().onSecondaryContainer)
+                .width('100%')
+                .padding(12)
+                .backgroundColor(this.palette().secondaryContainer)
+                .borderRadius(14);
+            }
 
-        if (!this.vm.homeState.dismissedSummary) {
-          this.trendSummaryCard();
-        }
+            if (!this.vm.homeState.dismissedSummary) {
+              this.trendSummaryCard();
+            }
 
-        Column({ space: 12 }) {
-          this.paperSectionHeader();
-
-          if (this.vm.homeState.papers.length === 0) {
-            this.emptyStateCard();
-          } else {
-            ForEach(this.vm.homeState.papers, (paper: PaperItem) => {
-              this.paperCard(paper);
-            }, (paper: PaperItem) => `${paper.id}:${paper.favoriteState ? '1' : '0'}:${paper.zoteroSyncState}`);
+            this.paperSectionHeader();
           }
+          .width('100%')
+          .alignItems(HorizontalAlign.Start);
         }
-        .width('100%');
+
+        if (this.vm.homeState.papers.length === 0) {
+          ListItem() {
+            this.emptyStateCard();
+          }
+        } else {
+          // 论文卡片数量后续可能继续增长，使用 LazyForEach 避免一次性构建整页论文卡。
+          LazyForEach(this.paperDataSource(), (paper: PaperItem) => {
+            ListItem() {
+              this.paperCard(paper);
+            }
+          }, (paper: PaperItem) => `${paper.id}:${paper.favoriteState ? '1' : '0'}:${paper.zoteroSyncState}`);
+        }
       }
       .width('100%')
+      .height('100%')
       .onClick(() => {
         if (this.pendingDeletionTag.length > 0) {
           this.clearPendingDeletion();
         }
       })
-      .alignItems(HorizontalAlign.Start)
-      .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 });
+      .padding({ left: AppConstants.PAGE_HORIZONTAL_PADDING, right: AppConstants.PAGE_HORIZONTAL_PADDING, top: 20, bottom: 20 })
+      .scrollBar(BarState.Off)
+      .backgroundColor(this.palette().background);
 
       if (this.isAddTagDialogVisible) {
         this.addTagDialogOverlay();
       }
     }
-    .width('100%');
+    .width('100%')
+    .height('100%');
   }
 }
 

@@ -1,4 +1,5 @@
 import AppConstants from '../common/constants/AppConstants';
+import { ArrayDataSource } from '../common/ArrayDataSource';
 import Context from '@ohos.app.ability.application';
 import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { FavoritePaperItem } from '../model/AppModels';
@@ -41,6 +42,10 @@ export struct LibraryPage {
     return this.vm.libraryState.favorites.filter((favorite: FavoritePaperItem) => {
       return favorite.paper.zoteroSyncState === this.vm.libraryState.syncFilter;
     });
+  }
+
+  private favoriteDataSource(): ArrayDataSource<FavoritePaperItem> {
+    return new ArrayDataSource<FavoritePaperItem>(this.filteredFavorites());
   }
 
   private syncedCount(): number {
@@ -505,24 +510,27 @@ export struct LibraryPage {
           .width('100%');
       }
 
-      Scroll(this.listScroller) {
-        Column({ space: 12 }) {
-          if (this.totalFavoriteCount() === 0) {
+      List({ scroller: this.listScroller, space: 12 }) {
+        if (this.totalFavoriteCount() === 0) {
+          ListItem() {
             this.emptyStateCard('还没有收藏论文', '在首页收藏感兴趣的论文后，这里会成为你的研究资料库。');
-          } else if (this.filteredFavorites().length === 0) {
-            this.emptyStateCard('当前筛选下没有结果', '可以切换同步状态，或者检查导出与同步后的收藏记录。');
-          } else {
-            ForEach(this.filteredFavorites(), (favorite: FavoritePaperItem) => {
-              this.favoriteCard(favorite);
-            }, (favorite: FavoritePaperItem) => favorite.paper.id);
           }
+        } else if (this.filteredFavorites().length === 0) {
+          ListItem() {
+            this.emptyStateCard('当前筛选下没有结果', '可以切换同步状态，或者检查导出与同步后的收藏记录。');
+          }
+        } else {
+          // 收藏库会持续增长，LazyForEach 可以避免筛选或选择状态变化时一次性重建所有卡片。
+          LazyForEach(this.favoriteDataSource(), (favorite: FavoritePaperItem) => {
+            ListItem() {
+              this.favoriteCard(favorite);
+            }
+          }, (favorite: FavoritePaperItem) => favorite.paper.id);
         }
-        .width('100%');
       }
       .width('100%')
       .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .scrollable(ScrollDirection.Vertical)
       .padding(2);
     }
     .width('100%')

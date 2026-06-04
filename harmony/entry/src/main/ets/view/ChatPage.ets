@@ -1,4 +1,5 @@
 import AppConstants from '../common/constants/AppConstants';
+import { ArrayDataSource } from '../common/ArrayDataSource';
 import Context from '@ohos.app.ability.application';
 import { ExternalLinkOpener } from '../common/ExternalLinkOpener';
 import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
@@ -62,6 +63,18 @@ export struct ChatPage {
     return this.vm.chatState.favorites.filter((favorite: FavoritePaperItem) => {
       return this.vm.chatState.selectedPaperIds.indexOf(favorite.paper.id) >= 0;
     });
+  }
+
+  private pickerFavoriteDataSource(): ArrayDataSource<FavoritePaperItem> {
+    return new ArrayDataSource<FavoritePaperItem>(this.vm.chatState.favorites);
+  }
+
+  private messageDataSource(): ArrayDataSource<PaperChatMessage> {
+    return new ArrayDataSource<PaperChatMessage>(this.vm.chatState.messages);
+  }
+
+  private messageRenderKey(message: PaperChatMessage, index: number): string {
+    return `${index}:${message.role}:${message.content.length}:${message.content.slice(0, 24)}`;
   }
 
   private showToast(message: string): void {
@@ -841,13 +854,13 @@ export struct ChatPage {
 
           if (this.isPickerExpanded) {
             // Android 端这里是锚定按钮的 DropdownMenu；Harmony 端改成局部覆盖展开，避免继续挤压下方内容。
-            Scroll() {
-              Column({ space: 2 }) {
-                ForEach(this.vm.chatState.favorites, (favorite: FavoritePaperItem) => {
+            List({ space: 2 }) {
+              // 收藏列表可能很长，展开选择器时只懒构建当前可见项，避免压慢输入区响应。
+              LazyForEach(this.pickerFavoriteDataSource(), (favorite: FavoritePaperItem) => {
+                ListItem() {
                   this.inlinePickerOption(favorite);
-                }, (favorite: FavoritePaperItem) => favorite.paper.id);
-              }
-              .width('100%');
+                }
+              }, (favorite: FavoritePaperItem) => favorite.paper.id);
             }
             .width('100%')
             .height(this.pickerMenuHeight())
@@ -857,7 +870,6 @@ export struct ChatPage {
             .borderRadius(14)
             .border({ width: 1, color: this.palette().outline })
             .scrollBar(BarState.Auto)
-            .scrollable(ScrollDirection.Vertical)
             .zIndex(2);
           }
         }
@@ -953,26 +965,29 @@ export struct ChatPage {
   @Builder
   private messagesPanel() {
     Column({ space: 12 }) {
-      Scroll(this.messageScroller) {
-        Column({ space: 10 }) {
-          if (this.vm.chatState.messages.length === 0) {
+      List({ scroller: this.messageScroller, space: 10 }) {
+        if (this.vm.chatState.messages.length === 0) {
+          ListItem() {
             this.emptyStateCard();
-          } else {
-            ForEach(this.vm.chatState.messages, (message: PaperChatMessage, index?: number) => {
-              this.messageCard(message);
-            }, (_: PaperChatMessage, index?: number) => `${index}`);
           }
+        } else {
+          // 聊天历史会持续增长，消息项懒加载可以避免每次输入都重建全部历史气泡。
+          LazyForEach(this.messageDataSource(), (message: PaperChatMessage, index: number) => {
+            ListItem() {
+              this.messageCard(message);
+            }
+          }, (message: PaperChatMessage, index: number) => this.messageRenderKey(message, index));
+        }
 
-          if (this.vm.chatState.isSending) {
+        if (this.vm.chatState.isSending) {
+          ListItem() {
             this.thinkingBubble();
           }
         }
-        .width('100%');
       }
       .width('100%')
       .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .scrollable(ScrollDirection.Vertical)
       .padding({ top: 2, bottom: 2 });
     }
     .width('100%')

@@ -13,7 +13,6 @@ import { SettingsPage } from '../view/SettingsPage';
 struct XivDailyPage {
   @State vm: AppViewModel = new AppViewModel();
   @State private localSelectedTab: number = 0;
-  private homeScroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     this.applyThemeMode();
@@ -145,13 +144,9 @@ struct XivDailyPage {
     Tabs({ barPosition: BarPosition.End, index: this.localSelectedTab }) {
       TabContent() {
         Stack({ alignContent: Alignment.TopStart }) {
-          Scroll(this.homeScroller) {
-            HomePage({ vm: this.vm });
-          }
+          HomePage({ vm: this.vm })
           .width('100%')
           .height('100%')
-          .scrollBar(BarState.Off)
-          .scrollable(ScrollDirection.Vertical)
           .backgroundColor(this.palette().background);
 
           if (this.vm.homeState.actionMessage) {
