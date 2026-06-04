@@ -55,7 +55,7 @@ class ConfigService:
 
     def save_llm(self, request: LlmConfigSaveRequest) -> IntegrationConfigRead:
         base_url = request.base_url.strip().rstrip("/") or "https://api.openai.com/v1"
-        model = request.model.strip() or "gpt-5.4"
+        model = request.model.strip() or "grok-4.20-0309-non-reasoning-console"
         payload = self._load_payload()
         current_api_key = payload.get("llm", {}).get("api_key") or self.settings.llm_api_key
         api_key = request.api_key.strip() if request.api_key and request.api_key.strip() else current_api_key

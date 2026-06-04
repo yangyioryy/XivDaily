@@ -1330,11 +1330,15 @@ export class AppViewModel {
       state.llmBaseUrl = status.llmBaseUrl;
       state.llmModel = status.llmModel;
       state.llmApiKeyMasked = status.llmApiKeyMasked;
-      state.zoteroUserIdDraft = status.zoteroUserId ?? '';
-      state.zoteroLibraryTypeDraft = status.zoteroLibraryType ?? 'user';
-      state.zoteroTargetCollectionNameDraft = status.zoteroTargetCollectionName;
-      state.llmBaseUrlDraft = status.llmBaseUrl;
-      state.llmModelDraft = status.llmModel;
+      if (!state.isZoteroDetailDialogVisible) {
+        state.zoteroUserIdDraft = status.zoteroUserId ?? '';
+        state.zoteroLibraryTypeDraft = status.zoteroLibraryType ?? 'user';
+        state.zoteroTargetCollectionNameDraft = status.zoteroTargetCollectionName;
+      }
+      if (!state.isLlmDetailDialogVisible) {
+        state.llmBaseUrlDraft = status.llmBaseUrl;
+        state.llmModelDraft = status.llmModel;
+      }
       state.integrationStatusFailed = false;
     });
   }
@@ -1477,4 +1481,4 @@ function languageLabel(language: string): string {
 }
 
 const DEFAULT_LLM_BASE_URL: string = 'https://example.com/v1';
-const DEFAULT_LLM_MODEL: string = 'grok-4.20-0309-non-reasoning';
+const DEFAULT_LLM_MODEL: string = 'grok-4.20-0309-non-reasoning-console';

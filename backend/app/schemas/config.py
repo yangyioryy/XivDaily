@@ -34,7 +34,7 @@ class ZoteroConfigSaveRequest(BaseModel):
 class LlmConfigSaveRequest(BaseModel):
     base_url: str = "https://example.com/v1"
     api_key: str | None = None
-    model: str = "grok-4.20-0309-non-reasoning"
+    model: str = "grok-4.20-0309-non-reasoning-console"
 
 
 class ConfigTestResult(BaseModel):

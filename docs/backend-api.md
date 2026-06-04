@@ -99,7 +99,7 @@
 | `PAPER_LIBRARY_MAX_PAPERS_PER_CATEGORY` | `200` | 每分类保留上限 |
 | `LLM_BASE_URL` | `https://example.com/v1` | OpenAI 兼容模型服务地址 |
 | `LLM_API_KEY` | `None` | LLM 密钥 |
-| `LLM_MODEL` | `grok-4.20-0309-non-reasoning` | 模型名 |
+| `LLM_MODEL` | `grok-4.20-0309-non-reasoning-console` | 模型名 |
 | `LLM_REQUEST_TIMEOUT_SECONDS` | `60` | LLM 请求超时 |
 | `PAPER_PDF_TIMEOUT_SECONDS` | `20` | PDF 抽取超时 |
 | `PAPER_PDF_MAX_BYTES` | `15728640` | PDF 下载大小上限 |

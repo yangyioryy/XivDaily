@@ -125,7 +125,7 @@ GET  http://127.0.0.1:8000/zotero/config/status
 | `ARXIV_SYNC_MAX_RESULTS` | 单轮同步最大条数 | `50` |
 | `LLM_BASE_URL` | OpenAI 兼容 LLM 地址 | `https://example.com/v1` |
 | `LLM_API_KEY` | LLM Key | 无 |
-| `LLM_MODEL` | 模型名 | `grok-4.20-0309-non-reasoning` |
+| `LLM_MODEL` | 模型名 | `grok-4.20-0309-non-reasoning-console` |
 | `PAPER_PDF_TIMEOUT_SECONDS` | PDF 抽取超时 | `20` |
 | `PAPER_PDF_MAX_BYTES` | PDF 下载大小上限 | `15728640` |
 | `PAPER_CHAT_CONTEXT_CHARS_PER_PAPER` | 单篇论文进入聊天上下文的字符上限 | `12000` |

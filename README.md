@@ -207,7 +207,7 @@ http://127.0.0.1:8000/
 | `ARXIV_SYNC_INTERVAL_SECONDS` | 后台同步周期 | `7200` |
 | `ARXIV_SYNC_MAX_RESULTS` | 单轮同步最大条数 | `50` |
 | `LLM_BASE_URL` | OpenAI 兼容模型服务地址 | `https://example.com/v1` |
-| `LLM_MODEL` | 摘要、翻译、对话使用的模型名 | `grok-4.20-0309-non-reasoning` |
+| `LLM_MODEL` | 摘要、翻译、对话使用的模型名 | `grok-4.20-0309-non-reasoning-console` |
 | `PAPER_CHAT_CONTEXT_CHARS_PER_PAPER` | 每篇论文进入聊天上下文的字符上限 | `12000` |
 | `ZOTERO_USER_ID` | Zotero 用户或群组标识 | 'your-zotero-user-id' |
 | `ZOTERO_LIBRARY_TYPE` | Zotero 库类型 | `user` / `group` |

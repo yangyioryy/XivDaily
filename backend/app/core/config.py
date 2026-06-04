@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     )
     llm_base_url: str = Field(default="https://example.com/v1", validation_alias="LLM_BASE_URL")
     llm_api_key: str | None = Field(default=None, validation_alias="LLM_API_KEY")
-    llm_model: str = Field(default="grok-4.20-0309-non-reasoning", validation_alias="LLM_MODEL")
+    llm_model: str = Field(default="grok-4.20-0309-non-reasoning-console", validation_alias="LLM_MODEL")
     llm_request_timeout_seconds: int = Field(default=60, validation_alias="LLM_REQUEST_TIMEOUT_SECONDS")
     paper_pdf_timeout_seconds: int = Field(default=20, validation_alias="PAPER_PDF_TIMEOUT_SECONDS")
     paper_pdf_max_bytes: int = Field(default=15 * 1024 * 1024, validation_alias="PAPER_PDF_MAX_BYTES")
