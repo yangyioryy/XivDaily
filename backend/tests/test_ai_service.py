@@ -275,7 +275,7 @@ async def test_generate_trend_summary_refreshes_degraded_cache_when_model_is_con
             intro="当前使用本地降级摘要，后续可在配置好模型后重试。",
             items_json="[]",
             status="degraded",
-            warning="no key",
+            warning="未配置大模型 API Key，已使用本地降级结果。",
             generated_at=datetime.now(UTC),
         )
     )
@@ -291,6 +291,39 @@ async def test_generate_trend_summary_refreshes_degraded_cache_when_model_is_con
     assert result.status == "success"
     assert result.intro == "配置恢复后的趋势"
     assert gateway.calls == 1
+
+
+@pytest.mark.anyio("asyncio")
+async def test_generate_trend_summary_reuses_recent_degraded_cache_for_short_ttl() -> None:
+    db = build_session()
+    gateway = FakeGateway(
+        status="success",
+        text='{"intro":"不应被调用","items":[{"rank":1,"trend_title":"unused","summary":"unused","representative_paper_ids":["2401.00001"]}]}',
+    )
+    service = AiService(db=db, llm_gateway=gateway, paper_service=FakePaperService())
+    cache_key, window_start, window_end = service._build_cache_window("cs.CV")
+    db.merge(
+        TrendSummaryCacheModel(
+            cache_key=cache_key,
+            category="cs.CV",
+            days=3,
+            window_start=window_start,
+            window_end=window_end,
+            intro="最近一次调用已降级。",
+            items_json='[{"rank":1,"trend_title":"缓存降级结果","summary":"沿用最近一次降级摘要。","representative_paper_ids":["2401.00001"]}]',
+            status="degraded",
+            warning="timeout",
+            generated_at=datetime.now(UTC),
+        )
+    )
+    db.commit()
+
+    result = await service.generate_trend_summary("cs.CV", 3)
+
+    assert result.status == "degraded"
+    assert result.intro == "最近一次调用已降级。"
+    assert result.items[0].trend_title == "缓存降级结果"
+    assert gateway.calls == 0
 
 
 @pytest.mark.anyio("asyncio")

@@ -358,7 +358,7 @@ async def test_remote_keyword_search_explains_category_filtered_results() -> Non
 
 
 @pytest.mark.anyio("asyncio")
-async def test_remote_keyword_search_does_not_cache_rate_limited_result() -> None:
+async def test_remote_keyword_search_recovers_after_negative_cache_expires() -> None:
     db = build_session()
     now = datetime.now(UTC)
     arxiv_client = SequencedStatusFakeArxivClient(
@@ -380,6 +380,8 @@ async def test_remote_keyword_search_does_not_cache_rate_limited_result() -> Non
     query = PaperQuery(category="cs.CV", keyword="omibench", days=None, page=1, page_size=10)
 
     first = await service.list_papers(query)
+    cache_key = ("cs.CV", "omibench", 50)
+    PaperService._shared_cache[cache_key].created_at -= PaperService._shared_cache[cache_key].ttl_seconds + 1
     second = await service.list_papers(query)
 
     assert first.status == "unavailable"
@@ -387,3 +389,22 @@ async def test_remote_keyword_search_does_not_cache_rate_limited_result() -> Non
     assert second.status == "ok"
     assert second.items[0].id == "2604.20806v1"
     assert arxiv_client.requests == [("cs.CV", "omibench", 50), ("cs.CV", "omibench", 50)]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_remote_keyword_search_short_term_negative_cache_reuses_rate_limited_result() -> None:
+    db = build_session()
+    arxiv_client = StatusFakeArxivClient(
+        ArxivSearchResult(items=[], status="rate_limited", warning="arXiv 当前限流。")
+    )
+    service = PaperService(db=db, arxiv_client=arxiv_client)
+    query = PaperQuery(category="cs.CV", keyword="omibench", days=None, page=1, page_size=10)
+
+    first = await service.list_papers(query)
+    second = await service.list_papers(query)
+
+    assert first.status == "unavailable"
+    assert second.status == "unavailable"
+    assert first.empty_reason == "rate_limited"
+    assert second.empty_reason == "rate_limited"
+    assert arxiv_client.requests == [("cs.CV", "omibench", 50)]

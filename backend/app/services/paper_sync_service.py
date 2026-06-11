@@ -60,11 +60,12 @@ class PaperSyncService:
         with self.session_factory() as db:
             for category in categories:
                 try:
-                    items = await self.arxiv_client.search(
-                        category=category,
-                        keyword=None,
-                        max_results=self.settings.arxiv_sync_max_results,
-                    )
+                    items, status = await self._search_category(category)
+                    if status != "ok":
+                        failed += 1
+                        db.rollback()
+                        logger.warning("arXiv 分类同步跳过。category=%s status=%s", category, status)
+                        continue
                     for item in items:
                         published_at = self._parse_datetime(str(item["published_at"]))
                         if published_at < cutoff:
@@ -91,6 +92,22 @@ class PaperSyncService:
             ",".join(categories),
         )
         return {"upserted": upserted, "deleted": deleted, "failed": failed}
+
+    async def _search_category(self, category: str) -> tuple[list[dict[str, object]], str]:
+        if hasattr(self.arxiv_client, "search_with_status"):
+            result = await self.arxiv_client.search_with_status(
+                category=category,
+                keyword=None,
+                max_results=self.settings.arxiv_sync_max_results,
+            )
+            return result.items, result.status
+
+        items = await self.arxiv_client.search(
+            category=category,
+            keyword=None,
+            max_results=self.settings.arxiv_sync_max_results,
+        )
+        return items, "ok"
 
     def _upsert_record(
         self,

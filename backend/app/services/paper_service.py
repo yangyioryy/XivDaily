@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheEntry:
     created_at: float
+    ttl_seconds: float
     result: ArxivSearchResult
 
 
@@ -42,6 +43,7 @@ class PaperService:
     _shared_cache: dict[tuple[str, str, int], CacheEntry] = {}
     _shared_inflight: dict[tuple[str, str, int], asyncio.Task[ArxivSearchResult]] = {}
     _REMOTE_SEARCH_MAX_RESULTS_CAP = 200
+    _NEGATIVE_CACHE_TTL_SECONDS = 120
 
     def __init__(
         self,
@@ -113,7 +115,7 @@ class PaperService:
     ) -> ArxivSearchResult:
         cache_key = ((category or "").strip(), keyword.lower(), max_results)
         cached = self.__class__._shared_cache.get(cache_key)
-        if cached is not None and monotonic() - cached.created_at < self.settings.arxiv_cache_ttl_seconds:
+        if cached is not None and monotonic() - cached.created_at < cached.ttl_seconds:
             return cached.result
 
         inflight = self.__class__._shared_inflight.get(cache_key)
@@ -126,9 +128,14 @@ class PaperService:
 
         try:
             result = await inflight
-            # 只缓存 arXiv 正常响应，避免限流或超时状态在 TTL 内被误认为稳定空结果。
-            if owns_task and result.status == "ok":
-                self.__class__._shared_cache[cache_key] = CacheEntry(created_at=monotonic(), result=result)
+            cache_ttl = self._resolve_cache_ttl_seconds(result)
+            if owns_task and cache_ttl is not None:
+                # 对限流/不可用结果只做短期负缓存，避免上游抖动时被重复刷新放大。
+                self.__class__._shared_cache[cache_key] = CacheEntry(
+                    created_at=monotonic(),
+                    ttl_seconds=cache_ttl,
+                    result=result,
+                )
             return result
         finally:
             if owns_task:
@@ -304,6 +311,13 @@ class PaperService:
         if search_result.status != "ok":
             return "unavailable"
         return "empty"
+
+    def _resolve_cache_ttl_seconds(self, search_result: ArxivSearchResult) -> float | None:
+        if search_result.status == "ok":
+            return float(self.settings.arxiv_cache_ttl_seconds)
+        if search_result.status in {"rate_limited", "unavailable"}:
+            return float(self._NEGATIVE_CACHE_TTL_SECONDS)
+        return None
 
     def _build_warning(self, days: int | None, load_warning: str | None, empty_reason: str | None) -> str | None:
         if load_warning:

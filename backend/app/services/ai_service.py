@@ -220,7 +220,15 @@ class AiService:
         return pdf_url.replace("/pdf/", "/abs/", 1)
 
     def _should_use_cached_summary(self, cached: TrendSummary) -> bool:
-        return cached.status == "success"
+        if cached.status == "success":
+            return True
+        if cached.status != "degraded":
+            return False
+        if not self._is_recent_degraded_summary(cached):
+            return False
+        if self._is_recoverable_config_warning(cached.warning) and self.settings.llm_api_key:
+            return False
+        return True
 
     def _build_cache_window(self, category: str | None, keyword: str | None = None) -> tuple[str, datetime, datetime]:
         window_end = datetime.now(UTC)
@@ -249,6 +257,17 @@ class AiService:
         normalized = "-".join(value.lower().split())
         normalized = "".join(char if char.isalnum() or char in {"-", "_", "."} else "-" for char in normalized)
         return normalized[:48] or "keyword"
+
+    def _is_recent_degraded_summary(self, cached: TrendSummary) -> bool:
+        generated_at = cached.generated_at if cached.generated_at.tzinfo is not None else cached.generated_at.replace(tzinfo=UTC)
+        return datetime.now(UTC) - generated_at <= timedelta(seconds=DEGRADED_TREND_CACHE_TTL_SECONDS)
+
+    def _is_recoverable_config_warning(self, warning: str | None) -> bool:
+        if not warning:
+            return False
+        normalized = warning.lower()
+        # 配置缺失类降级一旦被修复，应允许下一次请求立即回源刷新缓存。
+        return "未配置" in warning or "鉴权失败" in warning or "no key" in normalized or "api key" in normalized
 
     def _parse_trend_response(self, payload: str, fallback_items: list[TrendSummaryItem]) -> dict[str, object]:
         try:
@@ -362,3 +381,4 @@ class AiService:
 FIXED_TREND_DAYS = 3
 TREND_MAX_PAPERS = 8
 TREND_SUMMARY_CHARS = 100
+DEGRADED_TREND_CACHE_TTL_SECONDS = 180

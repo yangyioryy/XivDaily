@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.base import Base
+from app.clients.arxiv_client import ArxivSearchResult
 from app.models.paper_record import PaperRecordModel
 from app.services.paper_sync_service import PaperSyncService
 
@@ -72,6 +73,21 @@ class PartiallyFailingArxivClient:
                 "pdf_url": "https://arxiv.org/pdf/2401.00003",
             }
         ]
+
+
+class StatusAwareArxivClient:
+    def __init__(self, results: dict[str, ArxivSearchResult]) -> None:
+        self.results = results
+        self.requests: list[tuple[str | None, str | None, int]] = []
+
+    async def search_with_status(
+        self,
+        category: str | None,
+        keyword: str | None,
+        max_results: int,
+    ) -> ArxivSearchResult:
+        self.requests.append((category, keyword, max_results))
+        return self.results[str(category)]
 
 
 def build_session_factory() -> tuple[callable, Session]:
@@ -183,3 +199,42 @@ async def test_sync_once_does_not_cleanup_failed_category_records() -> None:
     rows = inspect_db.scalars(select(PaperRecordModel).order_by(PaperRecordModel.paper_id)).all()
     assert result["failed"] == 1
     assert [row.paper_id for row in rows] == ["2401.00003", "old-cv-paper"]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_sync_once_counts_rate_limited_status_as_failed() -> None:
+    session_factory, inspect_db = build_session_factory()
+    now = datetime.now(UTC)
+    client = StatusAwareArxivClient(
+        {
+            "cs.CV": ArxivSearchResult(items=[], status="rate_limited", warning="limited"),
+            "cs.AI": ArxivSearchResult(
+                items=[
+                    {
+                        "id": "2401.00005",
+                        "title": "AI Paper",
+                        "authors": ["B. Author"],
+                        "summary": "Summary",
+                        "published_at": now.isoformat(),
+                        "updated_at": now.isoformat(),
+                        "categories": ["cs.AI"],
+                        "primary_category": "cs.AI",
+                        "source_url": "https://arxiv.org/abs/2401.00005",
+                        "pdf_url": "https://arxiv.org/pdf/2401.00005",
+                    }
+                ],
+                status="ok",
+            ),
+        }
+    )
+    service = PaperSyncService(session_factory=session_factory, arxiv_client=client)
+    service.settings.arxiv_sync_categories = '["cs.CV","cs.AI"]'
+    service.settings.arxiv_sync_max_results = 50
+
+    result = await service.sync_once()
+
+    rows = inspect_db.scalars(select(PaperRecordModel).order_by(PaperRecordModel.paper_id)).all()
+    assert result["upserted"] == 1
+    assert result["failed"] == 1
+    assert [row.paper_id for row in rows] == ["2401.00005"]
+    assert client.requests == [("cs.CV", None, 50), ("cs.AI", None, 50)]
