@@ -34,7 +34,8 @@ class Settings(BaseSettings):
     arxiv_sync_window_days: int = Field(default=7, validation_alias="ARXIV_SYNC_WINDOW_DAYS")
     arxiv_sync_interval_seconds: int = Field(default=7200, validation_alias="ARXIV_SYNC_INTERVAL_SECONDS")
     arxiv_sync_max_results: int = Field(default=50, validation_alias="ARXIV_SYNC_MAX_RESULTS")
-    paper_library_stale_after_seconds: int = Field(default=3600, validation_alias="PAPER_LIBRARY_STALE_AFTER_SECONDS")
+    # stale 阈值默认比同步周期更长，避免同步正常时仍频繁提示论文库已过期。
+    paper_library_stale_after_seconds: int = Field(default=10800, validation_alias="PAPER_LIBRARY_STALE_AFTER_SECONDS")
     paper_library_retention_days: int = Field(default=14, validation_alias="PAPER_LIBRARY_RETENTION_DAYS")
     paper_library_max_papers_per_category: int = Field(
         default=200,

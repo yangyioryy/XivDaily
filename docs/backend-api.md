@@ -94,7 +94,7 @@
 | `ARXIV_SYNC_WINDOW_DAYS` | `7` | 后台同步时间窗口 |
 | `ARXIV_SYNC_INTERVAL_SECONDS` | `7200` | 后台同步周期 |
 | `ARXIV_SYNC_MAX_RESULTS` | `50` | 单轮同步最大条数 |
-| `PAPER_LIBRARY_STALE_AFTER_SECONDS` | `3600` | 本地论文库过期阈值 |
+| `PAPER_LIBRARY_STALE_AFTER_SECONDS` | `10800` | 本地论文库过期阈值，建议大于同步周期 |
 | `PAPER_LIBRARY_RETENTION_DAYS` | `14` | 论文库保留天数 |
 | `PAPER_LIBRARY_MAX_PAPERS_PER_CATEGORY` | `200` | 每分类保留上限 |
 | `LLM_BASE_URL` | `https://example.com/v1` | OpenAI 兼容模型服务地址 |

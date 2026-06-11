@@ -24,6 +24,7 @@ Options:
 
 Environment:
   APP_ENV, APP_LOG_LEVEL, DATABASE_URL, LLM_*, ZOTERO_* can be set in backend/.env.
+  backend/.env must be UTF-8 without BOM, otherwise systemd may ignore the first key.
 EOF
 }
 
@@ -78,9 +79,28 @@ ensure_python() {
   exit 1
 }
 
+sanitize_env_file() {
+  local env_file="$1"
+  if [[ ! -f "$env_file" ]]; then
+    return
+  fi
+
+  # systemd 读取带 BOM 的 EnvironmentFile 时，会把首个键名解析坏掉。
+  "$PYTHON_BIN" - "$env_file" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+raw = path.read_bytes()
+if raw.startswith(b"\xef\xbb\xbf"):
+    path.write_bytes(raw[3:])
+PY
+}
+
 write_env_if_missing() {
   local env_file="$BACKEND_ROOT/.env"
   if [[ -f "$env_file" ]]; then
+    sanitize_env_file "$env_file"
     echo "Keep existing .env: $env_file"
     return
   fi
@@ -101,6 +121,7 @@ ARXIV_SYNC_CATEGORIES=["cs.CV","cs.AI","cs.CL"]
 ARXIV_SYNC_WINDOW_DAYS=7
 ARXIV_SYNC_INTERVAL_SECONDS=7200
 ARXIV_SYNC_MAX_RESULTS=50
+PAPER_LIBRARY_STALE_AFTER_SECONDS=10800
 LLM_BASE_URL=https://example.com/v1
 LLM_API_KEY=
 LLM_MODEL=grok-4.20-0309-non-reasoning-console
@@ -112,6 +133,7 @@ ZOTERO_API_KEY=
 ZOTERO_TARGET_COLLECTION_NAME=XivDaily
 EOF
   chmod 600 "$env_file"
+  sanitize_env_file "$env_file"
   echo "Created .env template: $env_file"
   echo "Fill LLM_API_KEY/ZOTERO_* in backend/.env before using AI or Zotero features."
 }

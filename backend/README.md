@@ -87,6 +87,7 @@ python -m pip install -r requirements.txt
 ```
 
 如需自定义 LLM、Zotero 或数据库配置，可参考 `.env.example` 创建 `.env`。
+部署到 Linux 或交给 `systemd` 读取时，`.env` 必须保存为 `UTF-8 无 BOM`，否则第一行配置可能被忽略。
 
 如果你在 Conda 环境里运行：
 
@@ -137,7 +138,7 @@ GET  http://127.0.0.1:8000/zotero/config/status
 | `ARXIV_SYNC_WINDOW_DAYS` | 同步时保留的近期论文窗口 | `7` |
 | `ARXIV_SYNC_INTERVAL_SECONDS` | 后台同步周期 | `7200` |
 | `ARXIV_SYNC_MAX_RESULTS` | 单轮同步最大条数 | `50` |
-| `PAPER_LIBRARY_STALE_AFTER_SECONDS` | 本地论文库过期提示阈值 | `3600` |
+| `PAPER_LIBRARY_STALE_AFTER_SECONDS` | 本地论文库过期提示阈值，建议大于同步周期 | `10800` |
 | `PAPER_LIBRARY_RETENTION_DAYS` | 本地论文库保留天数 | `14` |
 | `PAPER_LIBRARY_MAX_PAPERS_PER_CATEGORY` | 单分类最多保留论文数 | `200` |
 | `LLM_BASE_URL` | OpenAI 兼容 LLM 地址 | `https://example.com/v1` |
@@ -154,6 +155,7 @@ GET  http://127.0.0.1:8000/zotero/config/status
 | `ZOTERO_TARGET_COLLECTION_NAME` | 目标集合名 | `XivDaily` |
 
 > 说明：启动时会先读取 `.env`，随后再读取 `data/runtime_config.json` 中的 `llm` / `zotero` 覆盖项。
+> 说明：默认 `PAPER_LIBRARY_STALE_AFTER_SECONDS=10800`，高于 `ARXIV_SYNC_INTERVAL_SECONDS=7200`，用于避免正常同步窗口内误报 stale。
 
 ## 🧪 测试说明
 
