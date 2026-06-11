@@ -72,6 +72,78 @@ async def test_complete_returns_success_text(monkeypatch: pytest.MonkeyPatch) ->
 
 
 @pytest.mark.anyio("asyncio")
+async def test_complete_degrades_when_provider_returns_blank_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    gateway = build_gateway(monkeypatch)
+    attempts = {"count": 0}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"choices": [{"message": {"content": "   "}}]}
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            attempts["count"] += 1
+            return FakeResponse()
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await gateway.complete("hello", task_name="translation")
+
+    assert attempts["count"] == 1
+    assert result.status == "degraded"
+    assert result.warning == "大模型返回了空内容，已使用本地降级结果。"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_complete_reads_text_from_content_parts(monkeypatch: pytest.MonkeyPatch) -> None:
+    gateway = build_gateway(monkeypatch)
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": [
+                                {"type": "text", "text": "part one"},
+                                {"type": "text", "text": " part two"},
+                            ]
+                        }
+                    }
+                ]
+            }
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]) -> FakeResponse:
+            return FakeResponse()
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda timeout: FakeClient())
+
+    result = await gateway.complete("hello", task_name="translation")
+
+    assert result.status == "success"
+    assert result.text == "part one part two"
+
+
+@pytest.mark.anyio("asyncio")
 async def test_complete_prefers_v1_path_for_bare_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
     gateway = build_gateway(monkeypatch, base_url=" https://example.com")
 

@@ -786,9 +786,24 @@ export class AppViewModel {
       if (sessionVersion !== this.activeChatSessionVersion) {
         return;
       }
+      const answer = result.answer.trim();
+      if (answer.length === 0) {
+        // 模型或后端偶发返回空 answer 时，保留用户问题并给出明确提示，避免渲染空白助手气泡。
+        this.chatState = {
+          favorites: this.chatState.favorites,
+          selectedPaperIds: this.chatState.selectedPaperIds,
+          messages: nextMessages,
+          inputDraft: this.chatState.inputDraft,
+          isSending: false,
+          errorMessage: '模型没有返回有效内容，请稍后重试',
+          warningMessage: result.warning,
+          usedPapers: result.usedPapers
+        };
+        return;
+      }
       const assistantMessage: PaperChatMessage = {
         role: 'assistant',
-        content: result.answer
+        content: answer
       };
       this.chatState = {
         favorites: this.chatState.favorites,

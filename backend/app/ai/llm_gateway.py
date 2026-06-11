@@ -31,6 +31,10 @@ class FailureCacheEntry:
 ChatMessage = dict[str, Literal["system", "user", "assistant"] | str]
 
 
+class EmptyLlmResponseError(RuntimeError):
+    """模型服务返回成功状态，但没有可展示的正文。"""
+
+
 class LlmGateway:
     """统一大模型网关，集中处理密钥、超时、重试和降级日志。"""
 
@@ -70,7 +74,9 @@ class LlmGateway:
         for attempt in range(1, self._max_attempts + 1):
             try:
                 response = await self._post_chat_request(endpoints, payload, headers)
-                content = response.json()["choices"][0]["message"]["content"]
+                content = self._extract_response_text(response.json())
+                if not content.strip():
+                    raise EmptyLlmResponseError("大模型响应内容为空")
                 self.__class__._shared_failure_cache.pop(request_signature, None)
                 logger.info(
                     "llm_call_success",
@@ -146,6 +152,47 @@ class LlmGateway:
 
         raise last_http_error or RuntimeError("大模型响应为空")
 
+    def _extract_response_text(self, payload: object) -> str:
+        if not isinstance(payload, dict):
+            return ""
+
+        choices = payload.get("choices")
+        if not isinstance(choices, list) or not choices:
+            return ""
+
+        choice = choices[0]
+        if not isinstance(choice, dict):
+            return ""
+
+        message = choice.get("message")
+        if isinstance(message, dict):
+            # 兼容部分 OpenAI 风格服务把 content 拆成数组片段的返回格式。
+            for candidate in (message.get("content"), message.get("refusal")):
+                content = self._stringify_visible_content(candidate)
+                if content.strip():
+                    return content
+
+        return self._stringify_visible_content(choice.get("text"))
+
+    def _stringify_visible_content(self, value: object) -> str:
+        if isinstance(value, str):
+            return value
+        if isinstance(value, list):
+            parts: list[str] = []
+            for item in value:
+                if isinstance(item, str):
+                    parts.append(item)
+                    continue
+                if isinstance(item, dict):
+                    text = item.get("text")
+                    if isinstance(text, str):
+                        parts.append(text)
+            return "".join(parts)
+        if isinstance(value, dict):
+            text = value.get("text")
+            return text if isinstance(text, str) else ""
+        return ""
+
     def _build_request_signature(self, messages: list[ChatMessage], task_name: str) -> str:
         payload = {
             "task_name": task_name,
@@ -192,6 +239,8 @@ class LlmGateway:
 
     def _map_warning(self, exc: Exception) -> str:
         message = str(exc).lower()
+        if isinstance(exc, EmptyLlmResponseError):
+            return "大模型返回了空内容，已使用本地降级结果。"
         if isinstance(exc, httpx.TimeoutException) or "timeout" in message:
             return "大模型请求超时，已使用本地降级结果。"
         if isinstance(exc, httpx.HTTPStatusError):
