@@ -155,8 +155,8 @@ export struct LibraryPage {
       Row() {
         Column({ space: 2 }) {
           Text('收藏库')
-            .fontSize(22)
-            .fontWeight(FontWeight.Medium)
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
             .fontColor(this.palette().textPrimary);
           Text(`${this.filterLabel()} · ${this.filteredFavorites().length} 条`)
             .fontSize(13)

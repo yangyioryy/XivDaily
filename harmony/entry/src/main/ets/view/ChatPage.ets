@@ -1049,13 +1049,14 @@ export struct ChatPage {
         Row() {
           Column({ space: 4 }) {
             Text('论文对话')
-              .fontSize(22)
-              .fontWeight(FontWeight.Medium)
+              .fontSize(24)
+              .fontWeight(FontWeight.Bold)
               .fontColor(this.palette().textPrimary);
             Text(`已选 ${this.vm.chatState.selectedPaperIds.length} 篇 · 最多 ${AppConstants.MAX_CHAT_PAPERS} 篇`)
               .fontSize(13)
               .fontColor(this.palette().textSecondary);
           }
+          .translate({ x: -4, y: 0, z: 0 })
           Blank();
           Row({ space: 4 }) {
             Text('×')
