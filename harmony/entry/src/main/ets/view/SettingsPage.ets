@@ -25,6 +25,9 @@ export struct SettingsPage {
   @State private profileNameDraft: string = '';
   @State private profileAvatarDraft: string = 'study';
   @State private profileAvatarImageUriDraft?: string = undefined;
+  @State private llmBaseUrlInput: string = '';
+  @State private llmModelInput: string = '';
+  @State private llmApiKeyInput: string = '';
 
   private readSystemColorMode(): string | number | undefined {
     try {
@@ -228,6 +231,49 @@ export struct SettingsPage {
   private saveProfileEditor(): void {
     this.vm.updateProfile(this.profileNameDraft, this.profileAvatarDraft, this.profileAvatarImageUriDraft);
     this.isProfileEditorVisible = false;
+  }
+
+  private showLlmDetailDialog(): void {
+    this.vm.showLlmDetailDialog();
+    this.resetLlmInputDrafts();
+  }
+
+  private hideLlmDetailDialog(): void {
+    this.vm.hideLlmDetailDialog();
+  }
+
+  private resetLlmInputDrafts(): void {
+    // LLM 弹窗输入先落到页面本地状态，避免每次输入都触发 VM 整对象刷新导致 TextInput 回弹。
+    this.llmBaseUrlInput = this.vm.settingsState.llmBaseUrlDraft;
+    this.llmModelInput = this.vm.settingsState.llmModelDraft;
+    this.llmApiKeyInput = this.vm.settingsState.llmApiKeyDraft;
+  }
+
+  private updateLlmBaseUrlInput(value: string): void {
+    this.llmBaseUrlInput = value;
+    this.vm.beginLlmDraftEditing();
+  }
+
+  private updateLlmModelInput(value: string): void {
+    this.llmModelInput = value;
+    this.vm.beginLlmDraftEditing();
+  }
+
+  private updateLlmApiKeyInput(value: string): void {
+    this.llmApiKeyInput = value;
+    this.vm.beginLlmDraftEditing();
+  }
+
+  private syncLlmInputsToViewModel(): void {
+    if (this.vm.settingsState.llmBaseUrlDraft !== this.llmBaseUrlInput) {
+      this.vm.updateLlmBaseUrlDraft(this.llmBaseUrlInput);
+    }
+    if (this.vm.settingsState.llmModelDraft !== this.llmModelInput) {
+      this.vm.updateLlmModelDraft(this.llmModelInput);
+    }
+    if (this.vm.settingsState.llmApiKeyDraft !== this.llmApiKeyInput) {
+      this.vm.updateLlmApiKeyDraft(this.llmApiKeyInput);
+    }
   }
 
   private showToast(message: string): void {
@@ -800,7 +846,7 @@ export struct SettingsPage {
         this.vm.settingsState.zoteroConfigured, () => this.vm.showZoteroDetailDialog());
       this.sectionDivider();
       this.integrationSettingRow('✦', '大模型配置', this.llmSubtitle(), this.llmValue(),
-        this.vm.settingsState.llmConfigured, () => this.vm.showLlmDetailDialog());
+        this.vm.settingsState.llmConfigured, () => this.showLlmDetailDialog());
     }
     .width('100%')
     .backgroundColor(this.palette().surface)
@@ -968,24 +1014,26 @@ export struct SettingsPage {
   private llmDialogCard() {
     if (this.vm.settingsState.isLlmDetailDialogVisible) {
       Stack({ alignContent: Alignment.Center }) {
-        this.dialogBackdrop(() => this.vm.hideLlmDetailDialog());
+        this.dialogBackdrop(() => this.hideLlmDetailDialog());
         Column({ space: 14 }) {
           this.dialogHeader('✦', '大模型 API 配置', '用于摘要翻译、趋势总结与对话回复生成');
-          this.formInput('Base URL', this.vm.settingsState.llmBaseUrlDraft, 'https://...', (value: string) => {
-            this.vm.updateLlmBaseUrlDraft(value);
+          this.formInput('Base URL', this.llmBaseUrlInput, 'https://...', (value: string) => {
+            this.updateLlmBaseUrlInput(value);
           });
-          this.formInput('Model', this.vm.settingsState.llmModelDraft, 'grok-4.20-0309-non-reasoning-console', (value: string) => {
-            this.vm.updateLlmModelDraft(value);
+          this.formInput('Model', this.llmModelInput, 'grok-4.20-0309-non-reasoning-console', (value: string) => {
+            this.updateLlmModelInput(value);
           });
-          this.formInput('API Key', this.vm.settingsState.llmApiKeyDraft, this.vm.settingsState.llmApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
-            this.vm.updateLlmApiKeyDraft(value);
+          this.formInput('API Key', this.llmApiKeyInput, this.vm.settingsState.llmApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
+            this.updateLlmApiKeyInput(value);
           }, true);
           Row({ space: 8 }) {
             this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
+              this.syncLlmInputsToViewModel();
               void this.vm.testLlmConfig();
             });
-            this.formActionButton('取消', false, false, () => this.vm.hideLlmDetailDialog());
+            this.formActionButton('取消', false, false, () => this.hideLlmDetailDialog());
             this.formActionButton(this.vm.settingsState.isConfigBusy ? '保存中...' : '保存', true, this.vm.settingsState.isConfigBusy, () => {
+              this.syncLlmInputsToViewModel();
               void this.vm.saveLlmConfig();
             });
           }

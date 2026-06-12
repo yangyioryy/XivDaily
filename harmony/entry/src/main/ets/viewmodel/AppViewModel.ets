@@ -959,6 +959,10 @@ export class AppViewModel {
     });
   }
 
+  beginLlmDraftEditing(): void {
+    this.isEditingLlmDraft = true;
+  }
+
   updateZoteroUserIdDraft(value: string): void {
     this.updateSettingsState((state: SettingsStatus) => {
       state.zoteroUserIdDraft = value;
@@ -1115,6 +1119,17 @@ export class AppViewModel {
   }
 
   async saveLlmConfig(): Promise<void> {
+    const baseUrlDraft = this.settingsState.llmBaseUrlDraft.trim();
+    const modelDraft = this.settingsState.llmModelDraft.trim();
+    const apiKeyDraft = normalizeOptionalDraft(this.settingsState.llmApiKeyDraft);
+
+    if (modelDraft.length === 0) {
+      this.updateSettingsState((state: SettingsStatus) => {
+        state.errorMessage = '模型名称不能为空';
+      });
+      return;
+    }
+
     this.updateSettingsState((state: SettingsStatus) => {
       state.isConfigBusy = true;
       state.errorMessage = undefined;
@@ -1122,9 +1137,9 @@ export class AppViewModel {
 
     try {
       const status = await paperService.saveLlmConfig(
-        this.settingsState.llmBaseUrlDraft.trim().length > 0 ? this.settingsState.llmBaseUrlDraft.trim() : DEFAULT_LLM_BASE_URL,
-        normalizeOptionalDraft(this.settingsState.llmApiKeyDraft),
-        this.settingsState.llmModelDraft.trim().length > 0 ? this.settingsState.llmModelDraft.trim() : DEFAULT_LLM_MODEL
+        baseUrlDraft.length > 0 ? baseUrlDraft : DEFAULT_LLM_BASE_URL,
+        apiKeyDraft,
+        modelDraft
       );
       this.isEditingLlmDraft = false;
       this.applyRemoteIntegrationStatus(status);
