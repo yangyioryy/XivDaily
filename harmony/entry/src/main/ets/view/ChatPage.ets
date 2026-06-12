@@ -70,7 +70,8 @@ export struct ChatPage {
   }
 
   private messageBubbleMaxWidth(role: string): string {
-    return role === 'user' ? '74%' : '78%';
+    // 头像放在气泡外侧，最大宽度需要预留头像和间距，避免窄屏下相互覆盖。
+    return role === 'user' ? '70%' : '72%';
   }
 
   private shouldUseCompactAssistantText(content: string): boolean {
@@ -984,47 +985,40 @@ export struct ChatPage {
   @Builder
   private messageBubble(message: PaperChatMessage) {
     Column() {
-      Column() {
-        if (message.role === 'user') {
-          Text(message.content)
-            .fontSize(14)
-            .lineHeight(22)
-            .fontColor(this.palette().onPrimary);
-        } else if (this.shouldUseCompactAssistantText(message.content)) {
-          Text(message.content)
-            .fontSize(14)
-            .lineHeight(22)
-            .fontColor(this.palette().textTertiary);
-        } else {
-          this.assistantMessageBody(message.content);
-        }
+      if (message.role === 'user') {
+        Text(message.content)
+          .fontSize(14)
+          .lineHeight(22)
+          .fontColor(this.palette().onPrimary);
+      } else if (this.shouldUseCompactAssistantText(message.content)) {
+        Text(message.content)
+          .fontSize(14)
+          .lineHeight(22)
+          .fontColor(this.palette().textTertiary);
+      } else {
+        this.assistantMessageBody(message.content);
       }
-      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-      .backgroundColor(message.role === 'user' ? this.palette().primary : this.palette().surface)
-      .borderRadius(10)
-      .constraintSize({ maxWidth: this.messageBubbleMaxWidth(message.role) });
     }
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+    .backgroundColor(message.role === 'user' ? this.palette().primary : this.palette().surface)
+    .borderRadius(10)
+    .constraintSize({ maxWidth: this.messageBubbleMaxWidth(message.role) });
   }
 
   @Builder
   private messageCard(message: PaperChatMessage) {
     Row({ space: 8 }) {
       if (message.role === 'user') {
-        Blank();
-      } else {
-        this.assistantMessageAvatar();
-      }
-
-      this.messageBubble(message);
-
-      if (message.role === 'user') {
+        this.messageBubble(message);
         this.userMessageAvatar();
       } else {
-        Blank();
+        this.assistantMessageAvatar();
+        this.messageBubble(message);
       }
     }
     .width('100%')
     .alignItems(VerticalAlign.Top)
+    .justifyContent(message.role === 'user' ? FlexAlign.End : FlexAlign.Start)
     .onClick(() => this.collapsePickerExpanded());
   }
 
@@ -1048,11 +1042,10 @@ export struct ChatPage {
       .borderRadius(10)
       .alignItems(VerticalAlign.Center)
       .constraintSize({ maxWidth: this.messageBubbleMaxWidth('assistant') });
-
-      Blank();
     }
     .width('100%')
     .alignItems(VerticalAlign.Top)
+    .justifyContent(FlexAlign.Start)
     .onClick(() => this.collapsePickerExpanded());
   }
 
