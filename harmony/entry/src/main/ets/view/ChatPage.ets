@@ -74,10 +74,6 @@ export struct ChatPage {
     return new ArrayDataSource<FavoritePaperItem>(this.vm.chatState.favorites);
   }
 
-  private messageDataSource(): ArrayDataSource<PaperChatMessage> {
-    return new ArrayDataSource<PaperChatMessage>(this.vm.chatState.messages);
-  }
-
   private messageRenderKey(message: PaperChatMessage, index: number): string {
     return `${index}:${message.role}:${message.content.length}:${message.content.slice(0, 24)}`;
   }
@@ -977,8 +973,8 @@ export struct ChatPage {
             this.emptyStateCard();
           }
         } else {
-          // 聊天历史会持续增长，消息项懒加载可以避免每次输入都重建全部历史气泡。
-          LazyForEach(this.messageDataSource(), (message: PaperChatMessage, index: number) => {
+          // 对话历史最多 20 条，直接绑定响应式数组，避免 LazyForEach 快照数据源未通知刷新导致回复不显示。
+          ForEach(this.vm.chatState.messages, (message: PaperChatMessage, index: number) => {
             ListItem() {
               this.messageCard(message);
             }
