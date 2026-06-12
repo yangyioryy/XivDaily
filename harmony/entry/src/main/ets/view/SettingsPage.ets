@@ -7,6 +7,7 @@ import { normalizeXivThemeMode, resolveXivPalette, resolveXivThemeMode, XivTheme
 import { AppViewModel } from '../viewmodel/AppViewModel';
 
 const FALLBACK_APP_VERSION_NAME: string = '0.1.0';
+type LlmInputField = 'baseUrl' | 'model' | 'apiKey';
 
 function resolveAppVersionName(): string {
   try {
@@ -262,6 +263,28 @@ export struct SettingsPage {
   private updateLlmApiKeyInput(value: string): void {
     this.llmApiKeyInput = value;
     this.vm.beginLlmDraftEditing();
+  }
+
+  private resolveLlmInputText(field: LlmInputField): string {
+    if (field === 'baseUrl') {
+      return this.llmBaseUrlInput;
+    }
+    if (field === 'model') {
+      return this.llmModelInput;
+    }
+    return this.llmApiKeyInput;
+  }
+
+  private updateLlmInputText(field: LlmInputField, value: string): void {
+    if (field === 'baseUrl') {
+      this.updateLlmBaseUrlInput(value);
+      return;
+    }
+    if (field === 'model') {
+      this.updateLlmModelInput(value);
+      return;
+    }
+    this.updateLlmApiKeyInput(value);
   }
 
   private syncLlmInputsToViewModel(): void {
@@ -708,6 +731,33 @@ export struct SettingsPage {
   }
 
   @Builder
+  private llmFormInput(label: string, placeholder: string, field: LlmInputField, isPassword: boolean = false) {
+    Column({ space: 6 }) {
+      Text(label)
+        .fontSize(13)
+        .fontColor(this.palette().textSecondary)
+        .width('100%');
+      TextInput({
+        placeholder: placeholder,
+        // LLM 弹窗直接读取页面 @State，避免通用 @Builder 参数缓存导致保存重建时回显旧模型名。
+        text: this.resolveLlmInputText(field)
+      })
+        .fontSize(15)
+        .fontColor(this.palette().textPrimary)
+        .placeholderColor(this.palette().textSecondary)
+        .type(isPassword ? InputType.Password : InputType.Normal)
+        .showPasswordIcon(false)
+        .showPassword(false)
+        .backgroundColor(this.palette().surface)
+        .borderRadius(14)
+        .border({ width: 1, color: this.palette().outline })
+        .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+        .onChange((value: string) => this.updateLlmInputText(field, value));
+    }
+    .width('100%');
+  }
+
+  @Builder
   private formActionButton(label: string, primary: boolean, disabled: boolean, action: () => void) {
     Text(label)
       .fontSize(14)
@@ -1017,15 +1067,9 @@ export struct SettingsPage {
         this.dialogBackdrop(() => this.hideLlmDetailDialog());
         Column({ space: 14 }) {
           this.dialogHeader('✦', '大模型 API 配置', '用于摘要翻译、趋势总结与对话回复生成');
-          this.formInput('Base URL', this.llmBaseUrlInput, 'https://...', (value: string) => {
-            this.updateLlmBaseUrlInput(value);
-          });
-          this.formInput('Model', this.llmModelInput, 'grok-4.20-0309-non-reasoning-console', (value: string) => {
-            this.updateLlmModelInput(value);
-          });
-          this.formInput('API Key', this.llmApiKeyInput, this.vm.settingsState.llmApiKeyMasked ?? '保存后仅脱敏显示', (value: string) => {
-            this.updateLlmApiKeyInput(value);
-          }, true);
+          this.llmFormInput('Base URL', 'https://...', 'baseUrl');
+          this.llmFormInput('Model', 'grok-4.20-0309-non-reasoning-console', 'model');
+          this.llmFormInput('API Key', this.vm.settingsState.llmApiKeyMasked ?? '保存后仅脱敏显示', 'apiKey', true);
           Row({ space: 8 }) {
             this.formActionButton('测试', false, this.vm.settingsState.isConfigBusy, () => {
               this.syncLlmInputsToViewModel();

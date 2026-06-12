@@ -42,6 +42,7 @@ export class AppViewModel {
   private libraryFeedbackTimerId?: number;
   private settingsFeedbackTimerId?: number;
   private homePaperRequestVersion: number = 0;
+  private integrationStatusRequestVersion: number = 0;
   private bootstrapped: boolean = false;
   private isEditingLlmDraft: boolean = false;
   // 用会话版本隔离收藏库快速进入对话与旧请求返回，避免旧回复污染新上下文。
@@ -1143,8 +1144,10 @@ export class AppViewModel {
         apiKeyDraft,
         modelDraft
       );
-      this.applyRemoteIntegrationStatus(status);
+      // 保存成功后废弃此前还在路上的配置刷新，避免旧回包覆盖本次提交的模型名。
+      this.integrationStatusRequestVersion += 1;
       this.updateSettingsState((state: SettingsStatus) => {
+        this.applyRemoteIntegrationStatusToState(state, status);
         // 保存后端状态查询可能短暂返回旧配置，前端先以本次提交值收口，避免弹窗关闭前闪回旧模型名。
         state.llmBaseUrl = submittedBaseUrl;
         state.llmModel = modelDraft;
@@ -1208,8 +1211,13 @@ export class AppViewModel {
   }
 
   private async refreshIntegrationStatus(showSuccessMessage: boolean): Promise<void> {
+    const requestVersion = this.integrationStatusRequestVersion + 1;
+    this.integrationStatusRequestVersion = requestVersion;
     try {
       const remoteStatus = await paperService.getIntegrationConfigStatus();
+      if (requestVersion !== this.integrationStatusRequestVersion) {
+        return;
+      }
       this.applyRemoteIntegrationStatus(remoteStatus);
       this.updateSettingsState((state: SettingsStatus) => {
         state.integrationStatusFailed = false;
@@ -1217,6 +1225,9 @@ export class AppViewModel {
         state.actionMessage = showSuccessMessage ? '配置状态已刷新' : state.actionMessage;
       });
     } catch (error) {
+      if (requestVersion !== this.integrationStatusRequestVersion) {
+        return;
+      }
       this.updateSettingsState((state: SettingsStatus) => {
         state.integrationStatusFailed = true;
         state.zoteroTargetCollectionStatus = 'error';
@@ -1472,28 +1483,32 @@ export class AppViewModel {
 
   private applyRemoteIntegrationStatus(status: SettingsStatus): void {
     this.updateSettingsState((state: SettingsStatus) => {
-      state.zoteroConfigured = status.zoteroConfigured;
-      state.zoteroUserId = status.zoteroUserId;
-      state.zoteroLibraryType = status.zoteroLibraryType;
-      state.zoteroApiKeyMasked = status.zoteroApiKeyMasked;
-      state.zoteroTargetCollectionName = status.zoteroTargetCollectionName;
-      state.zoteroTargetCollectionKey = status.zoteroTargetCollectionKey;
-      state.zoteroTargetCollectionStatus = status.zoteroTargetCollectionStatus;
-      state.llmConfigured = status.llmConfigured;
-      state.llmBaseUrl = status.llmBaseUrl;
-      state.llmModel = status.llmModel;
-      state.llmApiKeyMasked = status.llmApiKeyMasked;
-      if (!state.isZoteroDetailDialogVisible) {
-        state.zoteroUserIdDraft = status.zoteroUserId ?? '';
-        state.zoteroLibraryTypeDraft = status.zoteroLibraryType ?? 'user';
-        state.zoteroTargetCollectionNameDraft = status.zoteroTargetCollectionName;
-      }
-      if (this.canRefreshLlmDrafts(state)) {
-        state.llmBaseUrlDraft = status.llmBaseUrl;
-        state.llmModelDraft = status.llmModel;
-      }
-      state.integrationStatusFailed = false;
+      this.applyRemoteIntegrationStatusToState(state, status);
     });
+  }
+
+  private applyRemoteIntegrationStatusToState(state: SettingsStatus, status: SettingsStatus): void {
+    state.zoteroConfigured = status.zoteroConfigured;
+    state.zoteroUserId = status.zoteroUserId;
+    state.zoteroLibraryType = status.zoteroLibraryType;
+    state.zoteroApiKeyMasked = status.zoteroApiKeyMasked;
+    state.zoteroTargetCollectionName = status.zoteroTargetCollectionName;
+    state.zoteroTargetCollectionKey = status.zoteroTargetCollectionKey;
+    state.zoteroTargetCollectionStatus = status.zoteroTargetCollectionStatus;
+    state.llmConfigured = status.llmConfigured;
+    state.llmBaseUrl = status.llmBaseUrl;
+    state.llmModel = status.llmModel;
+    state.llmApiKeyMasked = status.llmApiKeyMasked;
+    if (!state.isZoteroDetailDialogVisible) {
+      state.zoteroUserIdDraft = status.zoteroUserId ?? '';
+      state.zoteroLibraryTypeDraft = status.zoteroLibraryType ?? 'user';
+      state.zoteroTargetCollectionNameDraft = status.zoteroTargetCollectionName;
+    }
+    if (this.canRefreshLlmDrafts(state)) {
+      state.llmBaseUrlDraft = status.llmBaseUrl;
+      state.llmModelDraft = status.llmModel;
+    }
+    state.integrationStatusFailed = false;
   }
 
   private canRefreshLlmDrafts(state: SettingsStatus): boolean {
