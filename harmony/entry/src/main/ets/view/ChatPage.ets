@@ -59,6 +59,31 @@ export struct ChatPage {
     return this.vm.chatState.selectedPaperIds.indexOf(paperId) >= 0;
   }
 
+  private avatarPresetGlyph(value: string): string {
+    if (value === 'spark') {
+      return '灵';
+    }
+    if (value === 'orbit') {
+      return '研';
+    }
+    return '学';
+  }
+
+  private messageBubbleMaxWidth(role: string): string {
+    return role === 'user' ? '74%' : '78%';
+  }
+
+  private shouldUseCompactAssistantText(content: string): boolean {
+    const trimmedContent = content.trim();
+    return trimmedContent.length <= 80
+      && trimmedContent.indexOf('\n') < 0
+      && trimmedContent.indexOf('```') < 0
+      && trimmedContent.indexOf('|') < 0
+      && trimmedContent.indexOf('[') < 0
+      && trimmedContent.indexOf('*') < 0
+      && trimmedContent.indexOf('#') < 0;
+  }
+
   private pickerOptionRenderKey(favorite: FavoritePaperItem): string {
     // LazyForEach 会按 key 复用列表项；key 必须包含外部选中态，避免勾选 UI 停留在旧状态。
     return `${favorite.paper.id}:${this.isPaperSelected(favorite.paper.id) ? 'selected' : 'normal'}`;
@@ -910,39 +935,104 @@ export struct ChatPage {
   }
 
   @Builder
-  private messageCard(message: PaperChatMessage) {
-    Row() {
-      if (message.role === 'user') {
-        Blank();
+  private userMessageAvatar() {
+    Stack({ alignContent: Alignment.Center }) {
+      if (this.vm.settingsState.avatarImageUri && this.vm.settingsState.avatarImageUri.length > 0) {
+        Image(this.vm.settingsState.avatarImageUri)
+          .width(32)
+          .height(32)
+          .borderRadius(16)
+          .objectFit(ImageFit.Cover);
+      } else {
+        // 未上传头像时复用设置页头像预设，保证对话页和个人资料展示一致。
+        Text(this.avatarPresetGlyph(this.vm.settingsState.avatarPreset))
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.palette().onPrimaryContainer)
+          .width(32)
+          .height(32)
+          .textAlign(TextAlign.Center);
       }
+    }
+    .width(32)
+    .height(32)
+    .backgroundColor(this.palette().primaryContainer)
+    .borderRadius(16)
+    .border({ width: 1, color: this.palette().outline })
+    .margin({ top: 2 });
+  }
 
+  @Builder
+  private assistantMessageAvatar() {
+    Stack({ alignContent: Alignment.Center }) {
+      Text('AI')
+        .fontSize(12)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.palette().onSecondaryContainer)
+        .width(32)
+        .height(32)
+        .textAlign(TextAlign.Center);
+    }
+    .width(32)
+    .height(32)
+    .backgroundColor(this.palette().secondaryContainer)
+    .borderRadius(16)
+    .border({ width: 1, color: this.palette().outline })
+    .margin({ top: 2 });
+  }
+
+  @Builder
+  private messageBubble(message: PaperChatMessage) {
+    Column() {
       Column() {
         if (message.role === 'user') {
           Text(message.content)
             .fontSize(14)
             .lineHeight(22)
-            .fontColor(this.palette().onPrimary)
-            .width('100%');
+            .fontColor(this.palette().onPrimary);
+        } else if (this.shouldUseCompactAssistantText(message.content)) {
+          Text(message.content)
+            .fontSize(14)
+            .lineHeight(22)
+            .fontColor(this.palette().textTertiary);
         } else {
           this.assistantMessageBody(message.content);
         }
       }
-      .width(message.role === 'user' ? '82%' : '86%')
       .padding({ left: 16, right: 16, top: 12, bottom: 12 })
       .backgroundColor(message.role === 'user' ? this.palette().primary : this.palette().surface)
-      .borderRadius(10);
+      .borderRadius(10)
+      .constraintSize({ maxWidth: this.messageBubbleMaxWidth(message.role) });
+    }
+  }
 
-      if (message.role !== 'user') {
+  @Builder
+  private messageCard(message: PaperChatMessage) {
+    Row({ space: 8 }) {
+      if (message.role === 'user') {
+        Blank();
+      } else {
+        this.assistantMessageAvatar();
+      }
+
+      this.messageBubble(message);
+
+      if (message.role === 'user') {
+        this.userMessageAvatar();
+      } else {
         Blank();
       }
     }
     .width('100%')
+    .alignItems(VerticalAlign.Top)
     .onClick(() => this.collapsePickerExpanded());
   }
 
   @Builder
   private thinkingBubble() {
-    Row() {
+    Row({ space: 8 }) {
+      this.assistantMessageAvatar();
+
       Row({ space: 10 }) {
         LoadingProgress()
           .width(16)
@@ -953,14 +1043,16 @@ export struct ChatPage {
           .fontColor(this.palette().textSecondary)
           .lineHeight(22);
       }
-      .width('86%')
       .padding({ left: 16, right: 16, top: 12, bottom: 12 })
       .backgroundColor(this.palette().surface)
       .borderRadius(10)
-      .alignItems(VerticalAlign.Center);
+      .alignItems(VerticalAlign.Center)
+      .constraintSize({ maxWidth: this.messageBubbleMaxWidth('assistant') });
+
       Blank();
     }
     .width('100%')
+    .alignItems(VerticalAlign.Top)
     .onClick(() => this.collapsePickerExpanded());
   }
 
@@ -1054,7 +1146,8 @@ export struct ChatPage {
               .fontColor(this.palette().textPrimary);
             Text(`已选 ${this.vm.chatState.selectedPaperIds.length} 篇 · 最多 ${AppConstants.MAX_CHAT_PAPERS} 篇`)
               .fontSize(13)
-              .fontColor(this.palette().textSecondary);
+              .fontColor(this.palette().textSecondary)
+              .translate({ x: 20, y: 0, z: 0 });
           }
           .translate({ x: -16, y: 0, z: 0 })
           Blank();
