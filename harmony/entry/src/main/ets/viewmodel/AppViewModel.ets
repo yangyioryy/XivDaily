@@ -1129,6 +1129,7 @@ export class AppViewModel {
       });
       return;
     }
+    const submittedBaseUrl = baseUrlDraft.length > 0 ? baseUrlDraft : DEFAULT_LLM_BASE_URL;
 
     this.updateSettingsState((state: SettingsStatus) => {
       state.isConfigBusy = true;
@@ -1137,18 +1138,24 @@ export class AppViewModel {
 
     try {
       const status = await paperService.saveLlmConfig(
-        baseUrlDraft.length > 0 ? baseUrlDraft : DEFAULT_LLM_BASE_URL,
+        submittedBaseUrl,
         apiKeyDraft,
         modelDraft
       );
-      this.isEditingLlmDraft = false;
       this.applyRemoteIntegrationStatus(status);
       this.updateSettingsState((state: SettingsStatus) => {
+        // 保存后端状态查询可能短暂返回旧配置，前端先以本次提交值收口，避免弹窗关闭前闪回旧模型名。
+        state.llmBaseUrl = submittedBaseUrl;
+        state.llmModel = modelDraft;
+        state.llmBaseUrlDraft = submittedBaseUrl;
+        state.llmModelDraft = modelDraft;
+        state.llmApiKeyDraft = '';
         state.isConfigBusy = false;
         state.isLlmDetailDialogVisible = false;
         state.actionMessage = '大模型配置已保存';
         state.errorMessage = undefined;
       });
+      this.isEditingLlmDraft = false;
     } catch (error) {
       this.updateSettingsState((state: SettingsStatus) => {
         state.isConfigBusy = false;
