@@ -59,6 +59,11 @@ export struct ChatPage {
     return this.vm.chatState.selectedPaperIds.indexOf(paperId) >= 0;
   }
 
+  private pickerOptionRenderKey(favorite: FavoritePaperItem): string {
+    // LazyForEach 会按 key 复用列表项；key 必须包含外部选中态，避免勾选 UI 停留在旧状态。
+    return `${favorite.paper.id}:${this.isPaperSelected(favorite.paper.id) ? 'selected' : 'normal'}`;
+  }
+
   private selectedFavorites(): FavoritePaperItem[] {
     return this.vm.chatState.favorites.filter((favorite: FavoritePaperItem) => {
       return this.vm.chatState.selectedPaperIds.indexOf(favorite.paper.id) >= 0;
@@ -789,20 +794,21 @@ export struct ChatPage {
   }
 
   @Builder
-  private inlinePickerCheckmark(selected: boolean) {
+  private inlinePickerCheckmark(paperId: string) {
+    // 勾选态直接读取 ViewModel，避免 @Builder 参数缓存导致图标停留在首次构建值。
     Row() {
-      Text(selected ? '✓' : '')
+      Text(this.isPaperSelected(paperId) ? '✓' : '')
         .fontSize(11)
         .fontWeight(FontWeight.Medium)
-        .fontColor(selected ? this.palette().primary : this.palette().textSecondary);
+        .fontColor(this.isPaperSelected(paperId) ? this.palette().primary : this.palette().textSecondary);
     }
     .width(18)
     .height(18)
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(selected ? this.palette().primaryContainer : this.palette().surfaceVariant)
+    .backgroundColor(this.isPaperSelected(paperId) ? this.palette().primaryContainer : this.palette().surfaceVariant)
     .borderRadius(5)
-    .border({ width: 1, color: selected ? this.palette().primary : this.palette().outline });
+    .border({ width: 1, color: this.isPaperSelected(paperId) ? this.palette().primary : this.palette().outline });
   }
 
   @Builder
@@ -810,7 +816,7 @@ export struct ChatPage {
     // Android 端这里是 DropdownMenuItem，Harmony 端保持整行可点，避免额外按钮打断浏览节奏。
     // 次级信息里的分类与日期分隔符也保持成“·”，避免出现当前鸿蒙端的错误字符。
     Row({ space: 12 }) {
-      this.inlinePickerCheckmark(this.isPaperSelected(favorite.paper.id));
+      this.inlinePickerCheckmark(favorite.paper.id);
 
       Column({ space: 2 }) {
         Text(favorite.paper.title)
@@ -860,7 +866,7 @@ export struct ChatPage {
                 ListItem() {
                   this.inlinePickerOption(favorite);
                 }
-              }, (favorite: FavoritePaperItem) => favorite.paper.id);
+              }, (favorite: FavoritePaperItem) => this.pickerOptionRenderKey(favorite));
             }
             .width('100%')
             .height(this.pickerMenuHeight())
