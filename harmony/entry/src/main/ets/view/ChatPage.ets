@@ -1056,7 +1056,7 @@ export struct ChatPage {
               .fontSize(13)
               .fontColor(this.palette().textSecondary);
           }
-          .translate({ x: -4, y: 0, z: 0 })
+          .translate({ x: -8, y: 0, z: 0 })
           Blank();
           Row({ space: 4 }) {
             Text('×')
