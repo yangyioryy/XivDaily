@@ -70,8 +70,8 @@ export struct ChatPage {
   }
 
   private messageBubbleMaxWidth(role: string): string {
-    // 头像放在气泡外侧，最大宽度需要预留头像和间距，避免窄屏下相互覆盖。
-    return role === 'user' ? '70%' : '72%';
+    // 助手气泡由外层内容列扣除头像宽度，这里允许白底铺满剩余空间，避免正文越出背景。
+    return role === 'user' ? '70%' : '100%';
   }
 
   private shouldUseCompactAssistantText(content: string): boolean {
@@ -651,12 +651,14 @@ export struct ChatPage {
       .fontSize(fontSize)
       .lineHeight(lineHeight)
       .fontColor(defaultColor)
+      .wordBreak(WordBreak.BREAK_WORD)
       .width('100%');
     } else {
       Text(block.text)
         .fontSize(fontSize)
         .lineHeight(lineHeight)
         .fontColor(defaultColor)
+        .wordBreak(WordBreak.BREAK_WORD)
         .width('100%');
     }
   }
@@ -715,7 +717,8 @@ export struct ChatPage {
           this.markdownInlineText(block, 14, 22, this.palette().textTertiary);
           this.markdownInlineLinkStrip(block);
         }
-          .layoutWeight(1);
+          .layoutWeight(1)
+          .constraintSize({ minWidth: 0 });
       }
       .width('100%')
       .alignItems(VerticalAlign.Top);
@@ -724,6 +727,7 @@ export struct ChatPage {
         .fontSize(13)
         .lineHeight(20)
         .fontColor(this.palette().textTertiary)
+        .wordBreak(WordBreak.BREAK_ALL)
         .width('100%')
         .padding(12)
         .backgroundColor(this.palette().surfaceVariant)
@@ -739,7 +743,8 @@ export struct ChatPage {
           this.markdownInlineText(block, 14, 22, this.palette().textTertiary);
           this.markdownInlineLinkStrip(block);
         }
-          .layoutWeight(1);
+          .layoutWeight(1)
+          .constraintSize({ minWidth: 0 });
       }
       .width('100%')
       .padding({ left: 10, right: 10, top: 10, bottom: 10 })
@@ -752,11 +757,13 @@ export struct ChatPage {
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().primary)
+          .wordBreak(WordBreak.BREAK_WORD)
           .width('100%');
         Text(block.linkUrl)
           .fontSize(12)
           .lineHeight(18)
           .fontColor(this.palette().textSecondary)
+          .wordBreak(WordBreak.BREAK_ALL)
           .width('100%');
       }
       .width('100%')
@@ -983,37 +990,62 @@ export struct ChatPage {
   }
 
   @Builder
-  private messageBubble(message: PaperChatMessage) {
+  private userMessageBubble(message: PaperChatMessage) {
     Column() {
-      if (message.role === 'user') {
+      Text(message.content)
+        .fontSize(14)
+        .lineHeight(22)
+        .fontColor(this.palette().onPrimary)
+        .wordBreak(WordBreak.BREAK_WORD);
+    }
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+    .backgroundColor(this.palette().primary)
+    .borderRadius(10)
+    .constraintSize({ maxWidth: this.messageBubbleMaxWidth('user') });
+  }
+
+  @Builder
+  private assistantMessageBubble(message: PaperChatMessage) {
+    Column() {
+      if (this.shouldUseCompactAssistantText(message.content)) {
         Text(message.content)
           .fontSize(14)
           .lineHeight(22)
-          .fontColor(this.palette().onPrimary);
-      } else if (this.shouldUseCompactAssistantText(message.content)) {
-        Text(message.content)
-          .fontSize(14)
-          .lineHeight(22)
-          .fontColor(this.palette().textTertiary);
+          .fontColor(this.palette().textTertiary)
+          .wordBreak(WordBreak.BREAK_WORD)
+          .width('100%');
       } else {
         this.assistantMessageBody(message.content);
       }
     }
+    .width('100%')
     .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-    .backgroundColor(message.role === 'user' ? this.palette().primary : this.palette().surface)
+    .backgroundColor(this.palette().surface)
     .borderRadius(10)
-    .constraintSize({ maxWidth: this.messageBubbleMaxWidth(message.role) });
+    .constraintSize({ maxWidth: this.messageBubbleMaxWidth('assistant') });
   }
 
   @Builder
   private messageCard(message: PaperChatMessage) {
     Row({ space: 8 }) {
       if (message.role === 'user') {
-        this.messageBubble(message);
+        // 用户内容列先占满头像之外的区域，再把气泡右对齐，避免文本脱离蓝色背景框。
+        Column() {
+          this.userMessageBubble(message);
+        }
+        .layoutWeight(1)
+        .constraintSize({ minWidth: 0 })
+        .alignItems(HorizontalAlign.End);
         this.userMessageAvatar();
       } else {
         this.assistantMessageAvatar();
-        this.messageBubble(message);
+        // 助手内容列占用头像之外的剩余宽度，避免模型头像和白底气泡互相覆盖。
+        Column() {
+          this.assistantMessageBubble(message);
+        }
+        .layoutWeight(1)
+        .constraintSize({ minWidth: 0 })
+        .alignItems(HorizontalAlign.Start);
       }
     }
     .width('100%')
@@ -1027,21 +1059,28 @@ export struct ChatPage {
     Row({ space: 8 }) {
       this.assistantMessageAvatar();
 
-      Row({ space: 10 }) {
-        LoadingProgress()
-          .width(16)
-          .height(16)
-          .color(this.palette().textSecondary);
-        Text('正在思考中...')
-          .fontSize(14)
-          .fontColor(this.palette().textSecondary)
-          .lineHeight(22);
+      Column() {
+        Row({ space: 10 }) {
+          LoadingProgress()
+            .width(16)
+            .height(16)
+            .color(this.palette().textSecondary);
+          Text('正在思考中...')
+            .fontSize(14)
+            .fontColor(this.palette().textSecondary)
+            .lineHeight(22)
+            .wordBreak(WordBreak.BREAK_WORD);
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+        .backgroundColor(this.palette().surface)
+        .borderRadius(10)
+        .alignItems(VerticalAlign.Center)
+        .constraintSize({ maxWidth: this.messageBubbleMaxWidth('assistant') });
       }
-      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-      .backgroundColor(this.palette().surface)
-      .borderRadius(10)
-      .alignItems(VerticalAlign.Center)
-      .constraintSize({ maxWidth: this.messageBubbleMaxWidth('assistant') });
+      .layoutWeight(1)
+      .constraintSize({ minWidth: 0 })
+      .alignItems(HorizontalAlign.Start);
     }
     .width('100%')
     .alignItems(VerticalAlign.Top)
