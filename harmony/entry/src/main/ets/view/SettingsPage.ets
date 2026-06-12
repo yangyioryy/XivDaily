@@ -1033,8 +1033,7 @@ export struct SettingsPage {
             });
             this.formActionButton('取消', false, false, () => this.hideLlmDetailDialog());
             this.formActionButton(this.vm.settingsState.isConfigBusy ? '保存中...' : '保存', true, this.vm.settingsState.isConfigBusy, () => {
-              this.syncLlmInputsToViewModel();
-              void this.vm.saveLlmConfig();
+              void this.vm.saveLlmConfig(this.llmBaseUrlInput, this.llmApiKeyInput, this.llmModelInput);
             });
           }
           .width('100%')

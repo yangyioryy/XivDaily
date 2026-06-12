@@ -1118,10 +1118,11 @@ export class AppViewModel {
     }
   }
 
-  async saveLlmConfig(): Promise<void> {
-    const baseUrlDraft = this.settingsState.llmBaseUrlDraft.trim();
-    const modelDraft = this.settingsState.llmModelDraft.trim();
-    const apiKeyDraft = normalizeOptionalDraft(this.settingsState.llmApiKeyDraft);
+  async saveLlmConfig(baseUrlInput?: string, apiKeyInput?: string, modelInput?: string): Promise<void> {
+    // 保存按钮直接传入弹窗本地输入值，避免保存前同步 draft 触发 TextInput 旧值重建。
+    const baseUrlDraft = (baseUrlInput ?? this.settingsState.llmBaseUrlDraft).trim();
+    const modelDraft = (modelInput ?? this.settingsState.llmModelDraft).trim();
+    const apiKeyDraft = normalizeOptionalDraft(apiKeyInput ?? this.settingsState.llmApiKeyDraft);
 
     if (modelDraft.length === 0) {
       this.updateSettingsState((state: SettingsStatus) => {
