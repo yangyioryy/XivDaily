@@ -1175,15 +1175,15 @@ private fun StatusDot(color: Color) {
 }
 
 private val ChinaZoneId: ZoneId = ZoneId.of("Asia/Shanghai")
-private val PaperPublishedAtFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+private val PaperPublishedAtFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     .withZone(ChinaZoneId)
 
 private fun formatChinaPublishedAt(value: String): String {
     return runCatching {
-        // 后端返回 arXiv UTC 时间，首页固定按中国时区展示，避免直接截取 UTC 日期。
+        // 后端返回 arXiv UTC 时间，首页固定按中国时区展示日期，避免直接截取 UTC 日期。
         PaperPublishedAtFormatter.format(Instant.parse(value))
     }.getOrElse {
-        value.take(16).replace('T', ' ')
+        value.take(10)
     }
 }
 
