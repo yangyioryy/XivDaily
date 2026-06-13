@@ -716,6 +716,21 @@ export struct HomePage {
     return this.homePaperById(paper.id) ?? paper;
   }
 
+  private formatChinaPublishedAt(value: string): string {
+    const parsedTime = new Date(value).getTime();
+    if (Number.isNaN(parsedTime)) {
+      return value.slice(0, 16).replace('T', ' ');
+    }
+
+    // 后端返回 arXiv UTC 时间，首页按中国时区固定展示，避免直接截取 UTC 日期。
+    const chinaTime = new Date(parsedTime + 8 * 60 * 60 * 1000);
+    return `${chinaTime.getUTCFullYear()}-${this.padDatePart(chinaTime.getUTCMonth() + 1)}-${this.padDatePart(chinaTime.getUTCDate())} ${this.padDatePart(chinaTime.getUTCHours())}:${this.padDatePart(chinaTime.getUTCMinutes())}`;
+  }
+
+  private padDatePart(value: number): string {
+    return value < 10 ? `0${value}` : `${value}`;
+  }
+
   @Builder
   private paperCard(paper: PaperItem) {
     Stack({ alignContent: Alignment.Center }) {
@@ -741,7 +756,7 @@ export struct HomePage {
           .width('100%')
           .textAlign(TextAlign.Start);
 
-        Text(`${this.currentPaper(paper).primaryCategory} · ${this.currentPaper(paper).publishedAt.slice(0, 10)} · Zotero ${this.currentPaper(paper).zoteroSyncState}`)
+        Text(`${this.currentPaper(paper).primaryCategory} · ${this.formatChinaPublishedAt(this.currentPaper(paper).publishedAt)} · Zotero ${this.currentPaper(paper).zoteroSyncState}`)
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.palette().onPrimaryContainer)

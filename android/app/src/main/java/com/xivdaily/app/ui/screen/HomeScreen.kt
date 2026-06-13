@@ -74,6 +74,9 @@ import com.xivdaily.app.ui.theme.XivDailySuccess
 import com.xivdaily.app.ui.theme.XivDailyWarning
 import com.xivdaily.app.ui.theme.xivSpacing
 import com.xivdaily.app.ui.viewmodel.HomeUiState
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -675,7 +678,7 @@ private fun HomePaperCard(
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
                     ) {
                         Text(
-                            text = "${paper.primaryCategory} · ${paper.publishedAt.take(10)} · Zotero ${paper.zoteroSyncState}",
+                            text = "${paper.primaryCategory} · ${formatChinaPublishedAt(paper.publishedAt)} · Zotero ${paper.zoteroSyncState}",
                             modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.xs),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1169,6 +1172,19 @@ private fun StatusDot(color: Color) {
             .size(8.dp)
             .background(color = color, shape = MaterialTheme.shapes.extraSmall),
     )
+}
+
+private val ChinaZoneId: ZoneId = ZoneId.of("Asia/Shanghai")
+private val PaperPublishedAtFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    .withZone(ChinaZoneId)
+
+private fun formatChinaPublishedAt(value: String): String {
+    return runCatching {
+        // 后端返回 arXiv UTC 时间，首页固定按中国时区展示，避免直接截取 UTC 日期。
+        PaperPublishedAtFormatter.format(Instant.parse(value))
+    }.getOrElse {
+        value.take(16).replace('T', ' ')
+    }
 }
 
 private fun formatDays(days: Int): String {
