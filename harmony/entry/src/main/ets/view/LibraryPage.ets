@@ -1,5 +1,4 @@
 import AppConstants from '../common/constants/AppConstants';
-import { ArrayDataSource } from '../common/ArrayDataSource';
 import Context from '@ohos.app.ability.application';
 import { resolveXivPalette, XivThemePalette } from '../common/theme/XivTheme';
 import { FavoritePaperItem } from '../model/AppModels';
@@ -44,8 +43,13 @@ export struct LibraryPage {
     });
   }
 
-  private favoriteDataSource(): ArrayDataSource<FavoritePaperItem> {
-    return new ArrayDataSource<FavoritePaperItem>(this.filteredFavorites());
+  private favoriteRenderKey(favorite: FavoritePaperItem): string {
+    return [
+      favorite.paper.id,
+      favorite.paper.zoteroSyncState,
+      this.isPaperSelected(favorite.paper.id) ? 'selected' : 'normal',
+      this.isPaperSyncing(favorite.paper.id) ? 'syncing' : 'idle'
+    ].join(':');
   }
 
   private syncedCount(): number {
@@ -520,12 +524,12 @@ export struct LibraryPage {
             this.emptyStateCard('当前筛选下没有结果', '可以切换同步状态，或者检查导出与同步后的收藏记录。');
           }
         } else {
-          // 收藏库会持续增长，LazyForEach 可以避免筛选或选择状态变化时一次性重建所有卡片。
-          LazyForEach(this.favoriteDataSource(), (favorite: FavoritePaperItem) => {
+          // 收藏数据来自响应式 libraryState，ForEach 能在主页新增或本页删除后立刻重建列表。
+          ForEach(this.filteredFavorites(), (favorite: FavoritePaperItem) => {
             ListItem() {
               this.favoriteCard(favorite);
             }
-          }, (favorite: FavoritePaperItem) => favorite.paper.id);
+          }, (favorite: FavoritePaperItem) => this.favoriteRenderKey(favorite));
         }
       }
       .width('100%')
