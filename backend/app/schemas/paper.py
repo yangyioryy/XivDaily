@@ -43,3 +43,9 @@ class PaperListResponse(BaseModel):
             "upstream_unavailable、category_filtered，非空时留空"
         ),
     )
+
+
+class PaperSyncResponse(BaseModel):
+    upserted: int = Field(description="本轮新增或更新的论文数量")
+    deleted: int = Field(description="本轮清理的过期或超量论文数量")
+    failed: int = Field(description="本轮同步失败的分类数量")

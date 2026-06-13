@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
-from app.api.papers import get_paper_service
+from app.api.papers import get_paper_service, get_paper_sync_service
 from app.main import app
 from app.schemas.paper import Paper, PaperListResponse, PaperQuery
 
@@ -40,6 +40,15 @@ class FakePaperService:
         )
 
 
+class FakePaperSyncService:
+    def __init__(self) -> None:
+        self.sync_count = 0
+
+    async def sync_once(self) -> dict[str, int]:
+        self.sync_count += 1
+        return {"upserted": 2, "deleted": 1, "failed": 0}
+
+
 def test_papers_api_returns_paginated_response() -> None:
     fake_service = FakePaperService()
     app.dependency_overrides[get_paper_service] = lambda: fake_service
@@ -73,3 +82,16 @@ def test_papers_api_keyword_search_omits_days_by_default() -> None:
     assert fake_service.queries[0].keyword == "omibench"
     assert fake_service.queries[0].category == "cs.AI"
     assert fake_service.queries[0].days is None
+
+
+def test_papers_sync_api_triggers_one_manual_sync_round() -> None:
+    fake_service = FakePaperSyncService()
+    app.dependency_overrides[get_paper_sync_service] = lambda: fake_service
+    client = TestClient(app)
+
+    response = client.post("/papers/sync")
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json() == {"upserted": 2, "deleted": 1, "failed": 0}
+    assert fake_service.sync_count == 1
